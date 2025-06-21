@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "moduleResolution": "nodenext",
+    "module": "nodenext",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "src/*"
+      ]
+    }
+  },
+  "include": ["vite.config.ts"]
+}
