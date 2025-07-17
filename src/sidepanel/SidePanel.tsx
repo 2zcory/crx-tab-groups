@@ -26,6 +26,9 @@ export const SidePanel = () => {
         <Tabs.Content value={ETabMenu.TAB_SYNC}>
           <LiveManagement />
         </Tabs.Content>
+        <Tabs.Content value={ETabMenu.NOTE}>
+          <>Note</>
+        </Tabs.Content>
         <Tabs.Content value={ETabMenu.BOOKMARK}>
           <>Bookmark</>
         </Tabs.Content>

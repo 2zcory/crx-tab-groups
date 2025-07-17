@@ -6,6 +6,10 @@ export const TAB_MENU: Array<NCommon.Option<ETabMenu>> = [
     label: "Tabs Live"
   },
   {
+    value: ETabMenu.NOTE,
+    label: "Note"
+  },
+  {
     value: ETabMenu.BOOKMARK,
     label: "Bookmark"
   }

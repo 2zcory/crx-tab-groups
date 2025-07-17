@@ -27,7 +27,6 @@ function LiveManagement() {
   const [tabsUngroup, setTabsUngroup] = useState<chrome.tabs.Tab[]>([])
 
   const [accordionValues, setAccordionValues] = useState<string[]>([`${EMockGroup.PINNED}`, `${EMockGroup.UNGROUP}`])
-  console.log(accordionValues)
 
   onTabUpdated(() => {
     getActiveGroups();
