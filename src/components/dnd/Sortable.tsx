@@ -1,7 +1,5 @@
 function Sortable() {
-  return (
-    <div></div>
-  )
+  return <div></div>
 }
 
 export default Sortable

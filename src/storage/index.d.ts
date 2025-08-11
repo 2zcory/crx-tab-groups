@@ -1,5 +1,5 @@
 namespace NStorage {
-  type AreaName = "sync" | "local" | "managed" | "session"
+  type AreaName = 'sync' | 'local' | 'managed' | 'session'
 
   namespace Event {
     interface Changes<T = string> {
@@ -18,29 +18,29 @@ namespace NStorage {
 
     namespace Schema {
       interface Database {
-        version: string;
-        groups: Group[];
-        tabs: Tab[];
-        favIcons: FavIcons;
+        version: string
+        groups: Group[]
+        tabs: Tab[]
+        favIcons: FavIcons
       }
 
       interface Group {
-        id: string;
-        title: string;
-        order: number;
-        createdAt: string;
-        updatedAt: string;
-        lastOpened?: string;
+        id: string
+        title: string
+        order: number
+        createdAt: string
+        updatedAt: string
+        lastOpened?: string
       }
 
       interface Tab {
-        id: string;
-        title: string;
-        order: number;
-        groupId: string;
-        createdAt: string;
-        updatedAt: string;
-        lastOpened?: string;
+        id: string
+        title: string
+        order: number
+        groupId: string
+        createdAt: string
+        updatedAt: string
+        lastOpened?: string
       }
 
       interface FavIcons {
@@ -48,8 +48,8 @@ namespace NStorage {
       }
 
       interface FavIcon {
-        url: string;
-        lastOpened: string;
+        url: string
+        lastOpened: string
       }
     }
   }

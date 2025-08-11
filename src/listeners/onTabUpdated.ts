@@ -1,10 +1,10 @@
-import { useEffect } from "react"
+import { useEffect } from 'react'
 
 type Callback = () => void
 
 const onTabUpdated = (callback: Callback) => {
   useEffect(() => {
-    callback();
+    callback()
 
     chrome.tabs.onActivated.addListener(callback)
     chrome.tabs.onUpdated.addListener(callback)

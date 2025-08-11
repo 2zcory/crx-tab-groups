@@ -1,6 +1,6 @@
-import { dummyFavIcons } from "@/dummy/favIcons"
-import ESchemeVersion from "../scheme-version.enum"
-import { IInputData } from "../types"
+import { dummyFavIcons } from '@/dummy/favIcons'
+import ESchemeVersion from '../scheme-version.enum'
+import { IInputData } from '../types'
 
 const migrateSyncTo_1_0_0 = (data: IInputData) => {
   return {
@@ -8,7 +8,7 @@ const migrateSyncTo_1_0_0 = (data: IInputData) => {
     groups: [],
     tabs: [],
     favIcons: dummyFavIcons,
-    version: ESchemeVersion.SYNC_1_0_0
+    version: ESchemeVersion.SYNC_1_0_0,
   }
 }
 

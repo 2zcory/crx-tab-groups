@@ -1,0 +1,15 @@
+* text eol=lf
+
+# Windows-only cần CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Unix scripts
+*.sh  text eol=lf
+*.py  text eol=lf
+
+# Binaries
+*.png binary
+*.jpg binary
+*.pdf binary

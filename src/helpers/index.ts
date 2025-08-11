@@ -1,7 +1,7 @@
-import { C_URL_SERVICES } from "@/constants";
+import { C_URL_SERVICES } from '@/constants'
 
 export const extractDomainNameFromUrl = (url: string) => {
-  const urlService = C_URL_SERVICES.find(c => url.includes(c))
+  const urlService = C_URL_SERVICES.find((c) => url.includes(c))
 
   if (urlService) return urlService
 

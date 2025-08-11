@@ -1,6 +1,6 @@
-import StorageSync from "@/storage/core";
-import { IMigration, MigrateType } from "./types";
-import ESchemeVersion from "./scheme-version.enum";
+import StorageSync from '@/storage/core'
+import { IMigration, MigrateType } from './types'
+import ESchemeVersion from './scheme-version.enum'
 
 const migrateStorage = async (type: MigrateType, migrations: IMigration) => {
   const data = await StorageSync.get(null)
@@ -13,11 +13,11 @@ const migrateStorage = async (type: MigrateType, migrations: IMigration) => {
 
     const newData = migrateFn(data)
 
-    if (type === "sync") {
+    if (type === 'sync') {
       await StorageSync.set(newData)
     }
 
-    if (type === "local") {
+    if (type === 'local') {
       // TODO
     }
 
