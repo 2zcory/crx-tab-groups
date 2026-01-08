@@ -1,7 +1,7 @@
 export enum ETabMenu {
   TAB_SYNC = 1,
   NOTE,
-  BOOKMARK,
+  GROUP,
 }
 
 export enum EMockGroup {

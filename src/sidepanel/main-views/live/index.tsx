@@ -1,4 +1,3 @@
-import TabListItem from "@/sidepanel/pages/live/components/TabListItem"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -12,7 +11,7 @@ import { X } from "lucide-react"
 import { useEffect, useState } from "react"
 import TopSites from "./components/TopSites"
 import { C_GROUP_COLOR_BG_CLASSES, C_GROUP_COLOR_BORDER_CLASSES } from "@/constants/group-color-classes"
-import { M } from "vite/dist/node/types.d-aGj9QkWt"
+import TabListItem from "./components/TabListItem"
 
 interface TabGroup extends chrome.tabGroups.TabGroup {
   tabs: chrome.tabs.Tab[]

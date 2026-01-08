@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 
 import './SidePanel.css'
 import migrateScheme from '@/migrations'
-import LiveManagement from './pages/live'
+import LiveManagement from './live'
 import Layout from './layout'
 import Tabs from '@/components/ui/tabs'
 import { TAB_MENU } from '@/constants'
 import { ETabMenu } from '@/enums'
+import GroupManagement from './group-management'
 
 export const SidePanel = () => {
   const [isMigrating, setIsMigrating] = useState(false)
@@ -29,8 +30,8 @@ export const SidePanel = () => {
         <Tabs.Content value={ETabMenu.NOTE}>
           <>Note</>
         </Tabs.Content>
-        <Tabs.Content value={ETabMenu.BOOKMARK}>
-          <>Bookmark</>
+        <Tabs.Content value={ETabMenu.GROUP}>
+          <GroupManagement />
         </Tabs.Content>
       </Tabs>
     </Layout>

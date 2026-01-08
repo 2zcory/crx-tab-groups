@@ -58,8 +58,8 @@ importers:
         specifier: ^2.0.0-beta.26
         version: 2.0.0-beta.33
       '@types/chrome':
-        specifier: ^0.0.246
-        version: 0.0.246
+        specifier: ^0.1.32
+        version: 0.1.32
       '@types/gulp':
         specifier: ^4.0.17
         version: 4.0.17
@@ -919,8 +919,8 @@ packages:
   '@types/babel__traverse@7.20.7':
     resolution: {integrity: sha512-dkO5fhS7+/oos4ciWxyEyjWe48zmG6wbCheo/G2ZnHx4fs3EU6YC6UM8rk56gAjNJ9P3MTH2jo5jb92/K6wbng==}
 
-  '@types/chrome@0.0.246':
-    resolution: {integrity: sha512-MxGxEomGxsJiL9xe/7ZwVgwdn8XVKWbPvxpVQl3nWOjrS0Ce63JsfzxUc4aU3GvRcUPYsfufHmJ17BFyKxeA4g==}
+  '@types/chrome@0.1.32':
+    resolution: {integrity: sha512-n5Cqlh7zyAqRLQWLXkeV5K/1BgDZdVcO/dJSTa8x+7w+sx7m73UrDmduAptg4KorMtyTW2TNnPu8RGeaDMKNGg==}
 
   '@types/estree@1.0.7':
     resolution: {integrity: sha512-w28IoSUCJpidD/TGviZwwMJckNESJZXFu7NBZ5YJ4mEUnNraUn9Pm8HSZm/jDF1pDWYKspWE7oVphigUPRakIQ==}
@@ -2703,7 +2703,7 @@ snapshots:
     dependencies:
       '@babel/types': 7.27.3
 
-  '@types/chrome@0.0.246':
+  '@types/chrome@0.1.32':
     dependencies:
       '@types/filesystem': 0.0.36
       '@types/har-format': 1.2.16

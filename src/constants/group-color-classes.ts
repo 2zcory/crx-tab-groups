@@ -1,6 +1,6 @@
 import { ClassValue } from "clsx"
 
-export const C_GROUP_COLOR_BG_CLASSES: Record<chrome.tabGroups.ColorEnum, ClassValue> = {
+export const C_GROUP_COLOR_BG_CLASSES: Record<Required<chrome.tabGroups.TabGroup>["color"], ClassValue> = {
   blue: "bg-blue-500",
   pink: "bg-pink-500",
   purple: "bg-purple-500",
@@ -12,7 +12,7 @@ export const C_GROUP_COLOR_BG_CLASSES: Record<chrome.tabGroups.ColorEnum, ClassV
   grey: "bg-gray-500"
 }
 
-export const C_GROUP_COLOR_BORDER_CLASSES: Record<chrome.tabGroups.ColorEnum, ClassValue> = {
+export const C_GROUP_COLOR_BORDER_CLASSES: Record<Required<chrome.tabGroups.TabGroup>["color"], ClassValue> = {
   blue: "border-blue-500",
   pink: "border-pink-500",
   purple: "border-purple-500",

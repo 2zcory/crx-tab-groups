@@ -13,7 +13,9 @@ function GroupManagement() {
     // TODO
     const res = await StorageSyncGroup.getListWithTabs();
 
-    setGroups(res)
+    const bookmarks = await chrome.tabGroups.query({});
+
+    setGroups(res);
   }
 
   return (

@@ -3,6 +3,7 @@ import { Button } from "../../../../components/ui/button"
 import { MouseEventHandler } from "react"
 import AvatarIcon from "../../../../components/ui/avatar"
 import { cn } from "@/lib/utils";
+import { formatTimeAgo } from "@/helpers";
 
 interface IButtonIconProps extends Pick<React.ComponentProps<"button">, "children" | "onClick" | "className"> { }
 
@@ -61,7 +62,10 @@ function TabListItem(props: IProps) {
       data-before="⯈"
     >
       <AvatarIcon src={props.tab.favIconUrl} fallbackString={(props.tab.title?.[0] || "").toUpperCase()} />
-      <div className="ml-1 overflow-hidden truncate">{props.tab.title}</div>
+      <div className="ml-1 overflow-hidden truncate">
+        <div>{props.tab.title}</div>
+        <div className="text-xs text-gray-500">{formatTimeAgo((props.tab as chrome.tabs.Tab & { lastAccessed?: number }).lastAccessed)}</div>
+      </div>
       <div className="hidden group-hover:flex">
         <ButtonIcon onClick={togglePin} className="ml-0.5">
           {

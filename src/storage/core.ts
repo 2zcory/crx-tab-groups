@@ -1,7 +1,7 @@
 class StorageSync {
   static async get<TReturn = Partial<NStorage.Sync.Schema.Database>>(key: NStorage.Sync.GetKey): Promise<TReturn> {
     // TODO: Handle error - unprotected aync code
-    const data = await chrome.storage.sync.get(key) as Promise<TReturn>;
+    const data = (await chrome.storage.sync.get(key as any)) as TReturn;
 
     return data
   }
