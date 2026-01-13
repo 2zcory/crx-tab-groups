@@ -27,6 +27,8 @@ function LiveManagement() {
 
   const [accordionValues, setAccordionValues] = useState<string[]>([`${EMockGroup.PINNED}`, `${EMockGroup.UNGROUP}`])
 
+  console.log("tabs", tabs)
+
   onTabUpdated(() => {
     getActiveGroups();
   })

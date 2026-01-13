@@ -9,6 +9,12 @@ Summary
   5. version timestamp follow the yyyy.MM.dd format
 ```
 
+## 0.0.1 [2026.01.13]
+
+- docs: add migrations documentation
+- docs: update root README features and installation guide
+- refactor: restructure views and improve tab list ui
+
 ## 0.0.0 [2025.05.28]
 
 - feat: initial
