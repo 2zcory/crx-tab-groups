@@ -1,7 +1,5 @@
 import React from 'react'
 import { cn } from '@/lib/utils'
-import AvatarIcon from '@/components/ui/avatar'
-import { Folder, MoreHorizontal } from 'lucide-react'
 
 import TabListItem from '@/sidepanel/main-views/live/components/TabListItem'
 
@@ -9,7 +7,6 @@ interface BentoGroupCardProps {
   title: string
   color?: string
   tabs: chrome.tabs.Tab[]
-  onTabClick: (tabId: number) => void
   className?: string
 }
 
@@ -17,7 +14,6 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
   title,
   color,
   tabs,
-  onTabClick,
   className
 }) => {
   // Map Chrome colors to Tailwind colors
@@ -44,14 +40,11 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
       <div className="flex items-center justify-between mb-2 px-1">
         <div className="flex items-center gap-2">
           <div className={cn("w-2.5 h-2.5 rounded-full", color ? `bg-${color}-500` : "bg-slate-400")} />
-          <h3 className="font-semibold text-[13px] truncate max-w-[150px] text-slate-800">{title}</h3>
+          <h3 className="font-semibold text-[13px] truncate max-w-[180px] text-slate-800">{title}</h3>
           <span className="text-[10px] bg-white/60 px-1.5 py-0.5 rounded-full border border-black/5 font-medium text-slate-600">
             {tabs.length}
           </span>
         </div>
-        <button className="p-1 hover:bg-black/5 rounded-full transition-colors">
-          <MoreHorizontal size={14} className="text-slate-500" />
-        </button>
       </div>
 
       <div className="flex flex-col gap-1">

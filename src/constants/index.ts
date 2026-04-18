@@ -3,25 +3,25 @@ import { EMockGroup, ETabMenu } from "@/enums";
 export const TAB_MENU: Array<NCommon.Option<ETabMenu>> = [
   {
     value: ETabMenu.TAB_SYNC,
-    label: "Tabs Live"
+    label: "Live",
   },
   {
     value: ETabMenu.NOTE,
-    label: "Note"
+    label: "Notes",
   },
   {
     value: ETabMenu.GROUP,
-    label: "Group"
-  }
-]
+    label: "Saved",
+  },
+];
 
 export const MOCK_GROUP: Record<EMockGroup, string> = {
-  [EMockGroup.PINNED]: "📌 Pinned",
-  [EMockGroup.UNGROUP]: "Ungrouped"
-}
+  [EMockGroup.PINNED]: "Pinned",
+  [EMockGroup.UNGROUP]: "Ungrouped",
+};
 
 export const C_URL_SERVICES = [
   "docs.google.com/spreadsheets",
   "translate.google.com",
-  "meet.google.com"
-]
+  "meet.google.com",
+];

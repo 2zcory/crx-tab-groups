@@ -1,6 +1,6 @@
 import { Pin, PinOff, RefreshCw, X } from "lucide-react"
 import { Button } from "../../../../components/ui/button"
-import { MouseEventHandler, useEffect, useRef, useState } from "react"
+import { KeyboardEventHandler, MouseEventHandler, useEffect, useRef, useState } from "react"
 import AvatarIcon from "../../../../components/ui/avatar"
 import { cn } from "@/lib/utils";
 import { formatTimeAgo } from "@/helpers";
@@ -69,15 +69,25 @@ function TabListItem(props: IProps) {
     props.tab.id && chrome.tabs.reload(props.tab.id)
   }
 
+  const handleKeyDown: KeyboardEventHandler<HTMLDivElement> = (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return
+
+    e.preventDefault()
+    props.tab.id && chrome.tabs.update(props.tab.id, { active: true })
+  }
+
   return (
     <div
       className={cn(
         "group relative",
         "grid grid-cols-[auto_1fr_auto] items-center",
-        "hover:bg-black/5 py-2 pl-3 pr-1 cursor-pointer rounded-xl transition-all",
+        "hover:bg-black/5 py-2 pl-3 pr-1.5 cursor-pointer rounded-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/60 focus-visible:ring-offset-1",
         { "bg-black/[0.04]": props.tab.active }
       )}
+      role="button"
+      tabIndex={0}
       onClick={handleActiveTab}
+      onKeyDown={handleKeyDown}
     >
       {props.tab.active && (
         <div className="absolute left-1 top-1/2 -translate-y-1/2 w-1 h-5 bg-slate-800 rounded-full" />
@@ -108,17 +118,19 @@ function TabListItem(props: IProps) {
         </div>
         <div className="text-[10px] text-slate-400">{formatTimeAgo((props.tab as chrome.tabs.Tab & { lastAccessed?: number }).lastAccessed)}</div>
       </div>
-      <div className="hidden group-hover:flex items-center gap-0.5 bg-white/80 backdrop-blur-sm border border-black/5 shadow-sm rounded-lg p-0.5 ml-1 animate-in fade-in slide-in-from-right-2 duration-200">
-        <ButtonIcon onClick={togglePin} title={props.tab.pinned ? "Unpin tab" : "Pin tab"}>
-          {props.tab.pinned ? <PinOff size={14} className="text-slate-600" /> : <Pin size={14} className="text-slate-600" />}
-        </ButtonIcon>
-        <ButtonIcon onClick={handleReloadTab} title="Reload tab">
-          <RefreshCw size={14} className="text-slate-600" />
-        </ButtonIcon>
-        <ButtonIcon 
-          onClick={handleCloseTab} 
+      <div className="flex items-center gap-0.5 ml-1">
+        <div className="hidden group-hover:flex group-focus-within:flex items-center gap-0.5 bg-white/80 backdrop-blur-sm border border-black/5 shadow-sm rounded-lg p-0.5 animate-in fade-in slide-in-from-right-2 duration-200">
+          <ButtonIcon onClick={togglePin} title={props.tab.pinned ? "Unpin tab" : "Pin tab"}>
+            {props.tab.pinned ? <PinOff size={14} className="text-slate-600" /> : <Pin size={14} className="text-slate-600" />}
+          </ButtonIcon>
+          <ButtonIcon onClick={handleReloadTab} title="Reload tab">
+            <RefreshCw size={14} className="text-slate-600" />
+          </ButtonIcon>
+        </div>
+        <ButtonIcon
+          onClick={handleCloseTab}
           title="Close tab"
-          className="hover:bg-red-50 hover:text-red-600 group/close"
+          className="opacity-80 hover:bg-red-50 hover:text-red-600 group/close"
         >
           <X size={14} className="text-slate-600 group-hover/close:text-red-600" />
         </ButtonIcon>

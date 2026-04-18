@@ -68,11 +68,20 @@ function TopSites() {
   }
 
   return (
-    <div className="relative w-full overflow-hidden border-b border-black/[0.03] group/topsites">
+    <section className="relative w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/80 group/topsites">
+      <div className="flex items-center justify-between px-4 pt-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Top Sites</p>
+          <p className="text-[11px] text-slate-400">Quick launch utility</p>
+        </div>
+        <span className="rounded-full border border-black/5 bg-white/70 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+          {Math.min(list.length, 12)}
+        </span>
+      </div>
       <div 
         ref={scrollRef}
         onWheel={handleWheel}
-        className="flex items-center gap-5 px-4 py-2 overflow-x-auto no-scrollbar mask-fade-right scroll-smooth"
+        className="flex items-center gap-5 px-4 py-3 overflow-x-auto no-scrollbar mask-fade-right scroll-smooth"
       >
         {
           list.slice(0, 12).map(item =>
@@ -98,7 +107,7 @@ function TopSites() {
           )
         }
       </div>
-    </div>
+    </section>
   )
 }
 
