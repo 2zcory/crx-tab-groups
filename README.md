@@ -7,7 +7,7 @@ A Chrome extension for inspecting live browser tab groups and managing saved-gro
 `crx-tab-groups` separates two different surfaces inside one side panel:
 
 - **Live**: the current Chrome browser state, including pinned tabs, live tab groups, and ungrouped tabs
-- **Group**: persisted saved-group snapshots stored in Chrome sync storage
+- **Saved**: persisted saved-group snapshots stored in Chrome sync storage
 
 The current product promise is:
 
@@ -16,6 +16,10 @@ The current product promise is:
 - live browser changes should **not** silently rewrite saved snapshots
 
 Canonical project knowledge for this repo is maintained in the shared Context OS knowledge surface, while this repository keeps code and code-adjacent implementation docs.
+
+Public product-surface documentation:
+
+- [docs/product-surface.md](./docs/product-surface.md)
 
 ## Features
 
@@ -85,9 +89,9 @@ pnpm dev
 
 ## Current status
 
-- The extension has a working side-panel shell with separate `Live`, `Note`, and `Group` tabs.
+- The extension has a working side-panel shell with separate `Live`, `Notes`, and `Saved` tabs.
 - Storage and migration modules already have internal design notes.
-- The `Group` tab is currently read-only and partial.
+- The `Saved` tab is currently read-only and partial.
 - The saved-group snapshot model is defined at the product level, but restore behavior is still a follow-up slice.
 
 ## Building for Production
