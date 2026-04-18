@@ -17,7 +17,7 @@ export default defineManifest({
   },
   action: {
     default_icon: 'img/logo-48.png',
-    "default_title": "Click to open panel"
+    default_title: 'Open tab groups side panel',
   },
   background: {
     service_worker: 'src/background/index.ts',

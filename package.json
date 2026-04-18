@@ -1,9 +1,9 @@
 {
-  "name": "crx-tab-group",
-  "displayName": "crx-tab-group",
-  "version": "0.0.0",
-  "author": "**",
-  "description": "",
+  "name": "crx-tab-groups",
+  "displayName": "Crx Tab Groups",
+  "version": "0.1.0",
+  "author": "2zcory",
+  "description": "Inspect live Chrome tab groups and manage saved-group snapshots from a side panel.",
   "type": "module",
   "license": "MIT",
   "keywords": [
