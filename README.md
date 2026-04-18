@@ -15,11 +15,7 @@ The current product promise is:
 - it is **not** a two-way synchronization model
 - live browser changes should **not** silently rewrite saved snapshots
 
-For the project-level documentation pack, start with:
-
-- [docs/PROJECT-DOCS.md](./docs/PROJECT-DOCS.md)
-- [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
-- [docs/DELIVERY-HANDOFF.md](./docs/DELIVERY-HANDOFF.md)
+Canonical project knowledge for this repo is maintained in the shared Context OS knowledge surface, while this repository keeps code and code-adjacent implementation docs.
 
 ## Features
 
@@ -38,12 +34,6 @@ The source code is located in the `src` directory:
 - **`storage/`**: Wrappers for Chrome Storage API interactions.
 - **`components/`**: Reusable React components.
 - **`hooks/`**: Custom React hooks.
-
-Project-level docs:
-
-- **`docs/PROJECT-DOCS.md`**: project definition, scope, functional requirements, and user flows
-- **`docs/ARCHITECTURE.md`**: high-level and low-level architecture summary
-- **`docs/DELIVERY-HANDOFF.md`**: public-safe implementation routing
 
 Module-level design docs:
 
