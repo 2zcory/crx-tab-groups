@@ -19,10 +19,24 @@ Canonical project knowledge for this repo is maintained in the shared Context OS
 
 ## Features
 
-- **Live Tab Inspection**: View pinned tabs, live Chrome tab groups, and ungrouped tabs inside the side panel.
-- **Saved Group Snapshots**: Persist saved-group snapshots through Chrome Sync Storage for later review and future restore workflows.
-- **Migration System**: Robust data migration system to handle schema updates seamlessly.
-- **Modern UI**: Clean and responsive user interface built with React.
+- **Minimalist Bento UI**: Modern, clean, and efficient grid-based interface for side panel tab management.
+- **Smart Motion**: Overflow-aware marquee titles and smooth-traveling tab indicators.
+- **Live Tab Inspection**: View pinned tabs, live Chrome tab groups, and ungrouped tabs with real-time updates.
+- **Saved Group Snapshots**: Persist snapshots through Chrome Sync Storage.
+
+## Tech Stack
+
+- **Framework**: React 18 + TypeScript
+- **Styling**: Tailwind CSS 4.0 + Lucide Icons
+- **Primitives**: Radix UI
+- **Build Tool**: Vite + @crxjs/vite-plugin
+- **Motion**: CSS Keyframes + React Measurement API
+
+## Internal Workflow
+
+This project follows the **Context OS** model. 
+- Technical decisions are recorded as **ADRs** in the private `crx-tab-groups-ctx` repository.
+- Active feature stories and implementation details live in the `-ctx` repo to keep this source repo focused on clean, reviewable code.
 
 ## Project Structure
 
