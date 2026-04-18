@@ -25,7 +25,7 @@ function TabsList({
     <TabsPrimitive.List
       data-slot="tabs-list"
       className={cn(
-        "bg-muted text-muted-foreground inline-flex h-9 w-fit items-center justify-center rounded-lg p-[3px]",
+        "inline-flex h-9 w-full items-center justify-start border-b border-black/[0.03] px-2 gap-4",
         className
       )}
       {...props}
@@ -33,21 +33,21 @@ function TabsList({
   )
 }
 
-function TabsTrigger({
-  className,
-  ...props
-}: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
-  return (
-    <TabsPrimitive.Trigger
-      data-slot="tabs-trigger"
-      className={cn(
-        "data-[state=active]:bg-background dark:data-[state=active]:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:outline-ring dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30 text-foreground dark:text-muted-foreground inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:shadow-sm [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        className
-      )}
-      {...props}
-    />
-  )
-}
+const TabsTrigger = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.Trigger
+    ref={ref}
+    data-slot="tabs-trigger"
+    className={cn(
+      "relative text-slate-400 data-[state=active]:text-slate-900 transition-all text-xs font-bold uppercase tracking-widest py-2 cursor-pointer outline-none",
+      className
+    )}
+    {...props}
+  />
+))
+TabsTrigger.displayName = "TabsTrigger"
 
 interface ITabsContentProps extends Omit<React.ComponentProps<typeof TabsPrimitive.Content>, "value"> {
   value: ETabMenu
@@ -75,14 +75,56 @@ interface IProps {
 }
 
 function Tabs(props: IProps) {
+  const [activeValue, setActiveValue] = React.useState(`${props.defaultValue || props.tabs[0].value}`);
+  const [indicatorStyle, setIndicatorStyle] = React.useState({ left: 0, width: 0 });
+  const triggerRefs = React.useRef<Record<string, HTMLButtonElement | null>>({});
+
+  React.useEffect(() => {
+    const activeEl = triggerRefs.current[activeValue];
+    if (activeEl) {
+      setIndicatorStyle({
+        left: activeEl.offsetLeft,
+        width: activeEl.clientWidth
+      });
+    }
+  }, [activeValue]);
+
+  // Re-calculate on window resize to keep indicator aligned
+  React.useEffect(() => {
+    const handleResize = () => {
+      const activeEl = triggerRefs.current[activeValue];
+      if (activeEl) {
+        setIndicatorStyle({
+          left: activeEl.offsetLeft,
+          width: activeEl.clientWidth
+        });
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [activeValue]);
+
   return (
-    <TabsContainer defaultValue={`${props.defaultValue}`}>
-      <TabsList>
+    <TabsContainer value={activeValue} onValueChange={setActiveValue}>
+      <TabsList className="relative">
         {
           props.tabs.map(tab => (
-            <TabsTrigger value={`${tab.value}`}>{tab.label}</TabsTrigger>
+            <TabsTrigger 
+              key={tab.value} 
+              value={`${tab.value}`}
+              ref={(el) => { triggerRefs.current[`${tab.value}`] = el }}
+            >
+              {tab.label}
+            </TabsTrigger>
           ))
         }
+        <div 
+          className="absolute bottom-0 h-[2px] bg-slate-800 transition-all duration-300 ease-in-out z-10" 
+          style={{ 
+            left: `${indicatorStyle.left}px`, 
+            width: `${indicatorStyle.width}px` 
+          }}
+        />
       </TabsList>
       {
         props.children
