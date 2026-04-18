@@ -7,7 +7,7 @@
 Provide a browser-extension side panel that separates:
 
 - live browser tab-group state
-- persisted saved group state
+- persisted saved-group snapshot state
 - schema and storage evolution concerns
 
 ### Major components
@@ -36,9 +36,10 @@ Provide a browser-extension side panel that separates:
 ### Main boundaries
 
 - Live browser state is authoritative for the `Live` tab.
-- Sync storage is authoritative for the `Group` tab.
+- Sync storage is authoritative for the `Group` tab as the saved-snapshot surface.
 - Migration logic owns schema compatibility.
 - UI composition should not own persistence policy decisions directly.
+- Live-state changes should not implicitly mutate saved snapshots.
 
 ## LLD summary
 
@@ -73,8 +74,8 @@ Provide a browser-extension side panel that separates:
 
 - File: `src/sidepanel/main-views/group-management/index.tsx`
 - Responsibilities:
-  - read persisted saved groups with tabs attached
-  - render saved groups
+  - read persisted saved-group snapshots with tabs attached
+  - render saved snapshots
 - Current maturity:
   - read-only rendering path
   - obvious TODO markers remain
@@ -112,7 +113,7 @@ Provide a browser-extension side panel that separates:
 Reason:
 
 - Chrome tab groups are volatile browser state.
-- Persisted groups represent a product-defined model that can survive browser changes and schema upgrades.
+- Persisted groups represent restorable saved snapshots that can survive browser changes and schema upgrades.
 
 ### Decision 2: run migrations before main UI
 
@@ -130,7 +131,7 @@ Reason:
 
 ## Current technical gaps
 
-- No explicit synchronization policy between live Chrome groups and persisted saved groups.
+- No explicit restore policy yet for turning saved snapshots back into live browser state.
 - No transaction protection around sync-storage writes.
 - Error handling is thin across storage and action flows.
 - The `Note` surface is a placeholder.
@@ -138,7 +139,7 @@ Reason:
 
 ## Recommended next technical slices
 
-- define the saved-group lifecycle and synchronization boundary
+- define restore behavior and the explicit actions that mutate saved snapshots
 - add guarded write or queued-write behavior for storage updates
 - make live actions and saved-state actions clearly separate in the UI and code
-- define restore or apply behavior for saved groups if that is part of the product promise
+- define failure handling for stale or invalid saved tabs during restore

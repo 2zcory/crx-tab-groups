@@ -1,11 +1,30 @@
-# Chrome Extension Tab Group Management
+# Crx Tab Groups
 
-A Chrome Extension for managing tab groups efficiently, built with Vite, React, and Manifest V3.
+A Chrome extension for inspecting live browser tab groups and managing saved-group snapshots, built with Vite, React, TypeScript, and Manifest V3.
+
+## What this project is
+
+`crx-tab-groups` separates two different surfaces inside one side panel:
+
+- **Live**: the current Chrome browser state, including pinned tabs, live tab groups, and ungrouped tabs
+- **Group**: persisted saved-group snapshots stored in Chrome sync storage
+
+The current product promise is:
+
+- a saved group is a **persisted snapshot that can be reviewed now and restored later**
+- it is **not** a two-way synchronization model
+- live browser changes should **not** silently rewrite saved snapshots
+
+For the project-level documentation pack, start with:
+
+- [docs/PROJECT-DOCS.md](./docs/PROJECT-DOCS.md)
+- [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
+- [docs/DELIVERY-HANDOFF.md](./docs/DELIVERY-HANDOFF.md)
 
 ## Features
 
-- **Group Management**: Organize your tabs into named and colored groups.
-- **Sync Storage**: Persists your group configurations across devices using Chrome Sync Storage.
+- **Live Tab Inspection**: View pinned tabs, live Chrome tab groups, and ungrouped tabs inside the side panel.
+- **Saved Group Snapshots**: Persist saved-group snapshots through Chrome Sync Storage for later review and future restore workflows.
 - **Migration System**: Robust data migration system to handle schema updates seamlessly.
 - **Modern UI**: Clean and responsive user interface built with React.
 
@@ -19,6 +38,17 @@ The source code is located in the `src` directory:
 - **`storage/`**: Wrappers for Chrome Storage API interactions.
 - **`components/`**: Reusable React components.
 - **`hooks/`**: Custom React hooks.
+
+Project-level docs:
+
+- **`docs/PROJECT-DOCS.md`**: project definition, scope, functional requirements, and user flows
+- **`docs/ARCHITECTURE.md`**: high-level and low-level architecture summary
+- **`docs/DELIVERY-HANDOFF.md`**: public-safe implementation routing
+
+Module-level design docs:
+
+- **`src/storage/DESIGN.md`**: storage model and repository layer design
+- **`src/migrations/DESIGN.md`**: storage migration architecture
 
 ## Installing
 
@@ -48,6 +78,13 @@ pnpm dev
 
 - **Side Panel/Popup**: Access the extension via the Chrome toolbar. Right-click and inspect to debug.
 - **Normal Web View**: You can also access views directly in the browser (e.g., `http://localhost:3000/sidepanel.html`) during development, though some Chrome APIs might not be available.
+
+## Current status
+
+- The extension has a working side-panel shell with separate `Live`, `Note`, and `Group` tabs.
+- Storage and migration modules already have internal design notes.
+- The `Group` tab is currently read-only and partial.
+- The saved-group snapshot model is defined at the product level, but restore behavior is still a follow-up slice.
 
 ## Building for Production
 

@@ -29,14 +29,23 @@ This doc pack is meant to make the next implementation passes safer by:
 ## Working assumptions
 
 - The `Live` view is intended to reflect the browser's current tab and group state.
-- The `Group` view is intended to reflect user-managed persisted groups backed by sync storage.
-- The extension is moving toward a model where persisted groups can be reviewed and later restored or synchronized against live browser state.
+- The `Group` view is intended to reflect user-managed persisted saved-group snapshots backed by sync storage.
 - The `Note` tab is placeholder-only today.
+
+## Product promise
+
+`crx-tab-groups` treats a saved group as a **persisted snapshot of a tab group that the user can review now and restore later**.
+
+This means:
+
+- the `Live` tab shows current browser state
+- the `Group` tab shows saved snapshots
+- the project is **not** promising two-way synchronization between live groups and saved groups
+- live browser changes should not silently rewrite saved snapshots
 
 ## Open questions
 
-- What is the exact user promise of persisted groups: backup, restore, lightweight session management, or full two-way sync?
-- Should deleting or closing a live tab group also update persisted storage, or are those separate workflows?
+- What explicit user actions should create, update, delete, or restore a saved snapshot?
 - What behavior should happen when a persisted tab cannot be reopened or has stale metadata?
 - What user-facing role should bookmarks and top sites play in the saved-group workflow?
 
@@ -59,7 +68,9 @@ A separate heavy BRD or SRS is not justified yet. The project is better served b
 The product should reduce friction around:
 
 - seeing current grouped and ungrouped tabs
-- persisting group structures beyond one immediate browser moment
+- saving group snapshots beyond one immediate browser moment
+- reviewing saved snapshots separately from live browser state
+- restoring saved snapshots later without implying continuous sync
 - evolving storage safely as the data model changes
 
 ## Primary actors
@@ -73,7 +84,7 @@ The product should reduce friction around:
 
 - side panel navigation
 - live group and tab inspection
-- persisted sync-storage model for groups, tabs, and favicons
+- persisted sync-storage model for saved-group snapshots, tabs, and favicons
 - migration safety for schema changes
 - closing live groups from the live view
 
@@ -96,7 +107,11 @@ The extension shall read the current browser tab and tab-group state and present
 
 ### FR-2 Persisted group view
 
-The extension shall read persisted group and tab entities from sync storage and render each saved group with its saved tabs.
+The extension shall read persisted saved-group and tab entities from sync storage and render each saved snapshot with its saved tabs.
+
+### FR-2a Saved-state boundary
+
+The extension shall keep the persisted saved-group model separate from the live Chrome tab-group state unless the user invokes an explicit saved-group action.
 
 ### FR-3 Storage schema versioning
 
@@ -128,10 +143,10 @@ The extension shall let the user close all tabs in a selected live group from th
 - Actor: browser user
 - Trigger: switch to `Group` tab
 - Main flow:
-  - extension reads persisted groups and tabs from sync storage
+  - extension reads persisted saved-group snapshots and tabs from sync storage
   - UI joins tabs to groups in memory
-  - UI renders expandable saved groups
-- Outcome: user sees the saved model independently of current live state
+  - UI renders expandable saved snapshots
+- Outcome: user sees the saved model independently of current live state and understands it as a later-restore surface rather than a live mirror
 
 ### UC-3 Apply schema migration
 
@@ -165,13 +180,13 @@ The extension shall let the user close all tabs in a selected live group from th
 1. User switches to the group-management tab.
 2. Extension reads stored groups and stored tabs.
 3. Extension builds an in-memory joined representation.
-4. User expands saved groups and reviews stored tabs.
+4. User expands saved snapshots and reviews stored tabs.
 
 ## Risks and gaps
 
 - Several storage methods still note missing error handling.
 - Current write flows use read-modify-write without locking, which risks races.
-- The saved-group workflow is only partially realized at the UI level.
+- The saved-snapshot workflow is only partially realized at the UI level.
 - `package.json` and manifest metadata are still thin, which weakens release-facing clarity.
 
 ## Next handoff
