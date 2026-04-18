@@ -150,6 +150,19 @@ body {
   80%, 100% { transform: translateX(var(--scroll-dist, 0px)); }
 }
 
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.mask-fade-right {
+  mask-image: linear-gradient(to right, black 85%, transparent 100%);
+}
+
 .marquee-target {
   display: inline-block;
   white-space: nowrap;

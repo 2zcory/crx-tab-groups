@@ -88,9 +88,19 @@ function LiveManagement() {
   }
 
   return (
-    <div className="flex flex-col gap-4 px-1.5 py-3">
+    <div className="flex flex-col gap-3 p-1.5">
       <TopSites />
       
+      <div className="flex items-center justify-between px-2 pt-1">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Live</span>
+          <div className="w-1 h-1 bg-slate-300 rounded-full" />
+          <span className="text-[10px] font-medium text-slate-500 uppercase tracking-tight">
+            {tabs.length} Tabs · {groups.length} Groups
+          </span>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 gap-2.5">
         {/* Pinned Tabs - A sleek bento card */}
         {tabsPinned.length > 0 && (

@@ -1,10 +1,8 @@
 import AvatarIcon from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button"
 import Tooltip from "@/components/ui/tooltip"
-import { C_URL_SERVICES } from "@/constants";
 import { extractDomainNameFromUrl } from "@/helpers";
 import StorageSyncFavIcon from "@/storage/favIcon.sync"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 interface IMostVisitedURLFavIconProps {
   url: string;
@@ -40,6 +38,7 @@ function MostVisitedURLFavIcon(props: IMostVisitedURLFavIconProps) {
 function TopSites() {
   const [list, setList] = useState<chrome.topSites.MostVisitedURL[]>([])
   const [favIcons, setFavIcons] = useState<NStorage.Sync.Schema.FavIcons>({})
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     chrome.topSites.get(data => setList(data))
@@ -58,36 +57,47 @@ function TopSites() {
 
   const getFavIcons = async () => {
     const data = await StorageSyncFavIcon.get();
-
     setFavIcons(data)
+  }
 
+  const handleWheel = (e: React.WheelEvent) => {
+    if (scrollRef.current) {
+      // Chuyển cuộn dọc thành cuộn ngang
+      scrollRef.current.scrollLeft += e.deltaY;
+    }
   }
 
   return (
-    <div className="flex justify-between">
-      {
-        list.map(item =>
-          <Tooltip>
-            <Tooltip.Trigger>
-              <Button
-                variant="secondary"
-                size="icon"
-                className="size-8"
-                onClick={() => chrome.tabs.create({ url: item.url })}
-              >
-                <MostVisitedURLFavIcon
-                  url={item.url}
-                  title={item.title}
-                  favIcons={favIcons}
-                />
-              </Button>
-            </Tooltip.Trigger>
-            <Tooltip.Content>
-              {item.title}
-            </Tooltip.Content>
-          </Tooltip>
-        )
-      }
+    <div className="relative w-full overflow-hidden border-b border-black/[0.03] group/topsites">
+      <div 
+        ref={scrollRef}
+        onWheel={handleWheel}
+        className="flex items-center gap-5 px-4 py-2 overflow-x-auto no-scrollbar mask-fade-right scroll-smooth"
+      >
+        {
+          list.slice(0, 12).map(item =>
+            <Tooltip key={item.url}>
+              <Tooltip.Trigger asChild>
+                <button
+                  className="group flex-shrink-0 size-7 flex items-center justify-center rounded-full hover:bg-black/5 transition-colors cursor-pointer"
+                  onClick={() => chrome.tabs.create({ url: item.url })}
+                >
+                  <div className="grayscale-[0.4] group-hover:grayscale-0 transition-all scale-95 group-hover:scale-110">
+                    <MostVisitedURLFavIcon
+                      url={item.url}
+                      title={item.title}
+                      favIcons={favIcons}
+                    />
+                  </div>
+                </button>
+              </Tooltip.Trigger>
+              <Tooltip.Content>
+                {item.title}
+              </Tooltip.Content>
+            </Tooltip>
+          )
+        }
+      </div>
     </div>
   )
 }
