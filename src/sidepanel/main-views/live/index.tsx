@@ -4,8 +4,10 @@ import { extractDomainNameFromUrl } from "@/helpers";
 import onTabUpdated from "@/listeners/onTabUpdated";
 import StorageSyncFavIcon from "@/storage/favIcon.sync";
 import { useEffect, useState } from "react";
+import { Info } from "lucide-react";
 import TopSites from "./components/TopSites";
 import { BentoGroupCard } from "@/components/BentoGroupCard";
+import Tooltip from "@/components/ui/tooltip";
 
 interface TabGroup extends chrome.tabGroups.TabGroup {
   tabs: chrome.tabs.Tab[];
@@ -82,35 +84,37 @@ function LiveManagement() {
 
   return (
     <div className="flex flex-col gap-3 p-1.5">
-      <section className="rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-sm">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+      <section className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Live Tabs
+              Live
             </p>
-            <h2 className="mt-1 text-sm font-semibold text-slate-900">
-              Inspect your current browser state
-            </h2>
-            <p className="mt-1 text-xs text-slate-500">
-              Quick scan first, then act on pinned tabs, live groups, and ungrouped tabs.
-            </p>
+            <Tooltip>
+              <Tooltip.Trigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex size-5 items-center justify-center rounded-full border border-black/5 bg-slate-50 text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/60 focus-visible:ring-offset-1"
+                  aria-label="About Live"
+                >
+                  <Info size={12} />
+                </button>
+              </Tooltip.Trigger>
+              <Tooltip.Content side="bottom" sideOffset={8} className="max-w-56 rounded-xl bg-slate-900 px-3 py-2 text-[11px] leading-relaxed text-slate-50 shadow-lg">
+                Live shows your current browser state in real time. Pinned, grouped, and ungrouped tabs can be inspected and acted on here. Saved snapshots are managed separately.
+              </Tooltip.Content>
+            </Tooltip>
           </div>
-          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
-            Live
-          </span>
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-2">
-          <span className="rounded-full border border-black/5 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+        <div className="flex flex-wrap justify-end gap-1.5">
+          <span className="rounded-full border border-black/5 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600">
             {tabs.length} tabs
           </span>
-          <span className="rounded-full border border-black/5 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+          <span className="rounded-full border border-black/5 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600">
             {groups.length} groups
           </span>
-          <span className="rounded-full border border-black/5 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600">
-            {tabsPinned.length} pinned
-          </span>
-          <span className="rounded-full border border-black/5 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+          <span className="rounded-full border border-black/5 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600">
             {tabsUngroup.length} ungrouped
           </span>
         </div>
