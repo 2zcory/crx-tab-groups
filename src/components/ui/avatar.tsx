@@ -50,11 +50,12 @@ function AvatarFallback({
 
 interface IProps extends Pick<AvatarPrimitive.AvatarImageProps, "src"> {
   fallbackString?: string;
+  className?: string;
 }
 
 function AvatarIcon(props: IProps) {
   return (
-    <Avatar>
+    <Avatar className={props.className}>
       <AvatarImage src={props.src} />
       <AvatarFallback>{props.fallbackString}</AvatarFallback>
     </Avatar>
