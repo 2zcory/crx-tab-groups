@@ -12,24 +12,24 @@ chrome.sidePanel
   .catch((error) => console.error(error));
 
 // Auto-grouping logic
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (changeInfo.url || changeInfo.status === 'complete') {
-    const url = tab.url;
-    if (!url) return;
+const handleAutoGrouping = async (tabId: number, url: string | undefined, windowId: number) => {
+  if (!url || url.startsWith('chrome://') || url.startsWith('edge://')) return;
 
+  try {
     const rules = await StorageSyncAutoGroup.getList();
     const activeRules = rules.filter(r => r.isActive);
 
     for (const rule of activeRules) {
-      // Simple matching logic: check if URL contains the pattern
-      // You can expand this with glob-to-regex later if needed
-      const isMatch = url.includes(rule.urlPattern) || 
-                      (rule.urlPattern.includes('*') && new RegExp(rule.urlPattern.replace(/\*/g, '.*')).test(url));
+      const pattern = rule.urlPattern.trim().toLowerCase();
+      const currentUrl = url.toLowerCase();
+      
+      // Flexible matching: simple inclusion OR wildcard regex
+      const isMatch = currentUrl.includes(pattern) || 
+                      (pattern.includes('*') && new RegExp(pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')).test(currentUrl));
 
       if (isMatch) {
-        const windowId = tab.windowId;
+        console.log(`[AutoGroup] Match found for ${currentUrl} with rule: ${rule.title}`);
         const groups = await chrome.tabGroups.query({ windowId });
-        
         let targetGroup = groups.find(g => g.title === rule.title);
 
         if (targetGroup) {
@@ -41,9 +41,23 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
             color: rule.color
           });
         }
-        break; // Stop after first match
+        break; 
       }
     }
+  } catch (error) {
+    console.error('[AutoGroup] Error:', error);
+  }
+};
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.url || changeInfo.status === 'complete') {
+    void handleAutoGrouping(tabId, tab.url, tab.windowId);
+  }
+});
+
+chrome.tabs.onCreated.addListener((tab) => {
+  if (tab.id && tab.url) {
+    void handleAutoGrouping(tab.id, tab.url, tab.windowId);
   }
 });
 

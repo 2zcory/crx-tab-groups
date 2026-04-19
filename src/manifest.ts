@@ -33,4 +33,5 @@ export default defineManifest({
     },
   ],
   permissions: ['sidePanel', 'tabs', 'tabGroups', 'storage', 'topSites'],
+  host_permissions: ['<all_urls>'],
 })
