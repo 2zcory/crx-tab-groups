@@ -9,11 +9,7 @@ const migrationSyncs: IMigration = {
   [ESchemeVersion.SYNC_0_0_0]: migrateSyncTo_1_0_0,
   [ESchemeVersion.SYNC_1_0_0]: migrateSyncTo_1_1_0,
   [ESchemeVersion.SYNC_1_1_0]: migrateSyncTo_1_2_0,
-  [ESchemeVersion.SYNC_1_3_0]: migrateSyncTo_1_3_0,
+  [ESchemeVersion.SYNC_1_2_0]: migrateSyncTo_1_3_0,
 }
-
-// Ensure the chain is continuous
-migrationSyncs[ESchemeVersion.SYNC_1_1_0] = migrateSyncTo_1_2_0;
-migrationSyncs[ESchemeVersion.SYNC_1_2_0] = migrateSyncTo_1_3_0;
 
 export default migrationSyncs
