@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 import TabListItem from '@/sidepanel/main-views/live/components/TabListItem'
@@ -8,13 +8,15 @@ interface BentoGroupCardProps {
   color?: string
   tabs: chrome.tabs.Tab[]
   className?: string
+  actions?: ReactNode
 }
 
 export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
   title,
   color,
   tabs,
-  className
+  className,
+  actions
 }) => {
   // Map Chrome colors to Tailwind colors
   const colorMap: Record<string, string> = {
@@ -45,6 +47,8 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
             {tabs.length}
           </span>
         </div>
+
+        {actions && <div className="flex items-center gap-1">{actions}</div>}
       </div>
 
       <div className="flex flex-col gap-1">

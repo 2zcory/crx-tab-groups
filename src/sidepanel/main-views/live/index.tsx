@@ -3,14 +3,25 @@ import { EMockGroup } from "@/enums";
 import { extractDomainNameFromUrl } from "@/helpers";
 import onTabUpdated from "@/listeners/onTabUpdated";
 import StorageSyncFavIcon from "@/storage/favIcon.sync";
+import StorageSyncGroup from "@/storage/group.sync";
+import StorageSyncTab from "@/storage/tab.sync";
 import { useEffect, useState } from "react";
-import { Info } from "lucide-react";
+import { CheckCircle2, FolderPlus, Info, LoaderCircle } from "lucide-react";
 import TopSites from "./components/TopSites";
 import { BentoGroupCard } from "@/components/BentoGroupCard";
 import Tooltip from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface TabGroup extends chrome.tabGroups.TabGroup {
   tabs: chrome.tabs.Tab[];
+}
+
+type SaveState = "idle" | "pending" | "saved" | "failed";
+
+interface SaveStatus {
+  state: SaveState;
+  message?: string;
 }
 
 function LiveManagement() {
@@ -18,6 +29,7 @@ function LiveManagement() {
   const [tabs, setTabs] = useState<chrome.tabs.Tab[]>([]);
   const [tabsPinned, setTabsPinned] = useState<chrome.tabs.Tab[]>([]);
   const [tabsUngroup, setTabsUngroup] = useState<chrome.tabs.Tab[]>([]);
+  const [saveStatuses, setSaveStatuses] = useState<Record<number, SaveStatus>>({});
 
   onTabUpdated(() => {
     getActiveGroups();
@@ -44,6 +56,64 @@ function LiveManagement() {
       };
     });
     await StorageSyncFavIcon.update(favIcons);
+  };
+
+  const setSaveStatus = (groupId: number, status: SaveStatus) => {
+    setSaveStatuses((current) => ({
+      ...current,
+      [groupId]: status,
+    }));
+  };
+
+  const saveGroupSnapshot = async (group: TabGroup) => {
+    setSaveStatus(group.id, {
+      state: "pending",
+      message: "Saving snapshot...",
+    });
+
+    const now = new Date().toISOString();
+    const snapshotGroupId = crypto.randomUUID();
+    const snapshotGroup: NStorage.Sync.Schema.Group = {
+      id: snapshotGroupId,
+      title: group.title || "Untitled Group",
+      order: Date.now(),
+      color: group.color,
+      createdAt: now,
+      updatedAt: now,
+      lastOpened: now,
+    };
+
+    const snapshotTabs: NStorage.Sync.Schema.Tab[] = group.tabs.map((tab, index) => ({
+      id: crypto.randomUUID(),
+      title: tab.title || "Untitled Tab",
+      url: tab.url,
+      favIconUrl: tab.favIconUrl,
+      order: index + 1,
+      groupId: snapshotGroupId,
+      createdAt: now,
+      updatedAt: now,
+      lastOpened: tab.lastAccessed ? new Date(tab.lastAccessed).toISOString() : now,
+    }));
+
+    const missingUrlCount = snapshotTabs.filter((tab) => !tab.url).length;
+
+    try {
+      await StorageSyncGroup.create(snapshotGroup);
+      await StorageSyncTab.create(...snapshotTabs);
+
+      setSaveStatus(group.id, {
+        state: "saved",
+        message:
+          missingUrlCount === 0
+            ? "Snapshot saved with restore-ready URLs."
+            : `Snapshot saved, but ${missingUrlCount} tab${missingUrlCount === 1 ? "" : "s"} missing URL data may not restore later.`,
+      });
+    } catch {
+      setSaveStatus(group.id, {
+        state: "failed",
+        message: "Snapshot save failed. Please try again.",
+      });
+    }
   };
 
   const getActiveGroups = async () => {
@@ -135,6 +205,56 @@ function LiveManagement() {
             title={group.title || "Untitled Group"}
             color={group.color}
             tabs={group.tabs}
+            actions={
+              <div className="flex items-center gap-2">
+                {saveStatuses[group.id] && saveStatuses[group.id].state !== "idle" && (
+                  <span
+                    className={cn(
+                      "hidden rounded-full px-2 py-0.5 text-[10px] font-medium md:inline-flex",
+                      saveStatuses[group.id].state === "saved"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : saveStatuses[group.id].state === "failed"
+                          ? "bg-rose-100 text-rose-700"
+                          : "bg-slate-200 text-slate-600",
+                    )}
+                  >
+                    {saveStatuses[group.id].state === "pending"
+                      ? "Saving"
+                      : saveStatuses[group.id].state === "saved"
+                        ? "Saved"
+                        : "Retry"}
+                  </span>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 rounded-full border-black/10 bg-white/80 px-2.5 text-[11px] text-slate-700 shadow-none hover:bg-white"
+                  disabled={saveStatuses[group.id]?.state === "pending"}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void saveGroupSnapshot(group);
+                  }}
+                >
+                  {saveStatuses[group.id]?.state === "pending" ? (
+                    <>
+                      <LoaderCircle className="animate-spin" size={12} />
+                      Saving
+                    </>
+                  ) : saveStatuses[group.id]?.state === "saved" ? (
+                    <>
+                      <CheckCircle2 size={12} />
+                      Saved
+                    </>
+                  ) : (
+                    <>
+                      <FolderPlus size={12} />
+                      Save snapshot
+                    </>
+                  )}
+                </Button>
+              </div>
+            }
           />
         ))}
 
@@ -146,6 +266,30 @@ function LiveManagement() {
           />
         )}
       </div>
+
+      {Object.values(saveStatuses).some((status) => status.message) && (
+        <div className="flex flex-col gap-2">
+          {groups
+            .map((group) => ({ group, status: saveStatuses[group.id] }))
+            .filter(({ status }) => Boolean(status?.message))
+            .map(({ group, status }) => (
+              <div
+                key={group.id}
+                className={cn(
+                  "rounded-2xl border px-3 py-2 text-xs",
+                  status?.state === "saved"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : status?.state === "failed"
+                      ? "border-rose-200 bg-rose-50 text-rose-700"
+                      : "border-slate-200 bg-slate-50 text-slate-600",
+                )}
+              >
+                <span className="font-medium">{group.title || "Untitled Group"}:</span>{" "}
+                {status?.message}
+              </div>
+            ))}
+        </div>
+      )}
 
       {tabs.length > 0 && <TopSites />}
 
