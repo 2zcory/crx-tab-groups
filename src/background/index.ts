@@ -10,11 +10,26 @@ migrateScheme().then(() => {
   console.error('[AutoGroup] Migration failed:', err);
 });
 
-// Helper to escape regex special characters except *
+// Robust pattern to regex converter
 const patternToRegex = (pattern: string) => {
-  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
-  const wildcarded = escaped.replace(/\*/g, '.*');
-  return new RegExp(wildcarded, 'i');
+  try {
+    const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+    const wildcarded = escaped.replace(/\*/g, '.*');
+    return new RegExp(wildcarded, 'i');
+  } catch (e) {
+    return new RegExp(pattern.trim(), 'i');
+  }
+};
+
+// Notification helper
+const notify = (title: string, message: string) => {
+  chrome.notifications.create({
+    type: 'basic',
+    iconUrl: 'img/logo-48.png',
+    title: title,
+    message: message,
+    priority: 2
+  });
 };
 
 // Main Auto-grouping logic
@@ -39,23 +54,21 @@ const handleAutoGrouping = async (tabId: number, url: string | undefined, window
         const targetGroup = groups.find(g => g.title?.toLowerCase() === rule.title.toLowerCase());
 
         if (targetGroup) {
-          // Verify current tab status to avoid redundant calls
           const tab = await chrome.tabs.get(tabId);
           if (tab.groupId === targetGroup.id) {
-            console.log(`[AutoGroup] Tab ${tabId} already in correct group.`);
             break;
           }
           await chrome.tabs.group({ tabIds: [tabId], groupId: targetGroup.id });
-          console.log(`[AutoGroup] Added tab ${tabId} to existing group: ${rule.title}`);
+          notify('Auto-Grouped!', `Tab moved to "${rule.title}" group.`);
         } else {
           const newGroupId = await chrome.tabs.group({ tabIds: [tabId] });
           await chrome.tabGroups.update(newGroupId, {
             title: rule.title,
             color: rule.color
           });
-          console.log(`[AutoGroup] Created new group: ${rule.title} for tab ${tabId}`);
+          notify('New Group Created!', `Started "${rule.title}" group for this tab.`);
         }
-        break; // Stop after first match
+        break; 
       }
     }
   } catch (error) {
@@ -63,21 +76,37 @@ const handleAutoGrouping = async (tabId: number, url: string | undefined, window
   }
 };
 
-// Listen for tab updates (URL changes)
+// Listen for messages from UI (e.g., manual scan request)
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'run_auto_group_scan') {
+    void (async () => {
+      const tabs = await chrome.tabs.query({ windowId: request.windowId });
+      for (const tab of tabs) {
+        if (tab.id && tab.url) {
+          await handleAutoGrouping(tab.id, tab.url, tab.windowId);
+        }
+      }
+      sendResponse({ success: true });
+    })();
+    return true; // Keep channel open for async response
+  }
+});
+
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url || changeInfo.status === 'complete') {
     void handleAutoGrouping(tabId, tab.url || changeInfo.url, tab.windowId);
   }
 });
 
-// Listen for web navigation (More reliable for some cases)
 chrome.webNavigation?.onCommitted?.addListener(async (details) => {
-  if (details.frameId === 0) { // Only main frame
+  if (details.frameId === 0) {
     try {
       const tab = await chrome.tabs.get(details.tabId);
       void handleAutoGrouping(details.tabId, details.url, tab.windowId);
-    } catch (e) {
-      console.error('[AutoGroup] webNavigation Error:', e);
-    }
+    } catch (e) {}
   }
 });
+
+chrome.sidePanel
+  .setPanelBehavior({ openPanelOnActionClick: true })
+  .catch((error) => console.error(error));

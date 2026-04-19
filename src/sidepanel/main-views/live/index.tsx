@@ -6,7 +6,7 @@ import StorageSyncFavIcon from "@/storage/favIcon.sync";
 import StorageSyncGroup from "@/storage/group.sync";
 import StorageSyncTab from "@/storage/tab.sync";
 import { useEffect, useState } from "react";
-import { Check, CheckCircle2, FolderPlus, Info, LoaderCircle, RefreshCw, X, Monitor } from "lucide-react";
+import { Check, CheckCircle2, FolderPlus, Info, LoaderCircle, RefreshCw, X, Monitor, Sparkles } from "lucide-react";
 import TopSites from "./components/TopSites";
 import { BentoGroupCard } from "@/components/BentoGroupCard";
 import Tooltip from "@/components/ui/tooltip";
@@ -216,6 +216,10 @@ function LiveManagement() {
     void chrome.windows.update(windowId, { focused: true });
   };
 
+  const runAutoGroupScan = (windowId: number) => {
+    chrome.runtime.sendMessage({ action: 'run_auto_group_scan', windowId });
+  };
+
   return (
     <div className="flex flex-col gap-4 p-2 pb-6">
       <section className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
@@ -232,6 +236,23 @@ function LiveManagement() {
               </Tooltip.Trigger>
               <Tooltip.Content side="bottom" sideOffset={8} className="max-w-56 rounded-xl bg-slate-900 px-3 py-2 text-[11px] text-slate-50 shadow-lg">
                 Manage tabs and groups across all open windows.
+              </Tooltip.Content>
+            </Tooltip>
+            
+            <Tooltip>
+              <Tooltip.Trigger asChild>
+                <button 
+                  onClick={() => {
+                    const currentWin = windows.find(w => w.isCurrent);
+                    if (currentWin) runAutoGroupScan(currentWin.id);
+                  }}
+                  className="inline-flex size-5 items-center justify-center rounded-full border border-emerald-100 bg-emerald-50 text-emerald-600 transition-colors hover:bg-emerald-100"
+                >
+                  <Sparkles size={11} />
+                </button>
+              </Tooltip.Trigger>
+              <Tooltip.Content side="bottom" sideOffset={8} className="rounded-xl bg-slate-900 px-3 py-2 text-[11px] text-white shadow-lg">
+                Apply Auto-Group Rules Now
               </Tooltip.Content>
             </Tooltip>
           </div>
