@@ -6,8 +6,8 @@ export const TAB_MENU: Array<NCommon.Option<ETabMenu>> = [
     label: "Live",
   },
   {
-    value: ETabMenu.NOTE,
-    label: "Notes",
+    value: ETabMenu.AUTOMATION,
+    label: "Rules",
   },
   {
     value: ETabMenu.GROUP,

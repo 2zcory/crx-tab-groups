@@ -22,6 +22,16 @@ namespace NStorage {
         groups: Group[];
         tabs: Tab[];
         favIcons: FavIcons;
+        autoGroups: AutoGroupRule[];
+      }
+
+      interface AutoGroupRule {
+        id: string;
+        title: string;
+        color: chrome.tabGroups.ColorEnum;
+        urlPattern: string;
+        isActive: boolean;
+        createdAt: string;
       }
 
       interface Group {

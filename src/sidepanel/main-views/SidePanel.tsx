@@ -8,6 +8,7 @@ import Tabs from '@/components/ui/tabs'
 import { TAB_MENU } from '@/constants'
 import { ETabMenu } from '@/enums'
 import GroupManagement from './group-management'
+import AutomationManagement from './automation-management'
 
 export const SidePanel = () => {
   const [isMigrating, setIsMigrating] = useState(false)
@@ -27,8 +28,8 @@ export const SidePanel = () => {
         <Tabs.Content value={ETabMenu.TAB_SYNC}>
           <LiveManagement />
         </Tabs.Content>
-        <Tabs.Content value={ETabMenu.NOTE}>
-          <>Note</>
+        <Tabs.Content value={ETabMenu.AUTOMATION}>
+          <AutomationManagement />
         </Tabs.Content>
         <Tabs.Content value={ETabMenu.GROUP}>
           <GroupManagement />
