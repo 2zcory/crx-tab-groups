@@ -9,6 +9,8 @@ namespace NStorage {
 
   namespace Sync {
     type GetKey = string | string[] | null
+    
+    type GroupColor = "grey" | "blue" | "red" | "yellow" | "green" | "pink" | "purple" | "cyan" | "orange";
 
     namespace Response {
       interface Group extends Schema.Group {
@@ -28,7 +30,7 @@ namespace NStorage {
       interface AutoGroupRule {
         id: string;
         title: string;
-        color: chrome.tabGroups.ColorEnum;
+        color: GroupColor;
         urlPattern: string;
         isActive: boolean;
         createdAt: string;
@@ -38,7 +40,7 @@ namespace NStorage {
         id: string;
         title: string;
         order: number;
-        color?: chrome.tabGroups.ColorEnum;
+        color?: GroupColor;
         createdAt: string;
         updatedAt: string;
         lastOpened?: string;

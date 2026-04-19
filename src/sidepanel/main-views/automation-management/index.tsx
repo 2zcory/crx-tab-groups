@@ -5,7 +5,7 @@ import { Plus, Trash2, X, Play, Pause, Globe } from "lucide-react";
 import { useEffect, useState } from "react";
 import Tooltip from "@/components/ui/tooltip";
 
-const COLORS: chrome.tabGroups.ColorEnum[] = [
+const COLORS: NStorage.Sync.GroupColor[] = [
   "grey", "blue", "red", "yellow", "green", "pink", "purple", "cyan", "orange"
 ];
 
@@ -26,7 +26,7 @@ function AutomationManagement() {
   const [isAdding, setIsAdding] = useState(false);
   const [newRule, setNewRule] = useState({
     title: "",
-    color: "blue" as chrome.tabGroups.ColorEnum,
+    color: "blue" as NStorage.Sync.GroupColor,
     urlPattern: ""
   });
 
