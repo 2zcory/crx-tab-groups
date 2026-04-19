@@ -28,6 +28,7 @@ namespace NStorage {
         id: string;
         title: string;
         order: number;
+        color?: chrome.tabGroups.ColorEnum;
         createdAt: string;
         updatedAt: string;
         lastOpened?: string;
@@ -36,6 +37,8 @@ namespace NStorage {
       interface Tab {
         id: string;
         title: string;
+        url?: string;
+        favIconUrl?: string;
         order: number;
         groupId: string;
         createdAt: string;
