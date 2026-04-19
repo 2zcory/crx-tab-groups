@@ -41,6 +41,7 @@ namespace NStorage {
         favIconUrl?: string;
         order: number;
         groupId: string;
+        isRepaired?: boolean;
         createdAt: string;
         updatedAt: string;
         lastOpened?: string;

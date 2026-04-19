@@ -475,11 +475,20 @@ function GroupManagement() {
                             <div className="size-3.5 shrink-0 rounded-sm bg-slate-100" />
                           )}
                           <span className="truncate text-[11px] text-slate-600">
-                            {tab.title || "Untitled Tab"}
+                           {tab.title || "Untitled Tab"}
                           </span>
-                        </li>
-                      ))}
-                    </ul>
+                          {tab.isRepaired && (
+                           <Tooltip>
+                             <Tooltip.Trigger asChild>
+                               <AlertCircle size={10} className="shrink-0 text-amber-500" />
+                             </Tooltip.Trigger>
+                             <Tooltip.Content className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] text-white">
+                               Repaired: original URL was missing
+                             </Tooltip.Content>
+                           </Tooltip>
+                           )}
+                           </li>
+                           ))}                    </ul>
                   </div>
                 )}
               </div>
