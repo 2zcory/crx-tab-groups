@@ -52,6 +52,18 @@ class StorageSyncTab {
     // TODO: Handle error - unprotected aync code
     await StorageSync.set(params)
   }
+
+  static async deleteTabsByGroupId(groupId: string) {
+    const params: Pick<NStorage.Sync.Schema.Database, "tabs"> = { tabs: [] };
+
+    // TODO: Handle error - unprotected aync code
+    params.tabs = await StorageSyncTab.getList()
+
+    params.tabs = params.tabs.filter(tab => tab.groupId !== groupId)
+
+    // TODO: Handle error - unprotected aync code
+    await StorageSync.set(params)
+  }
 }
 
 export default StorageSyncTab

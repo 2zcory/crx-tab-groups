@@ -6,7 +6,7 @@ import StorageSyncFavIcon from "@/storage/favIcon.sync";
 import StorageSyncGroup from "@/storage/group.sync";
 import StorageSyncTab from "@/storage/tab.sync";
 import { useEffect, useState } from "react";
-import { CheckCircle2, FolderPlus, Info, LoaderCircle } from "lucide-react";
+import { Check, CheckCircle2, FolderPlus, Info, LoaderCircle, RefreshCw, X, Monitor } from "lucide-react";
 import TopSites from "./components/TopSites";
 import { BentoGroupCard } from "@/components/BentoGroupCard";
 import Tooltip from "@/components/ui/tooltip";
@@ -17,6 +17,15 @@ interface TabGroup extends chrome.tabGroups.TabGroup {
   tabs: chrome.tabs.Tab[];
 }
 
+interface WindowData {
+  id: number;
+  isCurrent: boolean;
+  groups: TabGroup[];
+  tabsPinned: chrome.tabs.Tab[];
+  tabsUngroup: chrome.tabs.Tab[];
+  totalTabs: number;
+}
+
 type SaveState = "idle" | "pending" | "saved" | "failed";
 
 interface SaveStatus {
@@ -25,37 +34,26 @@ interface SaveStatus {
 }
 
 function LiveManagement() {
-  const [groups, setGroups] = useState<TabGroup[]>([]);
-  const [tabs, setTabs] = useState<chrome.tabs.Tab[]>([]);
-  const [tabsPinned, setTabsPinned] = useState<chrome.tabs.Tab[]>([]);
-  const [tabsUngroup, setTabsUngroup] = useState<chrome.tabs.Tab[]>([]);
+  const [windows, setWindows] = useState<WindowData[]>([]);
+  const [totalTabsAllCount, setTotalTabsAllCount] = useState(0);
   const [saveStatuses, setSaveStatuses] = useState<Record<number, SaveStatus>>({});
+  const [savedSnapshots, setSavedSnapshots] = useState<NStorage.Sync.Response.Group[]>([]);
+  const [showSaveMenu, setShowSaveMenu] = useState<number | null>(null);
+  const [newSnapshotTitle, setNewSnapshotTitle] = useState("");
+  const [isNamingNewSnapshot, setIsNamingNewSnapshot] = useState(false);
 
   onTabUpdated(() => {
     getActiveGroups();
   });
 
   useEffect(() => {
-    const timer = setTimeout(() => addFavIconsToStorage(), 30000);
-    return () => clearTimeout(timer);
-  }, [tabs]);
-
-  useEffect(() => {
     getActiveGroups();
+    fetchSavedSnapshots();
   }, []);
 
-  const addFavIconsToStorage = async () => {
-    const favIcons = await StorageSyncFavIcon.get();
-    tabs.forEach((tab) => {
-      if (!tab.url) return;
-      const domainNameExtract = extractDomainNameFromUrl(tab.url);
-      if (!tab.favIconUrl || !domainNameExtract) return;
-      favIcons[domainNameExtract] = {
-        url: tab.favIconUrl,
-        lastOpened: new Date().toISOString(),
-      };
-    });
-    await StorageSyncFavIcon.update(favIcons);
+  const fetchSavedSnapshots = async () => {
+    const res = await StorageSyncGroup.getListWithTabs();
+    setSavedSnapshots(res || []);
   };
 
   const setSaveStatus = (groupId: number, status: SaveStatus) => {
@@ -65,17 +63,35 @@ function LiveManagement() {
     }));
   };
 
+  const openSaveMenu = (group: TabGroup) => {
+    setShowSaveMenu(group.id);
+    setNewSnapshotTitle(group.title || "Untitled Group");
+    setIsNamingNewSnapshot(false);
+  };
+
   const saveGroupSnapshot = async (group: TabGroup) => {
-    setSaveStatus(group.id, {
-      state: "pending",
-      message: "Saving snapshot...",
-    });
+    const finalTitle = newSnapshotTitle.trim() || group.title || "Untitled Group";
+    setShowSaveMenu(null);
+    setIsNamingNewSnapshot(false);
+    setSaveStatus(group.id, { state: "pending", message: "Saving..." });
+
+    let uniqueTitle = finalTitle;
+    const existingTitles = savedSnapshots.map(s => s.title.toLowerCase());
+    if (existingTitles.includes(uniqueTitle.toLowerCase())) {
+      let counter = 1;
+      let newTitle = `${uniqueTitle} (${counter})`;
+      while (existingTitles.includes(newTitle.toLowerCase())) {
+        counter++;
+        newTitle = `${uniqueTitle} (${counter})`;
+      }
+      uniqueTitle = newTitle;
+    }
 
     const now = new Date().toISOString();
     const snapshotGroupId = crypto.randomUUID();
     const snapshotGroup: NStorage.Sync.Schema.Group = {
       id: snapshotGroupId,
-      title: group.title || "Untitled Group",
+      title: uniqueTitle,
       order: Date.now(),
       color: group.color,
       createdAt: now,
@@ -95,208 +111,288 @@ function LiveManagement() {
       lastOpened: tab.lastAccessed ? new Date(tab.lastAccessed).toISOString() : now,
     }));
 
-    const missingUrlCount = snapshotTabs.filter((tab) => !tab.url).length;
-
     try {
       await StorageSyncGroup.create(snapshotGroup);
       await StorageSyncTab.create(...snapshotTabs);
-
-      setSaveStatus(group.id, {
-        state: "saved",
-        message:
-          missingUrlCount === 0
-            ? "Snapshot saved with restore-ready URLs."
-            : `Snapshot saved, but ${missingUrlCount} tab${missingUrlCount === 1 ? "" : "s"} missing URL data may not restore later.`,
-      });
+      setSaveStatus(group.id, { state: "saved", message: `Saved as "${uniqueTitle}"` });
+      void fetchSavedSnapshots();
     } catch {
-      setSaveStatus(group.id, {
-        state: "failed",
-        message: "Snapshot save failed. Please try again.",
-      });
+      setSaveStatus(group.id, { state: "failed", message: "Failed" });
+    }
+  };
+
+  const updateExistingSnapshot = async (liveGroup: TabGroup, savedSnapshot: NStorage.Sync.Response.Group) => {
+    setShowSaveMenu(null);
+    setSaveStatus(liveGroup.id, { state: "pending", message: `Updating...` });
+    const now = new Date().toISOString();
+
+    const updatedGroup: NStorage.Sync.Schema.Group = {
+      id: savedSnapshot.id,
+      title: savedSnapshot.title,
+      color: liveGroup.color,
+      order: savedSnapshot.order,
+      createdAt: savedSnapshot.createdAt,
+      updatedAt: now,
+      lastOpened: now,
+    };
+
+    const newTabs: NStorage.Sync.Schema.Tab[] = liveGroup.tabs.map((tab, index) => ({
+      id: crypto.randomUUID(),
+      title: tab.title || "Untitled Tab",
+      url: tab.url,
+      favIconUrl: tab.favIconUrl,
+      order: index + 1,
+      groupId: savedSnapshot.id,
+      createdAt: now,
+      updatedAt: now,
+      lastOpened: tab.lastAccessed ? new Date(tab.lastAccessed).toISOString() : now,
+    }));
+
+    try {
+      await StorageSyncGroup.update(updatedGroup);
+      await StorageSyncTab.deleteTabsByGroupId(savedSnapshot.id);
+      await StorageSyncTab.create(...newTabs);
+      setSaveStatus(liveGroup.id, { state: "saved", message: `Updated "${savedSnapshot.title}"` });
+      void fetchSavedSnapshots();
+    } catch {
+      setSaveStatus(liveGroup.id, { state: "failed", message: "Failed" });
     }
   };
 
   const getActiveGroups = async () => {
-    const activeGroups = await chrome.tabGroups.query({});
-    const activeTabs = await chrome.tabs.query({});
-    const tabListByGroups: Record<string, chrome.tabs.Tab[]> = {};
+    const currentWindow = await chrome.windows.getCurrent();
+    const allWindows = await chrome.windows.getAll({ populate: true, windowTypes: ['normal'] });
+    const allGroups = await chrome.tabGroups.query({});
+    
+    let globalTabCount = 0;
 
-    activeTabs.forEach((tab) => {
-      const gId = `${tab.groupId}`;
-      if (!tabListByGroups[gId]) tabListByGroups[gId] = [];
-      tabListByGroups[gId].push(tab);
-    });
+    const windowDataList: WindowData[] = allWindows.map(win => {
+      const winId = win.id!;
+      const winTabs = win.tabs || [];
+      globalTabCount += winTabs.length;
 
-    const groupsIncludeTabs = activeGroups.map((group) => ({
-      ...group,
-      tabs: tabListByGroups[group.id] || [],
-    }));
+      const winGroups = allGroups.filter(g => g.windowId === winId);
+      const tabListByGroups: Record<string, chrome.tabs.Tab[]> = {};
 
-    if (tabListByGroups["-1"]?.length) {
+      winTabs.forEach((tab) => {
+        const gId = `${tab.groupId}`;
+        if (!tabListByGroups[gId]) tabListByGroups[gId] = [];
+        tabListByGroups[gId].push(tab);
+      });
+
+      const groupsIncludeTabs = winGroups.map((group) => ({
+        ...group,
+        tabs: tabListByGroups[group.id] || [],
+      }));
+
       const pinned: chrome.tabs.Tab[] = [];
       const ungroup: chrome.tabs.Tab[] = [];
 
-      tabListByGroups["-1"].forEach((tab) => {
-        if (tab.pinned) pinned.push(tab);
-        else ungroup.push(tab);
-      });
+      if (tabListByGroups["-1"]?.length) {
+        tabListByGroups["-1"].forEach((tab) => {
+          if (tab.pinned) pinned.push(tab);
+          else ungroup.push(tab);
+        });
+      }
 
-      setTabsPinned(pinned);
-      setTabsUngroup(ungroup);
-    } else {
-      setTabsPinned([]);
-      setTabsUngroup([]);
-    }
+      return {
+        id: winId,
+        isCurrent: winId === currentWindow.id,
+        groups: groupsIncludeTabs,
+        tabsPinned: pinned,
+        tabsUngroup: ungroup,
+        totalTabs: winTabs.length
+      };
+    });
 
-    setTabs(activeTabs);
-    setGroups(groupsIncludeTabs);
+    // Sort current window to top
+    windowDataList.sort((a, b) => (a.isCurrent === b.isCurrent ? 0 : a.isCurrent ? -1 : 1));
+
+    setWindows(windowDataList);
+    setTotalTabsAllCount(globalTabCount);
+  };
+
+  const focusWindow = (windowId: number) => {
+    void chrome.windows.update(windowId, { focused: true });
   };
 
   return (
-    <div className="flex flex-col gap-3 p-1.5">
+    <div className="flex flex-col gap-4 p-2 pb-6">
       <section className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Live
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+              Live Browser
             </p>
             <Tooltip>
               <Tooltip.Trigger asChild>
-                <button
-                  type="button"
-                  className="inline-flex size-5 items-center justify-center rounded-full border border-black/5 bg-slate-50 text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/60 focus-visible:ring-offset-1"
-                  aria-label="About Live"
-                >
+                <button type="button" className="inline-flex size-5 items-center justify-center rounded-full border border-black/5 bg-slate-50 text-slate-500 transition-colors hover:bg-slate-100">
                   <Info size={12} />
                 </button>
               </Tooltip.Trigger>
-              <Tooltip.Content side="bottom" sideOffset={8} className="max-w-56 rounded-xl bg-slate-900 px-3 py-2 text-[11px] leading-relaxed text-slate-50 shadow-lg">
-                Live shows your current browser state in real time. Pinned, grouped, and ungrouped tabs can be inspected and acted on here. Saved snapshots are managed separately.
+              <Tooltip.Content side="bottom" sideOffset={8} className="max-w-56 rounded-xl bg-slate-900 px-3 py-2 text-[11px] text-slate-50 shadow-lg">
+                Manage tabs and groups across all open windows.
               </Tooltip.Content>
             </Tooltip>
           </div>
         </div>
 
         <div className="flex flex-wrap justify-end gap-1.5">
-          <span className="rounded-full border border-black/5 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600">
-            {tabs.length} tabs
+          <span className="rounded-full border border-black/5 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+            {totalTabsAllCount} tabs
           </span>
-          <span className="rounded-full border border-black/5 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600">
-            {groups.length} groups
-          </span>
-          <span className="rounded-full border border-black/5 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600">
-            {tabsUngroup.length} ungrouped
+          <span className="rounded-full border border-black/5 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+            {windows.length} windows
           </span>
         </div>
       </section>
 
-      <div className="grid grid-cols-1 gap-2.5">
-        {tabsPinned.length > 0 && (
-          <BentoGroupCard
-            title={MOCK_GROUP[EMockGroup.PINNED]}
-            tabs={tabsPinned}
-            className="bg-slate-50 border-slate-200"
-          />
-        )}
-
-        {groups.map((group) => (
-          <BentoGroupCard
-            key={group.id}
-            title={group.title || "Untitled Group"}
-            color={group.color}
-            tabs={group.tabs}
-            actions={
+      <div className="flex flex-col gap-6">
+        {windows.map((win, winIdx) => (
+          <div key={win.id} className="flex flex-col gap-2.5">
+            {/* Window Header */}
+            <div 
+              className={cn(
+                "flex cursor-pointer items-center justify-between px-1.5 transition-opacity hover:opacity-80",
+                !win.isCurrent && "opacity-60"
+              )}
+              onClick={() => focusWindow(win.id)}
+            >
               <div className="flex items-center gap-2">
-                {saveStatuses[group.id] && saveStatuses[group.id].state !== "idle" && (
-                  <span
-                    className={cn(
-                      "hidden rounded-full px-2 py-0.5 text-[10px] font-medium md:inline-flex",
-                      saveStatuses[group.id].state === "saved"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : saveStatuses[group.id].state === "failed"
-                          ? "bg-rose-100 text-rose-700"
-                          : "bg-slate-200 text-slate-600",
-                    )}
-                  >
-                    {saveStatuses[group.id].state === "pending"
-                      ? "Saving"
-                      : saveStatuses[group.id].state === "saved"
-                        ? "Saved"
-                        : "Retry"}
-                  </span>
-                )}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-7 rounded-full border-black/10 bg-white/80 px-2.5 text-[11px] text-slate-700 shadow-none hover:bg-white"
-                  disabled={saveStatuses[group.id]?.state === "pending"}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    void saveGroupSnapshot(group);
-                  }}
-                >
-                  {saveStatuses[group.id]?.state === "pending" ? (
-                    <>
-                      <LoaderCircle className="animate-spin" size={12} />
-                      Saving
-                    </>
-                  ) : saveStatuses[group.id]?.state === "saved" ? (
-                    <>
-                      <CheckCircle2 size={12} />
-                      Saved
-                    </>
-                  ) : (
-                    <>
-                      <FolderPlus size={12} />
-                      Save snapshot
-                    </>
-                  )}
-                </Button>
+                <Monitor size={12} className={win.isCurrent ? "text-slate-900" : "text-slate-400"} />
+                <p className={cn(
+                  "text-[10px] font-bold uppercase tracking-wider",
+                  win.isCurrent ? "text-slate-900" : "text-slate-500"
+                )}>
+                  Window {windows.length > 1 ? winIdx + 1 : ""} {win.isCurrent && "• Current"}
+                </p>
               </div>
-            }
-          />
-        ))}
+              <span className="text-[9px] font-bold text-slate-400 uppercase">
+                {win.totalTabs} tabs
+              </span>
+            </div>
 
-        {tabsUngroup.length > 0 && (
-          <BentoGroupCard
-            title={MOCK_GROUP[EMockGroup.UNGROUP]}
-            tabs={tabsUngroup}
-            className="bg-white border-dashed border-slate-300"
-          />
-        )}
+            <div className="grid grid-cols-1 gap-2.5">
+              {win.tabsPinned.length > 0 && (
+                <BentoGroupCard
+                  title={MOCK_GROUP[EMockGroup.PINNED]}
+                  tabs={win.tabsPinned}
+                  className="bg-slate-50 border-slate-200"
+                />
+              )}
+
+              {win.groups.map((group) => (
+                <BentoGroupCard
+                  key={group.id}
+                  title={group.title || "Untitled Group"}
+                  color={group.color}
+                  tabs={group.tabs}
+                  actions={
+                    <div className="relative flex items-center gap-2">
+                      {saveStatuses[group.id]?.state && saveStatuses[group.id].state !== "idle" && (
+                        <span className={cn(
+                          "hidden rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider md:inline-flex",
+                          saveStatuses[group.id].state === "saved" ? "bg-emerald-100 text-emerald-700" : "bg-slate-200"
+                        )}>
+                          {saveStatuses[group.id].state}
+                        </span>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className={cn(
+                          "h-7 rounded-full border-black/10 bg-white/80 px-2.5 text-[11px] font-bold text-slate-700 shadow-none hover:bg-white",
+                          showSaveMenu === group.id && "bg-slate-100"
+                        )}
+                        disabled={saveStatuses[group.id]?.state === "pending"}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (showSaveMenu === group.id) { setShowSaveMenu(null); setIsNamingNewSnapshot(false); }
+                          else { openSaveMenu(group); }
+                        }}
+                      >
+                        {saveStatuses[group.id]?.state === "pending" ? <LoaderCircle className="animate-spin" size={12} /> : saveStatuses[group.id]?.state === "saved" ? <CheckCircle2 size={12} /> : <FolderPlus size={12} />}
+                        <span className="ml-1">{saveStatuses[group.id]?.state === "saved" ? "Done" : "Save"}</span>
+                      </Button>
+
+                      {showSaveMenu === group.id && (
+                        <div className="absolute right-0 top-full z-50 mt-1.5 flex min-w-48 flex-col gap-1 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl ring-1 ring-black/5" onClick={(e) => e.stopPropagation()}>
+                          {isNamingNewSnapshot ? (
+                            <div className="flex flex-col gap-2 p-1">
+                              <p className="px-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">Snapshot Name:</p>
+                              <div className="flex items-center gap-1">
+                                <input
+                                  autoFocus
+                                  className="w-full rounded border-none bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-700 outline-none ring-1 ring-slate-200"
+                                  value={newSnapshotTitle}
+                                  onChange={(e) => setNewSnapshotTitle(e.target.value)}
+                                  onKeyDown={(e) => { if (e.key === "Enter") void saveGroupSnapshot(group); if (e.key === "Escape") setIsNamingNewSnapshot(false); }}
+                                />
+                                <button onClick={() => void saveGroupSnapshot(group)} className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-white"><Check size={14} /></button>
+                                <button onClick={() => setIsNamingNewSnapshot(false)} className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400"><X size={14} /></button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button className="flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[11px] font-bold text-emerald-600 transition-colors hover:bg-emerald-50" onClick={() => setIsNamingNewSnapshot(true)}>
+                              <FolderPlus size={12} /> Save as New Snapshot
+                            </button>
+                          )}
+                          {!isNamingNewSnapshot && savedSnapshots.length > 0 && (
+                            <>
+                              <div className="my-0.5 h-px bg-slate-100" />
+                              <p className="px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">Overwrite existing:</p>
+                              <div className="flex max-h-32 flex-col gap-0.5 overflow-y-auto pr-0.5 text-slate-600">
+                                {savedSnapshots.map((ss) => (
+                                  <button key={ss.id} className="flex items-center justify-between rounded-lg px-2 py-1.5 text-left text-[11px] transition-colors hover:bg-slate-50" onClick={() => updateExistingSnapshot(group, ss)}>
+                                    <span className="truncate font-medium">{ss.title}</span>
+                                    <RefreshCw size={10} className="text-slate-300" />
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  }
+                />
+              ))}
+
+              {win.tabsUngroup.length > 0 && (
+                <BentoGroupCard
+                  title={MOCK_GROUP[EMockGroup.UNGROUP]}
+                  tabs={win.tabsUngroup}
+                  className="bg-white border-dashed border-slate-300"
+                />
+              )}
+            </div>
+          </div>
+        ))}
       </div>
 
       {Object.values(saveStatuses).some((status) => status.message) && (
-        <div className="flex flex-col gap-2">
-          {groups
-            .map((group) => ({ group, status: saveStatuses[group.id] }))
-            .filter(({ status }) => Boolean(status?.message))
-            .map(({ group, status }) => (
-              <div
-                key={group.id}
-                className={cn(
-                  "rounded-2xl border px-3 py-2 text-xs",
-                  status?.state === "saved"
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                    : status?.state === "failed"
-                      ? "border-rose-200 bg-rose-50 text-rose-700"
-                      : "border-slate-200 bg-slate-50 text-slate-600",
-                )}
-              >
-                <span className="font-medium">{group.title || "Untitled Group"}:</span>{" "}
-                {status?.message}
+        <div className="flex flex-col gap-2 mt-4">
+          {windows.flatMap(w => [...w.groups]).map(group => {
+            const status = saveStatuses[group.id];
+            if (!status?.message) return null;
+            return (
+              <div key={group.id} className={cn(
+                "rounded-2xl border px-3 py-2 text-xs font-medium shadow-sm",
+                status?.state === "saved" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-600"
+              )}>
+                {group.title || "Untitled Group"}: {status.message}
               </div>
-            ))}
+            );
+          })}
         </div>
       )}
 
-      {tabs.length > 0 && <TopSites />}
+      {totalTabsAllCount > 0 && <TopSites />}
 
-      {tabs.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center text-slate-400">
+      {totalTabsAllCount === 0 && (
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-12 text-center text-slate-400">
           <p className="text-sm font-medium text-slate-600">No active tabs found</p>
-          <p className="mt-1 text-xs">Your live browser state is empty right now.</p>
         </div>
       )}
     </div>

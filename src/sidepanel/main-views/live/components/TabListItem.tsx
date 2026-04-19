@@ -44,7 +44,10 @@ function TabListItem(props: IProps) {
   const handleActiveTab: MouseEventHandler<HTMLDivElement> = (e) => {
     e.stopPropagation()
 
-    props.tab.id && chrome.tabs.update(props.tab.id, { active: true })
+    if (props.tab.id) {
+      void chrome.tabs.update(props.tab.id, { active: true })
+      void chrome.windows.update(props.tab.windowId, { focused: true })
+    }
   }
 
   const handleCloseTab: MouseEventHandler<HTMLButtonElement> = (e) => {
@@ -73,7 +76,10 @@ function TabListItem(props: IProps) {
     if (e.key !== "Enter" && e.key !== " ") return
 
     e.preventDefault()
-    props.tab.id && chrome.tabs.update(props.tab.id, { active: true })
+    if (props.tab.id) {
+      void chrome.tabs.update(props.tab.id, { active: true })
+      void chrome.windows.update(props.tab.windowId, { focused: true })
+    }
   }
 
   return (

@@ -1,12 +1,12 @@
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import StorageSyncGroup from "@/storage/group.sync";
-import { AlertCircle, CheckCircle2, FolderSync, Info, LoaderCircle } from "lucide-react";
+import StorageSyncTab from "@/storage/tab.sync";
+import { AlertCircle, Check, CheckCircle2, FolderSync, Info, LoaderCircle, Pencil, RefreshCw, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import Tooltip from "@/components/ui/tooltip";
 
-type RestoreState = "idle" | "pending" | "full" | "partial" | "failed";
+type RestoreState = "idle" | "pending" | "full" | "partial" | "failed" | "updated" | "deleted";
 
 interface RestoreStatus {
   state: RestoreState;
@@ -19,7 +19,13 @@ const STATUS_STYLES: Record<Exclude<RestoreState, "idle" | "pending">, string> =
   full: "border-emerald-200 bg-emerald-50 text-emerald-700",
   partial: "border-amber-200 bg-amber-50 text-amber-700",
   failed: "border-rose-200 bg-rose-50 text-rose-700",
+  updated: "border-sky-200 bg-sky-50 text-sky-700",
+  deleted: "border-slate-200 bg-slate-50 text-slate-600",
 };
+
+interface LiveTabGroup extends chrome.tabGroups.TabGroup {
+  tabs: chrome.tabs.Tab[];
+}
 
 const groupTabs = (tabIds: [number, ...number[]]) =>
   new Promise<number>((resolve, reject) => {
@@ -28,7 +34,6 @@ const groupTabs = (tabIds: [number, ...number[]]) =>
         reject(new Error(chrome.runtime.lastError.message));
         return;
       }
-
       resolve(groupId);
     });
   });
@@ -40,23 +45,100 @@ const updateTabGroup = (groupId: number, updates: chrome.tabGroups.UpdatePropert
         reject(new Error(chrome.runtime.lastError.message));
         return;
       }
-
       resolve();
     });
   });
 
 function GroupManagement() {
   const [groups, setGroups] = useState<NStorage.Sync.Response.Group[]>([]);
+  const [liveGroups, setLiveGroups] = useState<LiveTabGroup[]>([]);
   const [restoreStatuses, setRestoreStatuses] = useState<Record<string, RestoreStatus>>({});
+  const [showUpdateMenu, setShowUpdateMenu] = useState<string | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
 
   useEffect(() => {
     fetchGroups();
+    fetchLiveGroups();
   }, []);
+
+  const fetchLiveGroups = async () => {
+    const activeGroups = await chrome.tabGroups.query({});
+    const activeTabs = await chrome.tabs.query({});
+    const tabListByGroups: Record<string, chrome.tabs.Tab[]> = {};
+
+    activeTabs.forEach((tab) => {
+      const gId = `${tab.groupId}`;
+      if (!tabListByGroups[gId]) tabListByGroups[gId] = [];
+      tabListByGroups[gId].push(tab);
+    });
+
+    const groupsIncludeTabs = activeGroups.map((group) => ({
+      ...group,
+      tabs: tabListByGroups[group.id] || [],
+    }));
+
+    setLiveGroups(groupsIncludeTabs);
+  };
 
   const fetchGroups = async () => {
     const res = await StorageSyncGroup.getListWithTabs();
     const groupsOrdered = [...res].sort((a, b) => a.order - b.order);
     setGroups(groupsOrdered);
+  };
+
+  const startEditing = (group: NStorage.Sync.Response.Group) => {
+    setEditingGroupId(group.id);
+    setEditingTitle(group.title || "");
+  };
+
+  const cancelEditing = () => {
+    setEditingGroupId(null);
+    setEditingTitle("");
+  };
+
+  const handleRename = async (group: NStorage.Sync.Response.Group) => {
+    const trimmedTitle = editingTitle.trim();
+    if (!trimmedTitle || trimmedTitle === group.title) {
+      cancelEditing();
+      return;
+    }
+
+    // Check for duplicate names (case-insensitive, excluding current group)
+    const isDuplicate = groups.some(g => 
+      g.id !== group.id && g.title.toLowerCase() === trimmedTitle.toLowerCase()
+    );
+
+    if (isDuplicate) {
+      setRestoreStatus(group.id, {
+        state: "failed",
+        message: "Name already exists",
+      });
+      return;
+    }
+
+    try {
+      await StorageSyncGroup.update({
+        ...group,
+        title: trimmedTitle,
+        updatedAt: new Date().toISOString(),
+      });
+      setEditingGroupId(null);
+      await fetchGroups();
+    } catch {
+      setRestoreStatus(group.id, {
+        state: "failed",
+        message: "Rename failed",
+      });
+    }
+  };
+
+  const toggleExpand = (groupId: string) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [groupId]: !prev[groupId],
+    }));
   };
 
   const setRestoreStatus = (groupId: string, status: RestoreStatus) => {
@@ -66,10 +148,84 @@ function GroupManagement() {
     }));
   };
 
+  const updateGroupSnapshot = async (savedGroup: NStorage.Sync.Response.Group, liveGroup: LiveTabGroup) => {
+    setShowUpdateMenu(null);
+    setRestoreStatus(savedGroup.id, {
+      state: "pending",
+      message: `Updating...`,
+    });
+
+    const now = new Date().toISOString();
+
+    const updatedGroup: NStorage.Sync.Schema.Group = {
+      id: savedGroup.id,
+      title: liveGroup.title || "Untitled Group",
+      color: liveGroup.color,
+      order: savedGroup.order,
+      createdAt: savedGroup.createdAt,
+      updatedAt: now,
+      lastOpened: now,
+    };
+
+    const newTabs: NStorage.Sync.Schema.Tab[] = liveGroup.tabs.map((tab, index) => ({
+      id: crypto.randomUUID(),
+      title: tab.title || "Untitled Tab",
+      url: tab.url,
+      favIconUrl: tab.favIconUrl,
+      order: index + 1,
+      groupId: savedGroup.id,
+      createdAt: now,
+      updatedAt: now,
+      lastOpened: tab.lastAccessed ? new Date(tab.lastAccessed).toISOString() : now,
+    }));
+
+    try {
+      await StorageSyncGroup.update(updatedGroup);
+      await StorageSyncTab.deleteTabsByGroupId(savedGroup.id);
+      await StorageSyncTab.create(...newTabs);
+
+      setRestoreStatus(savedGroup.id, {
+        state: "updated",
+        message: `Updated`,
+      });
+
+      await fetchGroups();
+    } catch {
+      setRestoreStatus(savedGroup.id, {
+        state: "failed",
+        message: "Failed",
+      });
+    }
+  };
+
+  const deleteSnapshot = async (groupId: string) => {
+    if (!confirm("Delete this snapshot?")) return;
+
+    setRestoreStatus(groupId, {
+      state: "pending",
+    });
+
+    try {
+      await StorageSyncGroup.deleteGroupById(groupId);
+      await StorageSyncTab.deleteTabsByGroupId(groupId);
+
+      setRestoreStatus(groupId, {
+        state: "deleted",
+        message: "Deleted",
+      });
+
+      setTimeout(() => fetchGroups(), 800);
+    } catch {
+      setRestoreStatus(groupId, {
+        state: "failed",
+        message: "Failed",
+      });
+    }
+  };
+
   const restoreGroup = async (group: NStorage.Sync.Response.Group) => {
     setRestoreStatus(group.id, {
       state: "pending",
-      message: "Restoring snapshot into a new live group...",
     });
 
     const sortedTabs = [...group.tabs].sort((a, b) => a.order - b.order);
@@ -82,9 +238,7 @@ function GroupManagement() {
     if (tabsWithUrls.length === 0) {
       setRestoreStatus(group.id, {
         state: "failed",
-        message: "This snapshot does not contain any saved tab URLs, so nothing could be restored.",
-        openedCount: 0,
-        failedCount,
+        message: "No URLs",
       });
       return;
     }
@@ -128,195 +282,210 @@ function GroupManagement() {
     if (openedCount === 0) {
       setRestoreStatus(group.id, {
         state: "failed",
-        message: "No tabs could be restored from this snapshot.",
-        openedCount,
-        failedCount,
+        message: "Restore failed",
       });
       return;
     }
 
     const isFullRestore = failedCount === 0 && createdGroup;
 
-    if (isFullRestore) {
-      setRestoreStatus(group.id, {
-        state: "full",
-        message: `Restored ${openedCount} tab${openedCount === 1 ? "" : "s"} into a new live group.`,
-        openedCount,
-        failedCount,
-      });
-      return;
-    }
-
-    const partialReason = createdGroup
-      ? `Restored ${openedCount} tab${openedCount === 1 ? "" : "s"}, but ${failedCount} could not be reopened.`
-      : `Opened ${openedCount} tab${openedCount === 1 ? "" : "s"}, but the extension could not recreate the group container.`;
-
     setRestoreStatus(group.id, {
-      state: "partial",
-      message: partialReason,
-      openedCount,
-      failedCount,
+      state: isFullRestore ? "full" : "partial",
+      message: isFullRestore ? "Restored" : `Partial`,
     });
   };
 
   return (
-    <div className="flex flex-col gap-3 p-1.5">
-      <section className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Saved
-            </p>
-            <Tooltip>
-              <Tooltip.Trigger asChild>
-                <button
-                  type="button"
-                  className="inline-flex size-5 items-center justify-center rounded-full border border-black/5 bg-slate-50 text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/60 focus-visible:ring-offset-1"
-                  aria-label="About Saved"
-                >
-                  <Info size={12} />
-                </button>
-              </Tooltip.Trigger>
-              <Tooltip.Content side="bottom" sideOffset={8} className="max-w-56 rounded-xl bg-slate-900 px-3 py-2 text-[11px] leading-relaxed text-slate-50 shadow-lg">
-                Saved snapshots stay separate from live browser state. Restore creates a new live group and reports whether the result was full, partial, or failed.
-              </Tooltip.Content>
-            </Tooltip>
-          </div>
-          <p className="mt-1 text-xs text-slate-500">
-            Review saved snapshots and explicitly restore them into a new live group.
+    <div className="flex flex-col gap-3 p-2">
+      <header className="flex items-center justify-between px-1">
+        <div className="flex items-center gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+            Saved Snapshots
           </p>
-        </div>
-
-        <div className="flex flex-wrap justify-end gap-1.5">
-          <span className="rounded-full border border-black/5 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600">
-            {groups.length} snapshots
-          </span>
-          <span className="rounded-full border border-black/5 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600">
-            {groups.reduce((count, group) => count + group.tabs.length, 0)} tabs
+          <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
+            {groups.length}
           </span>
         </div>
-      </section>
+      </header>
 
       {groups.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center text-slate-400">
-          <p className="text-sm font-medium text-slate-600">No saved snapshots found</p>
-          <p className="mt-1 text-xs">Saved groups will appear here after they are persisted to sync storage.</p>
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-10 text-center text-slate-400">
+          <p className="text-[11px] font-medium">No snapshots saved yet</p>
         </div>
       ) : (
-        <Accordion type="single" collapsible className="w-full space-y-2">
+        <div className="flex flex-col gap-2">
           {groups.map((group) => {
             const status = restoreStatuses[group.id];
-            const restorableTabs = group.tabs.filter((tab) => Boolean(tab.url)).length;
+            const isMenuOpen = showUpdateMenu === group.id;
+            const isExpanded = expandedGroups[group.id];
 
             return (
-              <AccordionItem key={group.id} value={group.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                  <div className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-slate-800">
-                        {group.title || "Untitled Snapshot"}
+              <div
+                key={group.id}
+                className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:border-slate-300"
+              >
+                <div 
+                  className="flex cursor-pointer items-center justify-between gap-2 p-2.5 transition-colors hover:bg-slate-50/50"
+                  onClick={() => toggleExpand(group.id)}
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <div className={cn("size-2.5 shrink-0 rounded-full", group.color ? `bg-${group.color}-500` : "bg-slate-300")} />
+                    
+                    {editingGroupId === group.id ? (
+                      <div className="flex min-w-0 flex-1 items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          autoFocus
+                          className="w-full min-w-24 rounded border-none bg-slate-100 px-1.5 py-0.5 text-[13px] font-bold text-slate-700 outline-none ring-1 ring-slate-200 focus:ring-slate-400"
+                          value={editingTitle}
+                          onChange={(e) => setEditingTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") void handleRename(group);
+                            if (e.key === "Escape") cancelEditing();
+                          }}
+                        />
+                        <button 
+                          onClick={() => void handleRename(group)}
+                          className="flex size-6 shrink-0 items-center justify-center rounded-full text-emerald-500 hover:bg-emerald-50"
+                        >
+                          <Check size={14} />
+                        </button>
+                        <button 
+                          onClick={cancelEditing}
+                          className="flex size-6 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100"
+                        >
+                          <X size={14} />
+                        </button>
                       </div>
-                      <div className="mt-1 flex flex-wrap gap-1.5 text-[11px] text-slate-500">
-                        <span>{group.tabs.length} saved tabs</span>
-                        <span>{restorableTabs} with URLs</span>
+                    ) : (
+                      <div className="group/title flex items-center gap-1.5 truncate">
+                        <h3 className="truncate text-[13px] font-bold text-slate-700">
+                          {group.title || "Untitled"}
+                        </h3>
+                        <button
+                          className="opacity-0 transition-opacity group-hover/title:opacity-100 text-slate-300 hover:text-slate-500"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            startEditing(group);
+                          }}
+                        >
+                          <Pencil size={11} />
+                        </button>
+                        <span className="text-[10px] font-bold text-slate-400">
+                          {group.tabs.length}
+                        </span>
                       </div>
-                    </div>
+                    )}
                   </div>
-                </AccordionTrigger>
-                <AccordionContent className="border-t border-slate-100 px-4 py-4">
-                  <div className="flex flex-col gap-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-xs text-slate-500">
-                        Restore opens a new live group from this snapshot. The saved snapshot itself stays unchanged.
-                      </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="shrink-0 rounded-full bg-slate-900 px-3 text-xs text-white hover:bg-slate-800"
-                        disabled={status?.state === "pending"}
-                        onClick={() => restoreGroup(group)}
-                      >
-                        {status?.state === "pending" ? (
-                          <>
-                            <LoaderCircle className="animate-spin" size={14} />
-                            Restoring
-                          </>
-                        ) : (
-                          <>
-                            <FolderSync size={14} />
-                            Restore
-                          </>
-                        )}
-                      </Button>
-                    </div>
 
-                    {status && status.state !== "idle" && (
-                      <div
-                        className={cn(
-                          "flex items-start gap-2 rounded-2xl border px-3 py-2 text-xs",
-                          status.state === "pending"
-                            ? "border-slate-200 bg-slate-50 text-slate-600"
-                            : STATUS_STYLES[status.state],
-                        )}
-                      >
-                        {status.state === "pending" ? (
-                          <LoaderCircle className="mt-0.5 animate-spin" size={14} />
-                        ) : status.state === "full" ? (
-                          <CheckCircle2 className="mt-0.5" size={14} />
-                        ) : (
-                          <AlertCircle className="mt-0.5" size={14} />
-                        )}
-                        <div>
-                          <div>{status.message}</div>
-                          {typeof status.openedCount === "number" && (
-                            <div className="mt-1 text-[11px] opacity-80">
-                              Opened {status.openedCount} tab{status.openedCount === 1 ? "" : "s"}
-                              {typeof status.failedCount === "number"
-                                ? `, missed ${status.failedCount}.`
-                                : "."}
-                            </div>
-                          )}
-                        </div>
+                  <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                    {status && status.state !== "idle" && status.state !== "pending" && (
+                      <div className={cn(
+                        "flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider shadow-sm",
+                        STATUS_STYLES[status.state]
+                      )}>
+                        {status.message}
                       </div>
                     )}
 
-                    <ul className="space-y-2">
-                      {group.tabs
-                        .sort((a, b) => a.order - b.order)
-                        .map((tab) => (
-                          <li
-                            key={tab.id}
-                            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
+                    <div className="flex items-center gap-1">
+                      <Tooltip>
+                        <Tooltip.Trigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="size-7 rounded-full p-0 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                            onClick={() => setShowUpdateMenu(isMenuOpen ? null : group.id)}
                           >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <div className="truncate text-xs font-medium text-slate-700">
-                                  {tab.title || "Untitled Tab"}
-                                </div>
-                                <div className="mt-1 truncate text-[11px] text-slate-500">
-                                  {tab.url || "No saved URL available"}
-                                </div>
-                              </div>
-                              <span
-                                className={cn(
-                                  "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                                  tab.url
-                                    ? "bg-emerald-100 text-emerald-700"
-                                    : "bg-slate-200 text-slate-500",
-                                )}
-                              >
-                                {tab.url ? "Restorable" : "Missing URL"}
-                              </span>
+                            <RefreshCw size={12} className={cn(status?.state === "pending" && "animate-spin")} />
+                          </Button>
+                        </Tooltip.Trigger>
+                        <Tooltip.Content className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] text-white">
+                          Update from Live
+                        </Tooltip.Content>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <Tooltip.Trigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="size-7 rounded-full p-0 text-rose-300 hover:bg-rose-50 hover:text-rose-500"
+                            onClick={() => deleteSnapshot(group.id)}
+                          >
+                            <Trash2 size={12} />
+                          </Button>
+                        </Tooltip.Trigger>
+                        <Tooltip.Content className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] text-white">
+                          Delete
+                        </Tooltip.Content>
+                      </Tooltip>
+                    </div>
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-7 rounded-full bg-slate-900 px-3 text-[11px] font-bold text-white shadow-sm hover:bg-slate-800"
+                      disabled={status?.state === "pending"}
+                      onClick={() => restoreGroup(group)}
+                    >
+                      {status?.state === "pending" ? (
+                        <LoaderCircle className="animate-spin" size={12} />
+                      ) : (
+                        "Restore"
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {isMenuOpen && (
+                  <div className="mx-2 mb-2 flex flex-col gap-1 rounded-xl bg-slate-50 p-1.5 ring-1 ring-slate-200 ring-inset" onClick={(e) => e.stopPropagation()}>
+                    <p className="px-1.5 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                      Update from:
+                    </p>
+                    {liveGroups.length > 0 ? (
+                      <div className="flex flex-col gap-0.5">
+                        {liveGroups.map((lg) => (
+                          <button
+                            key={lg.id}
+                            className="flex items-center justify-between rounded-lg px-2 py-1.5 text-left text-[11px] transition-colors hover:bg-white hover:shadow-sm"
+                            onClick={() => updateGroupSnapshot(group, lg)}
+                          >
+                            <div className="flex items-center gap-2 truncate">
+                              <div className={cn("size-1.5 rounded-full", lg.color ? `bg-${lg.color}-500` : "bg-slate-300")} />
+                              <span className="truncate font-medium text-slate-600">{lg.title || "Untitled Group"}</span>
                             </div>
-                          </li>
+                            <span className="text-[9px] text-slate-400">{lg.tabs.length} tabs</span>
+                          </button>
                         ))}
+                      </div>
+                    ) : (
+                      <p className="px-1.5 py-2 text-[10px] italic text-slate-400">No live groups</p>
+                    )}
+                  </div>
+                )}
+
+                {isExpanded && (
+                  <div className="border-t border-slate-50 bg-slate-50/30 px-2.5 py-2">
+                    <ul className="flex flex-col gap-1">
+                      {[...group.tabs].sort((a, b) => a.order - b.order).map((tab) => (
+                        <li key={tab.id} className="flex items-center gap-2 rounded-lg bg-white/50 px-2 py-1 ring-1 ring-slate-100 ring-inset">
+                          {tab.favIconUrl ? (
+                            <img src={tab.favIconUrl} className="size-3.5 shrink-0" alt="" />
+                          ) : (
+                            <div className="size-3.5 shrink-0 rounded-sm bg-slate-100" />
+                          )}
+                          <span className="truncate text-[11px] text-slate-600">
+                            {tab.title || "Untitled Tab"}
+                          </span>
+                        </li>
+                      ))}
                     </ul>
                   </div>
-                </AccordionContent>
-              </AccordionItem>
+                )}
+              </div>
             );
           })}
-        </Accordion>
+        </div>
       )}
     </div>
   );
