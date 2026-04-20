@@ -7,16 +7,16 @@ A Chrome extension for inspecting live browser tab groups and managing saved-gro
 The side panel currently separates work into three lanes:
 
 - `Live`
-- `Notes`
+- `Rules`
 - `Saved`
 
 ### Live
 
 `Live` is the inspection and quick-action lane for the current browser state. It shows pinned tabs, grouped tabs, and ungrouped tabs from the browser right now.
 
-### Notes
+### Rules
 
-`Notes` is reserved for a future note-taking lane and should be treated as incomplete.
+`Rules` is the automation lane for managing URL-based auto-grouping rules. Active rules are used by the extension background worker to group matching tabs automatically.
 
 ### Saved
 
@@ -31,6 +31,7 @@ The side panel currently separates work into three lanes:
 ## Features
 
 - live inspection of pinned, grouped, and ungrouped tabs
+- URL-based auto-grouping rules managed from the side panel
 - saved-group snapshots through Chrome sync storage
 - side-panel UI built with React and Tailwind CSS
 - schema migration support for persisted storage evolution
@@ -95,7 +96,6 @@ pnpm build
 
 ## Debugging
 
-- inspect the extension side panel or popup from Chrome's extension tooling
-- open the side-panel view directly during development, for example:
-  - `http://localhost:3000/sidepanel.html`
+- inspect the extension side panel from Chrome's extension tooling
+- open the side-panel view directly during development using the local URL printed by Vite after `pnpm dev`
 - some Chrome APIs may not be fully available outside the extension runtime
