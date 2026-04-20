@@ -222,9 +222,9 @@ function LiveManagement() {
     void chrome.windows.update(windowId, { focused: true });
   };
 
-  const runAutoGroupScan = (windowId: number) => {
-    setAutoGroupScanStatus({ tone: "success", message: "Running auto-group scan..." });
-    chrome.runtime.sendMessage({ action: 'run_auto_group_scan', windowId }, (response) => {
+  const runAutoGroupScan = () => {
+    setAutoGroupScanStatus({ tone: "success", message: "Running auto-group scan across all windows..." });
+    chrome.runtime.sendMessage({ action: 'run_auto_group_scan' }, (response) => {
       if (chrome.runtime.lastError) {
         setAutoGroupScanStatus({ tone: "error", message: "Auto-group scan failed to start." });
         return;
@@ -246,7 +246,7 @@ function LiveManagement() {
       if (summary?.grouped) {
         setAutoGroupScanStatus({
           tone: "success",
-          message: `Auto-group scan updated ${summary.grouped} tab(s).`,
+          message: `Auto-group scan updated ${summary.grouped} tab(s) across all windows.`,
         });
         return;
       }
@@ -289,8 +289,7 @@ function LiveManagement() {
               <Tooltip.Trigger asChild>
                 <button 
                   onClick={() => {
-                    const currentWin = windows.find(w => w.isCurrent);
-                    if (currentWin) runAutoGroupScan(currentWin.id);
+                    runAutoGroupScan();
                   }}
                   className="inline-flex size-5 items-center justify-center rounded-full border border-emerald-100 bg-emerald-50 text-emerald-600 transition-colors hover:bg-emerald-100"
                 >
@@ -298,7 +297,7 @@ function LiveManagement() {
                 </button>
               </Tooltip.Trigger>
               <Tooltip.Content side="bottom" sideOffset={8} className="rounded-xl bg-slate-900 px-3 py-2 text-[11px] text-white shadow-lg">
-                Apply Auto-Group Rules Now
+                Apply Auto-Group Rules Across Browser
               </Tooltip.Content>
             </Tooltip>
           </div>

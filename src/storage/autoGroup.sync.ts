@@ -1,3 +1,4 @@
+import { normalizeAutoGroupRuleOrder } from "@/helpers"
 import StorageSync from "./core"
 
 class StorageSyncAutoGroup {
@@ -12,8 +13,21 @@ class StorageSyncAutoGroup {
 
   static async create(...rules: NStorage.Sync.Schema.AutoGroupRule[]) {
     const currentRules = await StorageSyncAutoGroup.getList();
+    const nextOrder = currentRules.reduce((maxOrder, rule) => {
+      if (typeof rule.order === "number" && Number.isFinite(rule.order)) {
+        return Math.max(maxOrder, rule.order)
+      }
+
+      return maxOrder
+    }, 0)
     const params: Pick<NStorage.Sync.Schema.Database, "autoGroups"> = { 
-      autoGroups: [...currentRules, ...rules] 
+      autoGroups: normalizeAutoGroupRuleOrder([
+        ...currentRules,
+        ...rules.map((rule, index) => ({
+          ...rule,
+          order: typeof rule.order === "number" && Number.isFinite(rule.order) ? rule.order : nextOrder + index + 1,
+        })),
+      ]) 
     };
 
     // TODO: Handle error - unprotected aync code
@@ -36,15 +50,19 @@ class StorageSyncAutoGroup {
     }
 
     // TODO: Handle error - unprotected aync code
-    await StorageSync.set({ autoGroups: currentRules })
+    await StorageSync.set({ autoGroups: normalizeAutoGroupRuleOrder(currentRules) })
   }
 
   static async deleteById(id: string) {
     const currentRules = await StorageSyncAutoGroup.getList();
-    const filteredRules = currentRules.filter(rule => rule.id !== id);
+    const filteredRules = normalizeAutoGroupRuleOrder(currentRules.filter(rule => rule.id !== id));
 
     // TODO: Handle error - unprotected aync code
     await StorageSync.set({ autoGroups: filteredRules })
+  }
+
+  static async replaceAll(rules: NStorage.Sync.Schema.AutoGroupRule[]) {
+    await StorageSync.set({ autoGroups: normalizeAutoGroupRuleOrder(rules) })
   }
 }
 

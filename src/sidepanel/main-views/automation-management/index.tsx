@@ -8,7 +8,7 @@ import {
 } from "@/helpers";
 import { cn } from "@/lib/utils";
 import StorageSyncAutoGroup from "@/storage/autoGroup.sync";
-import { Plus, Trash2, X, Play, Pause, Globe, Pencil, Check } from "lucide-react";
+import { Plus, Trash2, X, Play, Pause, Globe, Pencil, Check, ArrowUp, ArrowDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import Tooltip from "@/components/ui/tooltip";
 
@@ -41,6 +41,10 @@ function AutomationManagement() {
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [editingPatternDraft, setEditingPatternDraft] = useState("");
   const [editingPatterns, setEditingPatterns] = useState<string[]>([]);
+
+  const triggerAutoGroupScan = () => {
+    chrome.runtime.sendMessage({ action: "run_auto_group_scan" });
+  };
 
   useEffect(() => {
     fetchRules();
@@ -103,16 +107,14 @@ function AutomationManagement() {
       id: crypto.randomUUID(),
       title,
       color: newRule.color,
+      order: rules.length + 1,
       urlPatterns: normalizedPatterns,
       isActive: true,
       createdAt: new Date().toISOString(),
     };
 
     await StorageSyncAutoGroup.create(rule);
-    const currentWindow = await chrome.windows.getCurrent();
-    if (typeof currentWindow.id === "number") {
-      chrome.runtime.sendMessage({ action: 'run_auto_group_scan', windowId: currentWindow.id });
-    }
+    triggerAutoGroupScan();
     setIsAdding(false);
     setNewRule({ title: "", color: "blue", patternDraft: "", urlPatterns: [] });
     setFormError(null);
@@ -127,6 +129,29 @@ function AutomationManagement() {
   const deleteRule = async (id: string) => {
     await StorageSyncAutoGroup.deleteById(id);
     void fetchRules();
+  };
+
+  const moveRule = async (ruleId: string, direction: "up" | "down") => {
+    const currentIndex = rules.findIndex((rule) => rule.id === ruleId);
+
+    if (currentIndex === -1) return;
+
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+
+    if (targetIndex < 0 || targetIndex >= rules.length) return;
+
+    const nextRules = [...rules];
+    const [movedRule] = nextRules.splice(currentIndex, 1);
+    nextRules.splice(targetIndex, 0, movedRule);
+
+    const orderedRules = nextRules.map((rule, index) => ({
+      ...rule,
+      order: index + 1,
+    }));
+
+    await StorageSyncAutoGroup.replaceAll(orderedRules);
+    setRules(orderedRules);
+    triggerAutoGroupScan();
   };
 
   const startPatternEditing = (rule: NStorage.Sync.Schema.AutoGroupRule) => {
@@ -176,10 +201,7 @@ function AutomationManagement() {
       urlPatterns: normalizedPatterns,
     });
 
-    const currentWindow = await chrome.windows.getCurrent();
-    if (typeof currentWindow.id === "number") {
-      chrome.runtime.sendMessage({ action: 'run_auto_group_scan', windowId: currentWindow.id });
-    }
+    triggerAutoGroupScan();
 
     cancelPatternEditing();
     setFormError(null);
@@ -357,6 +379,34 @@ function AutomationManagement() {
                 <Tooltip>
                   <Tooltip.Trigger asChild>
                     <button
+                      onClick={() => void moveRule(rule.id, "up")}
+                      disabled={rule.order <= 1}
+                      className="flex size-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <ArrowUp size={12} />
+                    </button>
+                  </Tooltip.Trigger>
+                  <Tooltip.Content className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] text-white">
+                    Move Up
+                  </Tooltip.Content>
+                </Tooltip>
+                <Tooltip>
+                  <Tooltip.Trigger asChild>
+                    <button
+                      onClick={() => void moveRule(rule.id, "down")}
+                      disabled={rule.order >= rules.length}
+                      className="flex size-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <ArrowDown size={12} />
+                    </button>
+                  </Tooltip.Trigger>
+                  <Tooltip.Content className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] text-white">
+                    Move Down
+                  </Tooltip.Content>
+                </Tooltip>
+                <Tooltip>
+                  <Tooltip.Trigger asChild>
+                    <button
                       onClick={() => startPatternEditing(rule)}
                       className="flex size-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
                     >
@@ -401,6 +451,9 @@ function AutomationManagement() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-2 ring-1 ring-slate-100 ring-inset">
+              <span className="rounded-full bg-slate-200 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-500">
+                Priority {rule.order}
+              </span>
               {getAutoGroupRulePatterns(rule).map((pattern) => (
                 <div key={pattern} className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 ring-1 ring-slate-200">
                   <Globe size={10} className="text-slate-400" />

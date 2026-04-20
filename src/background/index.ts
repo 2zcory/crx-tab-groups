@@ -29,6 +29,15 @@ type AutoGroupResult =
   | { kind: 'grouped'; ruleTitle: string; groupCreated: boolean }
   | { kind: 'error'; error: string }
 
+type AutoGroupScanSummary = {
+  scanned: number
+  matched: number
+  grouped: number
+  created: number
+  alreadyGrouped: number
+  errors: number
+}
+
 const resolveTargetGroup = async (windowId: number, rule: NStorage.Sync.Schema.AutoGroupRule) => {
   const groups = await chrome.tabGroups.query({ windowId })
   const normalizedTitle = rule.title.trim().toLowerCase()
@@ -96,6 +105,41 @@ const handleAutoGrouping = async (tabId: number, url: string | undefined, window
   }
 };
 
+const scanTabs = async (tabs: chrome.tabs.Tab[]) => {
+  const summary: AutoGroupScanSummary = {
+    scanned: 0,
+    matched: 0,
+    grouped: 0,
+    created: 0,
+    alreadyGrouped: 0,
+    errors: 0,
+  };
+
+  for (const tab of tabs) {
+    if (typeof tab.id !== 'number' || typeof tab.windowId !== 'number' || !tab.url) continue;
+
+    summary.scanned += 1;
+    const result = await handleAutoGrouping(tab.id, tab.url, tab.windowId);
+
+    if (result.kind === 'grouped') {
+      summary.matched += 1;
+      summary.grouped += 1;
+      if (result.groupCreated) summary.created += 1;
+    }
+
+    if (result.kind === 'already_grouped') {
+      summary.matched += 1;
+      summary.alreadyGrouped += 1;
+    }
+
+    if (result.kind === 'error') {
+      summary.errors += 1;
+    }
+  }
+
+  return summary;
+}
+
 // Listeners
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url || changeInfo.status === 'complete') {
@@ -114,37 +158,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'run_auto_group_scan') {
     void (async () => {
       try {
-        const tabs = await chrome.tabs.query({ windowId: request.windowId });
-        const summary = {
-          scanned: 0,
-          matched: 0,
-          grouped: 0,
-          created: 0,
-          alreadyGrouped: 0,
-          errors: 0,
-        };
-
-        for (const tab of tabs) {
-          if (tab.id && tab.url) {
-            summary.scanned += 1;
-            const result = await handleAutoGrouping(tab.id, tab.url, tab.windowId);
-
-            if (result.kind === 'grouped') {
-              summary.matched += 1;
-              summary.grouped += 1;
-              if (result.groupCreated) summary.created += 1;
-            }
-
-            if (result.kind === 'already_grouped') {
-              summary.matched += 1;
-              summary.alreadyGrouped += 1;
-            }
-
-            if (result.kind === 'error') {
-              summary.errors += 1;
-            }
-          }
-        }
+        const queryOptions = typeof request.windowId === 'number' ? { windowId: request.windowId } : {};
+        const tabs = await chrome.tabs.query(queryOptions);
+        const summary = await scanTabs(tabs);
 
         if (summary.errors > 0) {
           notify('Crx Tab Groups', `Auto-group scan completed with ${summary.errors} error(s).`);

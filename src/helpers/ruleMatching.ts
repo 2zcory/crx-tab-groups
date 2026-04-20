@@ -119,8 +119,42 @@ export const getAutoGroupRulePatterns = (rule: Pick<NStorage.Sync.Schema.AutoGro
   )
 }
 
-export const sortAutoGroupRules = <TRule extends Pick<NStorage.Sync.Schema.AutoGroupRule, 'createdAt' | 'title' | 'id'>>(rules: TRule[]) => {
-  return [...rules].sort((left, right) => {
+export const normalizeAutoGroupRuleOrder = <
+  TRule extends Pick<NStorage.Sync.Schema.AutoGroupRule, 'createdAt' | 'title' | 'id'> &
+    Partial<Pick<NStorage.Sync.Schema.AutoGroupRule, 'order'>>
+>(rules: TRule[]) => {
+  return [...rules]
+    .sort((left, right) => {
+      const leftOrder = typeof left.order === 'number' && Number.isFinite(left.order) ? left.order : Number.MAX_SAFE_INTEGER
+      const rightOrder = typeof right.order === 'number' && Number.isFinite(right.order) ? right.order : Number.MAX_SAFE_INTEGER
+      const orderDelta = leftOrder - rightOrder
+
+      if (orderDelta !== 0) return orderDelta
+
+      const createdAtDelta = new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime()
+
+      if (createdAtDelta !== 0) return createdAtDelta
+
+      const titleDelta = left.title.localeCompare(right.title)
+      if (titleDelta !== 0) return titleDelta
+
+      return left.id.localeCompare(right.id)
+    })
+    .map((rule, index) => ({
+      ...rule,
+      order: index + 1,
+    }))
+}
+
+export const sortAutoGroupRules = <
+  TRule extends Pick<NStorage.Sync.Schema.AutoGroupRule, 'createdAt' | 'title' | 'id'> &
+    Partial<Pick<NStorage.Sync.Schema.AutoGroupRule, 'order'>>
+>(rules: TRule[]) => {
+  return [...normalizeAutoGroupRuleOrder(rules)].sort((left, right) => {
+    const orderDelta = left.order - right.order
+
+    if (orderDelta !== 0) return orderDelta
+
     const createdAtDelta = new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime()
 
     if (createdAtDelta !== 0) return createdAtDelta
