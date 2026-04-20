@@ -5,6 +5,7 @@ enum ESchemeVersion {
   SYNC_1_1_0 = "1.1.0",
   SYNC_1_2_0 = "1.2.0",
   SYNC_1_3_0 = "1.3.0",
+  SYNC_1_4_0 = "1.4.0",
 }
 
 export default ESchemeVersion

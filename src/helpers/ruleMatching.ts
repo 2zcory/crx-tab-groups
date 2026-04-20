@@ -10,6 +10,8 @@ type RulePatternValidation = {
   error?: string
 }
 
+export const normalizeAutoGroupPattern = (pattern: string) => pattern.trim()
+
 type ParsedUrlTargets = {
   href: string
   hrefWithoutProtocol: string
@@ -51,7 +53,7 @@ export const describeRulePattern = (pattern: string): RulePatternKind => {
 }
 
 export const validateAutoGroupRulePattern = (pattern: string): RulePatternValidation => {
-  const normalizedPattern = pattern.trim()
+  const normalizedPattern = normalizeAutoGroupPattern(pattern)
   const kind = describeRulePattern(normalizedPattern)
 
   if (!normalizedPattern) {
@@ -99,6 +101,22 @@ export const shouldIgnoreAutoGroupUrl = (url?: string) => {
 
   const normalizedUrl = url.toLowerCase()
   return INTERNAL_URL_PREFIXES.some((prefix) => normalizedUrl.startsWith(prefix))
+}
+
+export const getAutoGroupRulePatterns = (rule: Pick<NStorage.Sync.Schema.AutoGroupRule, 'urlPatterns' | 'urlPattern'>) => {
+  const candidates = Array.isArray(rule.urlPatterns) && rule.urlPatterns.length > 0
+    ? rule.urlPatterns
+    : rule.urlPattern
+      ? [rule.urlPattern]
+      : []
+
+  return Array.from(
+    new Set(
+      candidates
+        .map((pattern) => normalizeAutoGroupPattern(pattern))
+        .filter(Boolean)
+    )
+  )
 }
 
 export const sortAutoGroupRules = <TRule extends Pick<NStorage.Sync.Schema.AutoGroupRule, 'createdAt' | 'title' | 'id'>>(rules: TRule[]) => {

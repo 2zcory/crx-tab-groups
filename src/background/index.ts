@@ -1,5 +1,6 @@
 import {
   describeRulePattern,
+  getAutoGroupRulePatterns,
   matchesAutoGroupRule,
   shouldIgnoreAutoGroupUrl,
   sortAutoGroupRules,
@@ -57,8 +58,11 @@ const handleAutoGrouping = async (tabId: number, url: string | undefined, window
     if (activeRules.length === 0) return { kind: 'no_match' };
 
     for (const rule of activeRules) {
-      if (url && matchesAutoGroupRule(url, rule.urlPattern)) {
-        console.log(`[AutoGroup] Match found! URL: ${url} matches Rule: ${rule.title} (${describeRulePattern(rule.urlPattern)})`);
+      const patterns = getAutoGroupRulePatterns(rule)
+      const matchedPattern = url ? patterns.find((pattern) => matchesAutoGroupRule(url, pattern)) : undefined
+
+      if (url && matchedPattern) {
+        console.log(`[AutoGroup] Match found! URL: ${url} matches Rule: ${rule.title} (${describeRulePattern(matchedPattern)})`);
         const targetGroup = await resolveTargetGroup(windowId, rule);
 
         if (targetGroup) {
@@ -96,6 +100,12 @@ const handleAutoGrouping = async (tabId: number, url: string | undefined, window
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url || changeInfo.status === 'complete') {
     void handleAutoGrouping(tabId, tab.url || changeInfo.url, tab.windowId);
+  }
+});
+
+chrome.tabs.onCreated.addListener((tab) => {
+  if (typeof tab.id === 'number' && tab.url) {
+    void handleAutoGrouping(tab.id, tab.url, tab.windowId);
   }
 });
 

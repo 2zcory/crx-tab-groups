@@ -1,8 +1,14 @@
 import { Button } from "@/components/ui/button";
-import { describeRulePattern, sortAutoGroupRules, validateAutoGroupRulePattern } from "@/helpers";
+import {
+  describeRulePattern,
+  getAutoGroupRulePatterns,
+  normalizeAutoGroupPattern,
+  sortAutoGroupRules,
+  validateAutoGroupRulePattern,
+} from "@/helpers";
 import { cn } from "@/lib/utils";
 import StorageSyncAutoGroup from "@/storage/autoGroup.sync";
-import { Plus, Trash2, X, Play, Pause, Globe } from "lucide-react";
+import { Plus, Trash2, X, Play, Pause, Globe, Pencil, Check } from "lucide-react";
 import { useEffect, useState } from "react";
 import Tooltip from "@/components/ui/tooltip";
 
@@ -28,9 +34,13 @@ function AutomationManagement() {
   const [newRule, setNewRule] = useState({
     title: "",
     color: "blue" as NStorage.Sync.GroupColor,
-    urlPattern: ""
+    patternDraft: "",
+    urlPatterns: [] as string[],
   });
   const [formError, setFormError] = useState<string | null>(null);
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+  const [editingPatternDraft, setEditingPatternDraft] = useState("");
+  const [editingPatterns, setEditingPatterns] = useState<string[]>([]);
 
   useEffect(() => {
     fetchRules();
@@ -43,22 +53,36 @@ function AutomationManagement() {
 
   const handleAddRule = async () => {
     const title = newRule.title.trim();
-    const validation = validateAutoGroupRulePattern(newRule.urlPattern);
+    const normalizedPatterns = Array.from(
+      new Set(newRule.urlPatterns.map((pattern) => normalizeAutoGroupPattern(pattern)).filter(Boolean))
+    );
 
     if (!title) {
       setFormError("Group title is required.");
       return;
     }
 
-    if (!validation.isValid) {
-      setFormError(validation.error || "Pattern is invalid.");
+    if (normalizedPatterns.length === 0) {
+      setFormError("At least one pattern is required.");
       return;
     }
 
-    const duplicateExactRule = rules.some((rule) =>
-      rule.title.trim().toLowerCase() === title.toLowerCase() &&
-      rule.urlPattern.trim().toLowerCase() === validation.normalizedPattern.toLowerCase()
-    );
+    for (const pattern of normalizedPatterns) {
+      const validation = validateAutoGroupRulePattern(pattern);
+      if (!validation.isValid) {
+        setFormError(validation.error || "Pattern is invalid.");
+        return;
+      }
+    }
+
+    const duplicateExactRule = rules.some((rule) => {
+      const existingPatterns = getAutoGroupRulePatterns(rule).map((pattern) => pattern.toLowerCase());
+      return (
+        rule.title.trim().toLowerCase() === title.toLowerCase() &&
+        existingPatterns.length === normalizedPatterns.length &&
+        existingPatterns.every((pattern, index) => pattern === normalizedPatterns.map((item) => item.toLowerCase())[index])
+      );
+    });
 
     if (duplicateExactRule) {
       setFormError("An identical rule already exists.");
@@ -79,14 +103,18 @@ function AutomationManagement() {
       id: crypto.randomUUID(),
       title,
       color: newRule.color,
-      urlPattern: validation.normalizedPattern,
+      urlPatterns: normalizedPatterns,
       isActive: true,
       createdAt: new Date().toISOString(),
     };
 
     await StorageSyncAutoGroup.create(rule);
+    const currentWindow = await chrome.windows.getCurrent();
+    if (typeof currentWindow.id === "number") {
+      chrome.runtime.sendMessage({ action: 'run_auto_group_scan', windowId: currentWindow.id });
+    }
     setIsAdding(false);
-    setNewRule({ title: "", color: "blue", urlPattern: "" });
+    setNewRule({ title: "", color: "blue", patternDraft: "", urlPatterns: [] });
     setFormError(null);
     void fetchRules();
   };
@@ -101,8 +129,65 @@ function AutomationManagement() {
     void fetchRules();
   };
 
-  const patternValidation = validateAutoGroupRulePattern(newRule.urlPattern);
-  const patternKind = describeRulePattern(newRule.urlPattern);
+  const startPatternEditing = (rule: NStorage.Sync.Schema.AutoGroupRule) => {
+    setEditingRuleId(rule.id);
+    setEditingPatternDraft("");
+    setEditingPatterns(getAutoGroupRulePatterns(rule));
+  };
+
+  const cancelPatternEditing = () => {
+    setEditingRuleId(null);
+    setEditingPatternDraft("");
+    setEditingPatterns([]);
+  };
+
+  const addPatternToDraftList = () => {
+    const validation = validateAutoGroupRulePattern(editingPatternDraft);
+    if (!validation.isValid) {
+      setFormError(validation.error || "Pattern is invalid.");
+      return;
+    }
+
+    const duplicate = editingPatterns.some((pattern) => pattern.toLowerCase() === validation.normalizedPattern.toLowerCase());
+    if (duplicate) {
+      setFormError("Pattern already exists in this rule.");
+      return;
+    }
+
+    setEditingPatterns((current) => [...current, validation.normalizedPattern]);
+    setEditingPatternDraft("");
+    setFormError(null);
+  };
+
+  const removePatternFromDraftList = (patternToRemove: string) => {
+    setEditingPatterns((current) => current.filter((pattern) => pattern !== patternToRemove));
+  };
+
+  const saveEditedPatterns = async (rule: NStorage.Sync.Schema.AutoGroupRule) => {
+    const normalizedPatterns = Array.from(new Set(editingPatterns.map((pattern) => normalizeAutoGroupPattern(pattern)).filter(Boolean)));
+
+    if (normalizedPatterns.length === 0) {
+      setFormError("At least one pattern is required.");
+      return;
+    }
+
+    await StorageSyncAutoGroup.update({
+      ...rule,
+      urlPatterns: normalizedPatterns,
+    });
+
+    const currentWindow = await chrome.windows.getCurrent();
+    if (typeof currentWindow.id === "number") {
+      chrome.runtime.sendMessage({ action: 'run_auto_group_scan', windowId: currentWindow.id });
+    }
+
+    cancelPatternEditing();
+    setFormError(null);
+    void fetchRules();
+  };
+
+  const patternDraftValidation = validateAutoGroupRulePattern(newRule.patternDraft);
+  const patternKind = describeRulePattern(newRule.patternDraft);
 
   return (
     <div className="flex flex-col gap-4 p-2 pb-6">
@@ -164,11 +249,37 @@ function AutomationManagement() {
                 <div className="flex flex-1 items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-slate-200 focus-within:ring-slate-900">
                   <Globe size={12} className="text-slate-400" />
                   <input
-                    placeholder="e.g. github.com, *.github.com, re:^https://..."
+                    placeholder="e.g. youtube.com"
                     className="w-full border-none bg-transparent text-xs font-medium text-slate-700 outline-none"
-                    value={newRule.urlPattern}
-                    onChange={(e) => setNewRule({ ...newRule, urlPattern: e.target.value })}
+                    value={newRule.patternDraft}
+                    onChange={(e) => setNewRule({ ...newRule, patternDraft: e.target.value })}
                   />
+                  <button
+                    type="button"
+                    className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] font-bold text-white"
+                    onClick={() => {
+                      const validation = validateAutoGroupRulePattern(newRule.patternDraft);
+                      if (!validation.isValid) {
+                        setFormError(validation.error || "Pattern is invalid.");
+                        return;
+                      }
+
+                      const duplicate = newRule.urlPatterns.some((pattern) => pattern.toLowerCase() === validation.normalizedPattern.toLowerCase());
+                      if (duplicate) {
+                        setFormError("Pattern already exists in this rule.");
+                        return;
+                      }
+
+                      setNewRule((current) => ({
+                        ...current,
+                        patternDraft: "",
+                        urlPatterns: [...current.urlPatterns, validation.normalizedPattern],
+                      }));
+                      setFormError(null);
+                    }}
+                  >
+                    Add
+                  </button>
                 </div>
               </div>
               <p className="ml-1 text-[10px] text-slate-400">
@@ -178,12 +289,33 @@ function AutomationManagement() {
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
                   {patternKind}
                 </span>
-                {!patternValidation.isValid && newRule.urlPattern.trim() && (
+                {!patternDraftValidation.isValid && newRule.patternDraft.trim() && (
                   <span className="text-[10px] font-medium text-rose-500">
-                    {patternValidation.error}
+                    {patternDraftValidation.error}
                   </span>
                 )}
               </div>
+              {newRule.urlPatterns.length > 0 && (
+                <div className="ml-1 flex flex-wrap gap-1.5">
+                  {newRule.urlPatterns.map((pattern) => (
+                    <span key={pattern} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-600">
+                      <span>{pattern}</span>
+                      <button
+                        type="button"
+                        className="text-slate-400 hover:text-rose-500"
+                        onClick={() =>
+                          setNewRule((current) => ({
+                            ...current,
+                            urlPatterns: current.urlPatterns.filter((item) => item !== pattern),
+                          }))
+                        }
+                      >
+                        <X size={10} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             {formError && (
@@ -225,6 +357,19 @@ function AutomationManagement() {
                 <Tooltip>
                   <Tooltip.Trigger asChild>
                     <button
+                      onClick={() => startPatternEditing(rule)}
+                      className="flex size-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                  </Tooltip.Trigger>
+                  <Tooltip.Content className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] text-white">
+                    Edit Patterns
+                  </Tooltip.Content>
+                </Tooltip>
+                <Tooltip>
+                  <Tooltip.Trigger asChild>
+                    <button
                       onClick={() => toggleRule(rule)}
                       className={cn(
                         "flex size-7 items-center justify-center rounded-full transition-colors",
@@ -255,15 +400,76 @@ function AutomationManagement() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-1.5 ring-1 ring-slate-100 ring-inset">
-              <Globe size={10} className="text-slate-400" />
-              <code className="truncate text-[10px] font-medium text-slate-500">
-                {rule.urlPattern}
-              </code>
-              <span className="ml-auto shrink-0 rounded-full bg-white px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-400 ring-1 ring-slate-200">
-                {describeRulePattern(rule.urlPattern)}
-              </span>
+            <div className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-2 ring-1 ring-slate-100 ring-inset">
+              {getAutoGroupRulePatterns(rule).map((pattern) => (
+                <div key={pattern} className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 ring-1 ring-slate-200">
+                  <Globe size={10} className="text-slate-400" />
+                  <code className="text-[10px] font-medium text-slate-500">
+                    {pattern}
+                  </code>
+                  <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                    {describeRulePattern(pattern)}
+                  </span>
+                </div>
+              ))}
             </div>
+
+            {editingRuleId === rule.id && (
+              <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Manage Patterns</p>
+                  <button type="button" className="text-slate-400 hover:text-slate-600" onClick={cancelPatternEditing}>
+                    <X size={12} />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex flex-1 items-center gap-2 rounded-xl bg-white px-3 py-2 ring-1 ring-slate-200">
+                    <Globe size={12} className="text-slate-400" />
+                    <input
+                      placeholder="Add another pattern"
+                      className="w-full border-none bg-transparent text-xs font-medium text-slate-700 outline-none"
+                      value={editingPatternDraft}
+                      onChange={(e) => setEditingPatternDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addPatternToDraftList();
+                        }
+                      }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-lg bg-slate-900 px-2 py-2 text-[10px] font-bold text-white"
+                    onClick={addPatternToDraftList}
+                  >
+                    Add
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {editingPatterns.map((pattern) => (
+                    <span key={pattern} className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-[10px] font-medium text-slate-600 ring-1 ring-slate-200">
+                      <span>{pattern}</span>
+                      <button type="button" className="text-slate-400 hover:text-rose-500" onClick={() => removePatternFromDraftList(pattern)}>
+                        <Trash2 size={10} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-end gap-2">
+                  <button type="button" className="rounded-lg bg-white px-3 py-1.5 text-[10px] font-bold text-slate-600 ring-1 ring-slate-200" onClick={cancelPatternEditing}>
+                    Cancel
+                  </button>
+                  <button type="button" className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-bold text-white" onClick={() => void saveEditedPatterns(rule)}>
+                    <Check size={10} />
+                    Save Patterns
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>

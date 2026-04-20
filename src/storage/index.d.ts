@@ -31,7 +31,8 @@ namespace NStorage {
         id: string;
         title: string;
         color: GroupColor;
-        urlPattern: string;
+        urlPatterns: string[];
+        urlPattern?: string;
         isActive: boolean;
         createdAt: string;
       }
