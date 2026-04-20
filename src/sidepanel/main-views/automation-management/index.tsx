@@ -8,7 +8,7 @@ import {
 } from "@/helpers";
 import { cn } from "@/lib/utils";
 import StorageSyncAutoGroup from "@/storage/autoGroup.sync";
-import { Plus, Trash2, X, Play, Pause, Globe, Pencil, Check, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Trash2, X, Play, Pause, Globe, Pencil, Check, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import Tooltip from "@/components/ui/tooltip";
 
@@ -143,6 +143,30 @@ function AutomationManagement() {
     const nextRules = [...rules];
     const [movedRule] = nextRules.splice(currentIndex, 1);
     nextRules.splice(targetIndex, 0, movedRule);
+
+    const orderedRules = nextRules.map((rule, index) => ({
+      ...rule,
+      order: index + 1,
+    }));
+
+    await StorageSyncAutoGroup.replaceAll(orderedRules);
+    setRules(orderedRules);
+    triggerAutoGroupScan();
+  };
+
+  const moveRuleToEdge = async (ruleId: string, edge: "top" | "bottom") => {
+    const currentIndex = rules.findIndex((rule) => rule.id === ruleId);
+
+    if (currentIndex === -1) return;
+
+    const nextRules = [...rules];
+    const [movedRule] = nextRules.splice(currentIndex, 1);
+
+    if (edge === "top") {
+      nextRules.unshift(movedRule);
+    } else {
+      nextRules.push(movedRule);
+    }
 
     const orderedRules = nextRules.map((rule, index) => ({
       ...rule,
@@ -338,6 +362,9 @@ function AutomationManagement() {
                   ))}
                 </div>
               )}
+              <p className="ml-1 text-[10px] text-slate-400">
+                New rules start at the lowest priority. Higher priority rules win first when patterns overlap.
+              </p>
             </div>
 
             {formError && (
@@ -379,6 +406,20 @@ function AutomationManagement() {
                 <Tooltip>
                   <Tooltip.Trigger asChild>
                     <button
+                      onClick={() => void moveRuleToEdge(rule.id, "top")}
+                      disabled={rule.order <= 1}
+                      className="flex size-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <ChevronsUp size={12} />
+                    </button>
+                  </Tooltip.Trigger>
+                  <Tooltip.Content className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] text-white">
+                    Move To Top
+                  </Tooltip.Content>
+                </Tooltip>
+                <Tooltip>
+                  <Tooltip.Trigger asChild>
+                    <button
                       onClick={() => void moveRule(rule.id, "up")}
                       disabled={rule.order <= 1}
                       className="flex size-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
@@ -402,6 +443,20 @@ function AutomationManagement() {
                   </Tooltip.Trigger>
                   <Tooltip.Content className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] text-white">
                     Move Down
+                  </Tooltip.Content>
+                </Tooltip>
+                <Tooltip>
+                  <Tooltip.Trigger asChild>
+                    <button
+                      onClick={() => void moveRuleToEdge(rule.id, "bottom")}
+                      disabled={rule.order >= rules.length}
+                      className="flex size-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <ChevronsDown size={12} />
+                    </button>
+                  </Tooltip.Trigger>
+                  <Tooltip.Content className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] text-white">
+                    Move To Bottom
                   </Tooltip.Content>
                 </Tooltip>
                 <Tooltip>
@@ -452,7 +507,7 @@ function AutomationManagement() {
 
             <div className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-2 ring-1 ring-slate-100 ring-inset">
               <span className="rounded-full bg-slate-200 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-500">
-                Priority {rule.order}
+                {rule.order === 1 ? "Highest Priority" : `Priority ${rule.order}`}
               </span>
               {getAutoGroupRulePatterns(rule).map((pattern) => (
                 <div key={pattern} className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 ring-1 ring-slate-200">

@@ -38,15 +38,67 @@ type AutoGroupScanSummary = {
   errors: number
 }
 
+type OwnedAutoGroupRegistry = Record<
+  string,
+  {
+    groupId: number
+    updatedAt: string
+  }
+>
+
+const AUTO_GROUP_OWNERSHIP_KEY = 'autoGroupOwnership'
+
+const getOwnedRegistryKey = (windowId: number, ruleId: string) => `${windowId}:${ruleId}`
+
+const getOwnedAutoGroupRegistry = async () => {
+  const data = await chrome.storage.session.get(AUTO_GROUP_OWNERSHIP_KEY)
+  return (data[AUTO_GROUP_OWNERSHIP_KEY] || {}) as OwnedAutoGroupRegistry
+}
+
+const setOwnedAutoGroupRegistry = async (registry: OwnedAutoGroupRegistry) => {
+  await chrome.storage.session.set({ [AUTO_GROUP_OWNERSHIP_KEY]: registry })
+}
+
+const assignOwnedGroup = async (windowId: number, ruleId: string, groupId: number) => {
+  const registry = await getOwnedAutoGroupRegistry()
+  registry[getOwnedRegistryKey(windowId, ruleId)] = {
+    groupId,
+    updatedAt: new Date().toISOString(),
+  }
+  await setOwnedAutoGroupRegistry(registry)
+}
+
+const removeOwnedGroup = async (windowId: number, ruleId: string) => {
+  const registry = await getOwnedAutoGroupRegistry()
+  const registryKey = getOwnedRegistryKey(windowId, ruleId)
+
+  if (!registry[registryKey]) return
+
+  delete registry[registryKey]
+  await setOwnedAutoGroupRegistry(registry)
+}
+
 const resolveTargetGroup = async (windowId: number, rule: NStorage.Sync.Schema.AutoGroupRule) => {
   const groups = await chrome.tabGroups.query({ windowId })
   const normalizedTitle = rule.title.trim().toLowerCase()
   const titleMatches = groups.filter((group) => group.title?.trim().toLowerCase() === normalizedTitle)
+  const registry = await getOwnedAutoGroupRegistry()
+  const ownedGroupId = registry[getOwnedRegistryKey(windowId, rule.id)]?.groupId
+
+  if (typeof ownedGroupId === 'number') {
+    const ownedGroup = groups.find((group) => group.id === ownedGroupId)
+
+    if (ownedGroup) {
+      return ownedGroup
+    }
+
+    await removeOwnedGroup(windowId, rule.id)
+  }
 
   if (titleMatches.length === 0) return null
 
-  const exactColorMatch = titleMatches.find((group) => group.color === rule.color)
-  if (exactColorMatch) return exactColorMatch
+  const exactColorMatches = titleMatches.filter((group) => group.color === rule.color)
+  if (exactColorMatches.length === 1) return exactColorMatches[0]
 
   if (titleMatches.length === 1) return titleMatches[0]
 
@@ -77,10 +129,12 @@ const handleAutoGrouping = async (tabId: number, url: string | undefined, window
         if (targetGroup) {
           const tab = await chrome.tabs.get(tabId);
           if (tab.groupId === targetGroup.id) {
+            await assignOwnedGroup(windowId, rule.id, targetGroup.id)
             console.log(`[AutoGroup] Tab already in group: ${rule.title}`);
             return { kind: 'already_grouped', ruleTitle: rule.title };
           }
           await chrome.tabs.group({ tabIds: [tabId], groupId: targetGroup.id });
+          await assignOwnedGroup(windowId, rule.id, targetGroup.id)
           notify('Crx Tab Groups', `Auto-grouped to "${rule.title}"`);
           return { kind: 'grouped', ruleTitle: rule.title, groupCreated: false };
         } else {
@@ -89,6 +143,7 @@ const handleAutoGrouping = async (tabId: number, url: string | undefined, window
             title: rule.title,
             color: rule.color
           });
+          await assignOwnedGroup(windowId, rule.id, newGroupId)
           notify('Crx Tab Groups', `New group "${rule.title}" created!`);
           return { kind: 'grouped', ruleTitle: rule.title, groupCreated: true };
         }
