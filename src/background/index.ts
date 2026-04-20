@@ -5,6 +5,7 @@ import {
   shouldIgnoreAutoGroupUrl,
   sortAutoGroupRules,
 } from '@/helpers'
+import StorageLocalAutoGroup from '@/storage/autoGroup.local'
 
 console.log('[CrxTabGroups] Background Service Worker is starting...');
 
@@ -38,34 +39,10 @@ type AutoGroupScanSummary = {
   errors: number
 }
 
-type OwnedAutoGroupRegistry = Record<
-  string,
-  {
-    groupId: number
-    updatedAt: string
-  }
->
-
-const AUTO_GROUP_OWNERSHIP_KEY = 'autoGroupOwnership'
-
 const getOwnedRegistryKey = (windowId: number, ruleId: string) => `${windowId}:${ruleId}`
 
 const getOwnedAutoGroupRegistry = async () => {
-  const data = await chrome.storage.session.get(AUTO_GROUP_OWNERSHIP_KEY)
-  return (data[AUTO_GROUP_OWNERSHIP_KEY] || {}) as OwnedAutoGroupRegistry
-}
-
-const setOwnedAutoGroupRegistry = async (registry: OwnedAutoGroupRegistry) => {
-  await chrome.storage.session.set({ [AUTO_GROUP_OWNERSHIP_KEY]: registry })
-}
-
-const assignOwnedGroup = async (windowId: number, ruleId: string, groupId: number) => {
-  const registry = await getOwnedAutoGroupRegistry()
-  registry[getOwnedRegistryKey(windowId, ruleId)] = {
-    groupId,
-    updatedAt: new Date().toISOString(),
-  }
-  await setOwnedAutoGroupRegistry(registry)
+  return await StorageLocalAutoGroup.getOwnershipRegistry()
 }
 
 const removeOwnedGroup = async (windowId: number, ruleId: string) => {
@@ -75,7 +52,15 @@ const removeOwnedGroup = async (windowId: number, ruleId: string) => {
   if (!registry[registryKey]) return
 
   delete registry[registryKey]
-  await setOwnedAutoGroupRegistry(registry)
+  await StorageLocalAutoGroup.setOwnershipRegistry(registry)
+}
+
+const writeAutoGroupAudit = async (entry: Omit<NStorage.Local.AutoGroupAuditEntry, 'id' | 'createdAt'>) => {
+  await StorageLocalAutoGroup.appendAuditEntry({
+    id: crypto.randomUUID(),
+    createdAt: new Date().toISOString(),
+    ...entry,
+  })
 }
 
 const resolveTargetGroup = async (windowId: number, rule: NStorage.Sync.Schema.AutoGroupRule) => {
@@ -108,6 +93,13 @@ const resolveTargetGroup = async (windowId: number, rule: NStorage.Sync.Schema.A
 // Core Automation Logic
 const handleAutoGrouping = async (tabId: number, url: string | undefined, windowId: number): Promise<AutoGroupResult> => {
   if (shouldIgnoreAutoGroupUrl(url)) {
+    await writeAutoGroupAudit({
+      tabId,
+      windowId,
+      url,
+      outcome: 'ignored',
+      reason: 'Ignored internal or missing URL.',
+    })
     return { kind: 'ignored' };
   }
 
@@ -116,7 +108,16 @@ const handleAutoGrouping = async (tabId: number, url: string | undefined, window
     const rules = (data.autoGroups || []) as NStorage.Sync.Schema.AutoGroupRule[];
     const activeRules = sortAutoGroupRules(rules.filter((rule) => rule.isActive));
 
-    if (activeRules.length === 0) return { kind: 'no_match' };
+    if (activeRules.length === 0) {
+      await writeAutoGroupAudit({
+        tabId,
+        windowId,
+        url,
+        outcome: 'no_match',
+        reason: 'No active rules are available.',
+      })
+      return { kind: 'no_match' };
+    }
 
     for (const rule of activeRules) {
       const patterns = getAutoGroupRulePatterns(rule)
@@ -129,12 +130,53 @@ const handleAutoGrouping = async (tabId: number, url: string | undefined, window
         if (targetGroup) {
           const tab = await chrome.tabs.get(tabId);
           if (tab.groupId === targetGroup.id) {
-            await assignOwnedGroup(windowId, rule.id, targetGroup.id)
+            const registry = await getOwnedAutoGroupRegistry()
+            registry[getOwnedRegistryKey(windowId, rule.id)] = {
+              ruleId: rule.id,
+              windowId,
+              groupId: targetGroup.id,
+              title: rule.title,
+              color: rule.color,
+              updatedAt: new Date().toISOString(),
+            }
+            await StorageLocalAutoGroup.setOwnershipRegistry(registry)
+            await writeAutoGroupAudit({
+              ruleId: rule.id,
+              ruleTitle: rule.title,
+              tabId,
+              windowId,
+              url,
+              outcome: 'already_grouped',
+              reason: 'Tab is already in the owned target group.',
+              groupId: targetGroup.id,
+              matchedPattern,
+            })
             console.log(`[AutoGroup] Tab already in group: ${rule.title}`);
             return { kind: 'already_grouped', ruleTitle: rule.title };
           }
           await chrome.tabs.group({ tabIds: [tabId], groupId: targetGroup.id });
-          await assignOwnedGroup(windowId, rule.id, targetGroup.id)
+          const registry = await getOwnedAutoGroupRegistry()
+          registry[getOwnedRegistryKey(windowId, rule.id)] = {
+            ruleId: rule.id,
+            windowId,
+            groupId: targetGroup.id,
+            title: rule.title,
+            color: rule.color,
+            updatedAt: new Date().toISOString(),
+          }
+          await StorageLocalAutoGroup.setOwnershipRegistry(registry)
+          await writeAutoGroupAudit({
+            ruleId: rule.id,
+            ruleTitle: rule.title,
+            tabId,
+            windowId,
+            url,
+            outcome: 'grouped',
+            reason: 'Matched an existing owned or resolved target group.',
+            groupId: targetGroup.id,
+            groupCreated: false,
+            matchedPattern,
+          })
           notify('Crx Tab Groups', `Auto-grouped to "${rule.title}"`);
           return { kind: 'grouped', ruleTitle: rule.title, groupCreated: false };
         } else {
@@ -143,16 +185,52 @@ const handleAutoGrouping = async (tabId: number, url: string | undefined, window
             title: rule.title,
             color: rule.color
           });
-          await assignOwnedGroup(windowId, rule.id, newGroupId)
+          const registry = await getOwnedAutoGroupRegistry()
+          registry[getOwnedRegistryKey(windowId, rule.id)] = {
+            ruleId: rule.id,
+            windowId,
+            groupId: newGroupId,
+            title: rule.title,
+            color: rule.color,
+            updatedAt: new Date().toISOString(),
+          }
+          await StorageLocalAutoGroup.setOwnershipRegistry(registry)
+          await writeAutoGroupAudit({
+            ruleId: rule.id,
+            ruleTitle: rule.title,
+            tabId,
+            windowId,
+            url,
+            outcome: 'grouped',
+            reason: 'Created a new owned target group for the matched rule.',
+            groupId: newGroupId,
+            groupCreated: true,
+            matchedPattern,
+          })
           notify('Crx Tab Groups', `New group "${rule.title}" created!`);
           return { kind: 'grouped', ruleTitle: rule.title, groupCreated: true };
         }
       }
     }
 
+    await writeAutoGroupAudit({
+      tabId,
+      windowId,
+      url,
+      outcome: 'no_match',
+      reason: 'No active rule matched the tab URL.',
+    })
     return { kind: 'no_match' };
   } catch (error) {
     console.error('[AutoGroup] Runtime Error:', error);
+    await writeAutoGroupAudit({
+      tabId,
+      windowId,
+      url,
+      outcome: 'error',
+      reason: 'Runtime auto-grouping error.',
+      message: error instanceof Error ? error.message : 'Unknown auto-group error',
+    })
     return {
       kind: 'error',
       error: error instanceof Error ? error.message : 'Unknown auto-group error',
@@ -234,6 +312,46 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
     })();
     return true; 
+  }
+
+  if (request.action === 'get_auto_group_debug_state') {
+    void (async () => {
+      try {
+        const [ownershipRegistry, auditEntries] = await Promise.all([
+          StorageLocalAutoGroup.getOwnershipRegistry(),
+          StorageLocalAutoGroup.getAuditEntries(),
+        ])
+
+        sendResponse({
+          success: true,
+          ownership: Object.values(ownershipRegistry),
+          audit: auditEntries,
+        })
+      } catch (e) {
+        sendResponse({
+          success: false,
+          error: e instanceof Error ? e.message : 'Unknown debug-state error',
+        })
+      }
+    })()
+
+    return true
+  }
+
+  if (request.action === 'clear_auto_group_audit') {
+    void (async () => {
+      try {
+        await StorageLocalAutoGroup.clearAuditEntries()
+        sendResponse({ success: true })
+      } catch (e) {
+        sendResponse({
+          success: false,
+          error: e instanceof Error ? e.message : 'Unknown audit-clear error',
+        })
+      }
+    })()
+
+    return true
   }
 });
 

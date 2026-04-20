@@ -8,7 +8,7 @@ import {
 } from "@/helpers";
 import { cn } from "@/lib/utils";
 import StorageSyncAutoGroup from "@/storage/autoGroup.sync";
-import { Plus, Trash2, X, Play, Pause, Globe, Pencil, Check, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown } from "lucide-react";
+import { Plus, Trash2, X, Play, Pause, Globe, Pencil, Check, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Bug, RefreshCw, Eraser } from "lucide-react";
 import { useEffect, useState } from "react";
 import Tooltip from "@/components/ui/tooltip";
 
@@ -30,6 +30,9 @@ const COLOR_MAP: Record<string, string> = {
 
 function AutomationManagement() {
   const [rules, setRules] = useState<NStorage.Sync.Schema.AutoGroupRule[]>([]);
+  const [ownershipEntries, setOwnershipEntries] = useState<NStorage.Local.AutoGroupOwnershipEntry[]>([]);
+  const [auditEntries, setAuditEntries] = useState<NStorage.Local.AutoGroupAuditEntry[]>([]);
+  const [showDebugState, setShowDebugState] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [newRule, setNewRule] = useState({
     title: "",
@@ -48,11 +51,50 @@ function AutomationManagement() {
 
   useEffect(() => {
     fetchRules();
+    void fetchDebugState();
+
+    const handleStorageChange = (
+      changes: Record<string, chrome.storage.StorageChange>,
+      areaName: chrome.storage.AreaName
+    ) => {
+      if (areaName === "local" && (changes.autoGroupOwnership || changes.autoGroupAudit)) {
+        void fetchDebugState();
+      }
+    };
+
+    chrome.storage.onChanged.addListener(handleStorageChange);
+
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChange);
+    };
   }, []);
 
   const fetchRules = async () => {
     const data = await StorageSyncAutoGroup.getList();
     setRules(sortAutoGroupRules(data));
+  };
+
+  const fetchDebugState = async () => {
+    return await new Promise<void>((resolve) => {
+      chrome.runtime.sendMessage({ action: "get_auto_group_debug_state" }, (response) => {
+        if (chrome.runtime.lastError || !response?.success) {
+          resolve();
+          return;
+        }
+
+        setOwnershipEntries((response.ownership || []) as NStorage.Local.AutoGroupOwnershipEntry[]);
+        setAuditEntries((response.audit || []) as NStorage.Local.AutoGroupAuditEntry[]);
+        resolve();
+      });
+    });
+  };
+
+  const clearAuditEntries = async () => {
+    await new Promise<void>((resolve) => {
+      chrome.runtime.sendMessage({ action: "clear_auto_group_audit" }, () => resolve());
+    });
+
+    await fetchDebugState();
   };
 
   const handleAddRule = async () => {
@@ -253,6 +295,123 @@ function AutomationManagement() {
         >
           <Plus size={12} className="mr-1" /> New Rule
         </Button>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <button
+          type="button"
+          onClick={() => setShowDebugState((current) => !current)}
+          className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left"
+        >
+          <div className="flex items-center gap-2">
+            <span className="inline-flex size-6 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+              <Bug size={12} />
+            </span>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                Rules Debug State
+              </p>
+              <p className="text-[11px] text-slate-400">
+                {ownershipEntries.length} ownership hints, {auditEntries.length} recent audit events
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            {showDebugState ? "Hide" : "Show"}
+          </span>
+        </button>
+
+        {showDebugState && (
+          <div className="flex flex-col gap-3 border-t border-slate-100 px-3 py-3">
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-600 ring-1 ring-slate-200"
+                onClick={() => void fetchDebugState()}
+              >
+                <RefreshCw size={10} />
+                Refresh
+              </button>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1.5 text-[10px] font-bold text-rose-600 ring-1 ring-rose-200"
+                onClick={() => void clearAuditEntries()}
+              >
+                <Eraser size={10} />
+                Clear Audit
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Ownership</p>
+              {ownershipEntries.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-[11px] text-slate-400">
+                  No persisted ownership hints yet.
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {ownershipEntries.map((entry) => (
+                    <div key={`${entry.windowId}-${entry.ruleId}`} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <span className={cn("size-2 rounded-full", COLOR_MAP[entry.color])} />
+                        <span className="text-[11px] font-bold text-slate-700">{entry.title}</span>
+                        <span className="rounded-full bg-white px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 ring-1 ring-slate-200">
+                          window {entry.windowId}
+                        </span>
+                        <span className="rounded-full bg-white px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 ring-1 ring-slate-200">
+                          group {entry.groupId}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[10px] text-slate-400">
+                        rule {entry.ruleId} • updated {new Date(entry.updatedAt).toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Recent Audit</p>
+              {auditEntries.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-[11px] text-slate-400">
+                  No audit events yet.
+                </div>
+              ) : (
+                <div className="flex max-h-80 flex-col gap-2 overflow-y-auto pr-1">
+                  {auditEntries.map((entry) => (
+                    <div key={entry.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-600">
+                          {entry.outcome}
+                        </span>
+                        {entry.ruleTitle && (
+                          <span className="text-[11px] font-bold text-slate-700">{entry.ruleTitle}</span>
+                        )}
+                        <span className="text-[10px] text-slate-400">
+                          {new Date(entry.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-slate-600">{entry.reason}</p>
+                      <div className="mt-1 flex flex-wrap gap-1.5 text-[10px] text-slate-400">
+                        {entry.matchedPattern && <span>pattern: {entry.matchedPattern}</span>}
+                        {typeof entry.windowId === "number" && <span>window: {entry.windowId}</span>}
+                        {typeof entry.groupId === "number" && <span>group: {entry.groupId}</span>}
+                        {typeof entry.tabId === "number" && <span>tab: {entry.tabId}</span>}
+                      </div>
+                      {entry.url && (
+                        <p className="mt-1 truncate text-[10px] text-slate-400">{entry.url}</p>
+                      )}
+                      {entry.message && (
+                        <p className="mt-1 text-[10px] text-rose-500">{entry.message}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </section>
 
       {isAdding && (

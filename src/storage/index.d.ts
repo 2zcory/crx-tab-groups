@@ -71,4 +71,31 @@ namespace NStorage {
       }
     }
   }
+
+  namespace Local {
+    interface AutoGroupOwnershipEntry {
+      ruleId: string;
+      windowId: number;
+      groupId: number;
+      title: string;
+      color: Sync.GroupColor;
+      updatedAt: string;
+    }
+
+    interface AutoGroupAuditEntry {
+      id: string;
+      createdAt: string;
+      ruleId?: string;
+      ruleTitle?: string;
+      windowId?: number;
+      tabId?: number;
+      url?: string;
+      outcome: "ignored" | "no_match" | "already_grouped" | "grouped" | "error";
+      reason: string;
+      groupId?: number;
+      groupCreated?: boolean;
+      matchedPattern?: string;
+      message?: string;
+    }
+  }
 }
