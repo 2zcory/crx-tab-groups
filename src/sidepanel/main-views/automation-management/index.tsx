@@ -119,18 +119,21 @@ function AutomationManagement() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">URL Pattern (contains)</label>
+              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">URL Pattern</label>
               <div className="flex items-center gap-2">
                 <div className="flex flex-1 items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-slate-200 focus-within:ring-slate-900">
                   <Globe size={12} className="text-slate-400" />
                   <input
-                    placeholder="e.g. github.com"
+                    placeholder="e.g. github.com, *.github.com, re:^https://..."
                     className="w-full border-none bg-transparent text-xs font-medium text-slate-700 outline-none"
                     value={newRule.urlPattern}
                     onChange={(e) => setNewRule({ ...newRule, urlPattern: e.target.value })}
                   />
                 </div>
               </div>
+              <p className="ml-1 text-[10px] text-slate-400">
+                Plain host matches subdomains. Use <code className="font-mono">*</code> for glob or <code className="font-mono">re:</code> for explicit regex.
+              </p>
             </div>
 
             <Button

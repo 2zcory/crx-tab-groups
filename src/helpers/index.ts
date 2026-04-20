@@ -14,4 +14,5 @@ export const extractDomainNameFromUrl = (url: string) => {
   }
 }
 
+export * from './ruleMatching';
 export * from './time';

@@ -1,3 +1,5 @@
+import { describeRulePattern, matchesAutoGroupRule } from '@/helpers'
+
 console.log('[CrxTabGroups] Background Service Worker is starting...');
 
 // Standard Chrome Group Colors
@@ -28,24 +30,6 @@ const notify = (title: string, message: string) => {
   }
 };
 
-// Helper: Convert user pattern to a robust Regex
-const patternToRegex = (pattern: string) => {
-  try {
-    const cleaned = pattern.trim().toLowerCase();
-    // Escape special chars except *
-    let regexStr = cleaned.replace(/[.+^${}()|[\]\\]/g, '\\$&');
-    // Convert * to .*
-    regexStr = regexStr.replace(/\*/g, '.*');
-    // If no wildcard, assume it can be anywhere in the URL
-    if (!cleaned.includes('*')) {
-      return new RegExp(regexStr, 'i');
-    }
-    return new RegExp('^' + regexStr + '$', 'i');
-  } catch (e) {
-    return new RegExp(pattern, 'i');
-  }
-};
-
 // Core Automation Logic
 const handleAutoGrouping = async (tabId: number, url: string | undefined, windowId: number) => {
   if (!url || url.startsWith('chrome://') || url.startsWith('edge://') || url.startsWith('about:')) {
@@ -60,10 +44,8 @@ const handleAutoGrouping = async (tabId: number, url: string | undefined, window
     if (activeRules.length === 0) return;
 
     for (const rule of activeRules) {
-      const regex = patternToRegex(rule.urlPattern);
-      
-      if (regex.test(url)) {
-        console.log(`[AutoGroup] Match found! URL: ${url} matches Rule: ${rule.title}`);
+      if (matchesAutoGroupRule(url, rule.urlPattern)) {
+        console.log(`[AutoGroup] Match found! URL: ${url} matches Rule: ${rule.title} (${describeRulePattern(rule.urlPattern)})`);
         
         const groups = await chrome.tabGroups.query({ windowId });
         const targetGroup = groups.find(g => g.title?.toLowerCase() === rule.title.toLowerCase());
