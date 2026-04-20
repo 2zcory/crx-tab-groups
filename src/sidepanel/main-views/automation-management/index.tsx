@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { describeRulePattern, sortAutoGroupRules, validateAutoGroupRulePattern } from "@/helpers";
 import { cn } from "@/lib/utils";
 import StorageSyncAutoGroup from "@/storage/autoGroup.sync";
 import { Plus, Trash2, X, Play, Pause, Globe } from "lucide-react";
@@ -29,6 +30,7 @@ function AutomationManagement() {
     color: "blue" as NStorage.Sync.GroupColor,
     urlPattern: ""
   });
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRules();
@@ -36,17 +38,48 @@ function AutomationManagement() {
 
   const fetchRules = async () => {
     const data = await StorageSyncAutoGroup.getList();
-    setRules(data);
+    setRules(sortAutoGroupRules(data));
   };
 
   const handleAddRule = async () => {
-    if (!newRule.title || !newRule.urlPattern) return;
+    const title = newRule.title.trim();
+    const validation = validateAutoGroupRulePattern(newRule.urlPattern);
+
+    if (!title) {
+      setFormError("Group title is required.");
+      return;
+    }
+
+    if (!validation.isValid) {
+      setFormError(validation.error || "Pattern is invalid.");
+      return;
+    }
+
+    const duplicateExactRule = rules.some((rule) =>
+      rule.title.trim().toLowerCase() === title.toLowerCase() &&
+      rule.urlPattern.trim().toLowerCase() === validation.normalizedPattern.toLowerCase()
+    );
+
+    if (duplicateExactRule) {
+      setFormError("An identical rule already exists.");
+      return;
+    }
+
+    const conflictingGroupIdentity = rules.some((rule) =>
+      rule.title.trim().toLowerCase() === title.toLowerCase() &&
+      rule.color !== newRule.color
+    );
+
+    if (conflictingGroupIdentity) {
+      setFormError("Rules with the same title should use the same color.");
+      return;
+    }
 
     const rule: NStorage.Sync.Schema.AutoGroupRule = {
       id: crypto.randomUUID(),
-      title: newRule.title,
+      title,
       color: newRule.color,
-      urlPattern: newRule.urlPattern,
+      urlPattern: validation.normalizedPattern,
       isActive: true,
       createdAt: new Date().toISOString(),
     };
@@ -54,6 +87,7 @@ function AutomationManagement() {
     await StorageSyncAutoGroup.create(rule);
     setIsAdding(false);
     setNewRule({ title: "", color: "blue", urlPattern: "" });
+    setFormError(null);
     void fetchRules();
   };
 
@@ -67,6 +101,9 @@ function AutomationManagement() {
     void fetchRules();
   };
 
+  const patternValidation = validateAutoGroupRulePattern(newRule.urlPattern);
+  const patternKind = describeRulePattern(newRule.urlPattern);
+
   return (
     <div className="flex flex-col gap-4 p-2 pb-6">
       <section className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
@@ -78,7 +115,10 @@ function AutomationManagement() {
         <Button
           size="sm"
           className="h-7 rounded-full bg-slate-900 px-3 text-[10px] font-bold text-white hover:bg-slate-800"
-          onClick={() => setIsAdding(true)}
+          onClick={() => {
+            setFormError(null);
+            setIsAdding(true);
+          }}
         >
           <Plus size={12} className="mr-1" /> New Rule
         </Button>
@@ -88,7 +128,7 @@ function AutomationManagement() {
         <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-md ring-1 ring-black/5">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Create New Rule</h3>
-            <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-600"><X size={14} /></button>
+            <button onClick={() => { setIsAdding(false); setFormError(null); }} className="text-slate-400 hover:text-slate-600"><X size={14} /></button>
           </div>
           
           <div className="flex flex-col gap-3">
@@ -134,7 +174,23 @@ function AutomationManagement() {
               <p className="ml-1 text-[10px] text-slate-400">
                 Plain host matches subdomains. Use <code className="font-mono">*</code> for glob or <code className="font-mono">re:</code> for explicit regex.
               </p>
+              <div className="ml-1 flex items-center gap-2">
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  {patternKind}
+                </span>
+                {!patternValidation.isValid && newRule.urlPattern.trim() && (
+                  <span className="text-[10px] font-medium text-rose-500">
+                    {patternValidation.error}
+                  </span>
+                )}
+              </div>
             </div>
+
+            {formError && (
+              <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-medium text-rose-600">
+                {formError}
+              </div>
+            )}
 
             <Button
               className="mt-1 w-full rounded-xl bg-emerald-600 py-2 text-xs font-bold text-white hover:bg-emerald-700"
@@ -204,6 +260,9 @@ function AutomationManagement() {
               <code className="truncate text-[10px] font-medium text-slate-500">
                 {rule.urlPattern}
               </code>
+              <span className="ml-auto shrink-0 rounded-full bg-white px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-400 ring-1 ring-slate-200">
+                {describeRulePattern(rule.urlPattern)}
+              </span>
             </div>
           </div>
         ))}

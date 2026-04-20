@@ -33,6 +33,11 @@ interface SaveStatus {
   message?: string;
 }
 
+interface AutoGroupScanStatus {
+  tone: "idle" | "success" | "warning" | "error";
+  message?: string;
+}
+
 function LiveManagement() {
   const [windows, setWindows] = useState<WindowData[]>([]);
   const [totalTabsAllCount, setTotalTabsAllCount] = useState(0);
@@ -41,6 +46,7 @@ function LiveManagement() {
   const [showSaveMenu, setShowSaveMenu] = useState<number | null>(null);
   const [newSnapshotTitle, setNewSnapshotTitle] = useState("");
   const [isNamingNewSnapshot, setIsNamingNewSnapshot] = useState(false);
+  const [autoGroupScanStatus, setAutoGroupScanStatus] = useState<AutoGroupScanStatus>({ tone: "idle" });
 
   onTabUpdated(() => {
     getActiveGroups();
@@ -217,7 +223,47 @@ function LiveManagement() {
   };
 
   const runAutoGroupScan = (windowId: number) => {
-    chrome.runtime.sendMessage({ action: 'run_auto_group_scan', windowId });
+    setAutoGroupScanStatus({ tone: "success", message: "Running auto-group scan..." });
+    chrome.runtime.sendMessage({ action: 'run_auto_group_scan', windowId }, (response) => {
+      if (chrome.runtime.lastError) {
+        setAutoGroupScanStatus({ tone: "error", message: "Auto-group scan failed to start." });
+        return;
+      }
+
+      if (!response?.success) {
+        setAutoGroupScanStatus({
+          tone: "error",
+          message: response?.error ? `Auto-group scan failed: ${response.error}` : "Auto-group scan reported errors.",
+        });
+        return;
+      }
+
+      const summary = response.summary as {
+        grouped?: number;
+        alreadyGrouped?: number;
+      } | undefined;
+
+      if (summary?.grouped) {
+        setAutoGroupScanStatus({
+          tone: "success",
+          message: `Auto-group scan updated ${summary.grouped} tab(s).`,
+        });
+        return;
+      }
+
+      if (summary?.alreadyGrouped) {
+        setAutoGroupScanStatus({
+          tone: "warning",
+          message: "Matching tabs were already grouped correctly.",
+        });
+        return;
+      }
+
+      setAutoGroupScanStatus({
+        tone: "warning",
+        message: "Auto-group scan found no matching tabs.",
+      });
+    });
   };
 
   return (
@@ -269,6 +315,19 @@ function LiveManagement() {
       </section>
 
       <div className="flex flex-col gap-6">
+        {autoGroupScanStatus.message && (
+          <div
+            className={cn(
+              "rounded-2xl border px-3 py-2 text-xs font-medium shadow-sm",
+              autoGroupScanStatus.tone === "success" && "border-emerald-200 bg-emerald-50 text-emerald-700",
+              autoGroupScanStatus.tone === "warning" && "border-amber-200 bg-amber-50 text-amber-700",
+              autoGroupScanStatus.tone === "error" && "border-rose-200 bg-rose-50 text-rose-700"
+            )}
+          >
+            {autoGroupScanStatus.message}
+          </div>
+        )}
+
         {windows.map((win, winIdx) => (
           <div key={win.id} className="flex flex-col gap-2.5">
             {/* Window Header */}

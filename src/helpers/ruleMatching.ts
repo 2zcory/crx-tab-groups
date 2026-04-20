@@ -1,4 +1,14 @@
 const REGEX_PREFIX = 're:'
+const INTERNAL_URL_PREFIXES = ['chrome://', 'edge://', 'about:']
+
+type RulePatternKind = 'empty' | 'regex' | 'glob' | 'host' | 'url'
+
+type RulePatternValidation = {
+  isValid: boolean
+  kind: RulePatternKind
+  normalizedPattern: string
+  error?: string
+}
 
 type ParsedUrlTargets = {
   href: string
@@ -30,7 +40,7 @@ const compileGlobRegex = (pattern: string) => {
   return new RegExp(`^${segments.join('.*')}$`, 'i')
 }
 
-export const describeRulePattern = (pattern: string) => {
+export const describeRulePattern = (pattern: string): RulePatternKind => {
   const normalized = pattern.trim()
 
   if (!normalized) return 'empty'
@@ -40,10 +50,75 @@ export const describeRulePattern = (pattern: string) => {
   return 'url'
 }
 
-export const matchesAutoGroupRule = (url: string, pattern: string) => {
-  const normalizedPattern = pattern.trim().toLowerCase()
+export const validateAutoGroupRulePattern = (pattern: string): RulePatternValidation => {
+  const normalizedPattern = pattern.trim()
+  const kind = describeRulePattern(normalizedPattern)
 
-  if (!normalizedPattern) return false
+  if (!normalizedPattern) {
+    return {
+      isValid: false,
+      kind,
+      normalizedPattern,
+      error: 'Pattern is required.',
+    }
+  }
+
+  if (kind === 'regex') {
+    const regexBody = normalizedPattern.slice(REGEX_PREFIX.length).trim()
+
+    if (!regexBody) {
+      return {
+        isValid: false,
+        kind,
+        normalizedPattern,
+        error: 'Regex rule must include a pattern after re:.',
+      }
+    }
+
+    try {
+      new RegExp(regexBody, 'i')
+    } catch {
+      return {
+        isValid: false,
+        kind,
+        normalizedPattern,
+        error: 'Regex pattern is invalid.',
+      }
+    }
+  }
+
+  return {
+    isValid: true,
+    kind,
+    normalizedPattern,
+  }
+}
+
+export const shouldIgnoreAutoGroupUrl = (url?: string) => {
+  if (!url) return true
+
+  const normalizedUrl = url.toLowerCase()
+  return INTERNAL_URL_PREFIXES.some((prefix) => normalizedUrl.startsWith(prefix))
+}
+
+export const sortAutoGroupRules = <TRule extends Pick<NStorage.Sync.Schema.AutoGroupRule, 'createdAt' | 'title' | 'id'>>(rules: TRule[]) => {
+  return [...rules].sort((left, right) => {
+    const createdAtDelta = new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime()
+
+    if (createdAtDelta !== 0) return createdAtDelta
+
+    const titleDelta = left.title.localeCompare(right.title)
+    if (titleDelta !== 0) return titleDelta
+
+    return left.id.localeCompare(right.id)
+  })
+}
+
+export const matchesAutoGroupRule = (url: string, pattern: string) => {
+  const validation = validateAutoGroupRulePattern(pattern)
+  const normalizedPattern = validation.normalizedPattern.toLowerCase()
+
+  if (!validation.isValid) return false
 
   const targets = parseUrlTargets(url)
   if (!targets) return false
