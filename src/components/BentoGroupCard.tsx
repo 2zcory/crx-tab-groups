@@ -1,4 +1,5 @@
 import React, { ReactNode } from 'react'
+import { ChevronDown, ChevronRight, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 import TabListItem from '@/sidepanel/main-views/live/components/TabListItem'
@@ -9,6 +10,9 @@ interface BentoGroupCardProps {
   tabs: chrome.tabs.Tab[]
   className?: string
   actions?: ReactNode
+  collapsed?: boolean
+  onToggleCollapsed?: () => void
+  onCloseTabs?: () => void
 }
 
 export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
@@ -16,7 +20,10 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
   color,
   tabs,
   className,
-  actions
+  actions,
+  collapsed,
+  onToggleCollapsed,
+  onCloseTabs
 }) => {
   // Map Chrome colors to Tailwind colors
   const colorMap: Record<string, string> = {
@@ -41,6 +48,20 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
     )}>
       <div className="flex items-center justify-between mb-2 px-1">
         <div className="flex items-center gap-2">
+          {onToggleCollapsed && (
+            <button
+              type="button"
+              aria-label={collapsed ? `Expand ${title}` : `Collapse ${title}`}
+              aria-expanded={!collapsed}
+              className="flex size-5 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-white/60 hover:text-slate-800"
+              onClick={(event) => {
+                event.stopPropagation()
+                onToggleCollapsed()
+              }}
+            >
+              {collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+            </button>
+          )}
           <div className={cn("w-2.5 h-2.5 rounded-full", color ? `bg-${color}-500` : "bg-slate-400")} />
           <h3 className="font-semibold text-[13px] truncate max-w-[180px] text-slate-800">{title}</h3>
           <span className="text-[10px] bg-white/60 px-1.5 py-0.5 rounded-full border border-black/5 font-medium text-slate-600">
@@ -48,17 +69,36 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
           </span>
         </div>
 
-        {actions && <div className="flex items-center gap-1">{actions}</div>}
+        {(actions || onCloseTabs) && (
+          <div className="flex items-center gap-1">
+            {actions}
+            {onCloseTabs && (
+              <button
+                type="button"
+                aria-label={`Close all tabs in ${title}`}
+                className="flex size-7 shrink-0 items-center justify-center rounded-full border border-rose-100 bg-white/70 text-rose-500 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onCloseTabs()
+                }}
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      <div className="flex flex-col gap-1">
-        {tabs.map((tab) => (
-          <TabListItem 
-            key={tab.id} 
-            tab={tab} 
-          />
-        ))}
-      </div>
+      {!collapsed && (
+        <div className="flex flex-col gap-1">
+          {tabs.map((tab) => (
+            <TabListItem
+              key={tab.id}
+              tab={tab}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

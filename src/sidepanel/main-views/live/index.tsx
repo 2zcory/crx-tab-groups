@@ -222,6 +222,23 @@ function LiveManagement() {
     void chrome.windows.update(windowId, { focused: true });
   };
 
+  const toggleGroupCollapsed = async (group: TabGroup) => {
+    await chrome.tabGroups.update(group.id, { collapsed: !group.collapsed });
+    void getActiveGroups();
+  };
+
+  const closeGroupTabs = async (group: TabGroup) => {
+    const tabIds = group.tabs
+      .map((tab) => tab.id)
+      .filter((tabId): tabId is number => typeof tabId === "number");
+
+    if (!tabIds.length) return;
+
+    setShowSaveMenu(null);
+    await chrome.tabs.remove(tabIds);
+    void getActiveGroups();
+  };
+
   const runAutoGroupScan = () => {
     setAutoGroupScanStatus({ tone: "success", message: "Running auto-group scan across all windows..." });
     chrome.runtime.sendMessage({ action: 'run_auto_group_scan' }, (response) => {
@@ -366,6 +383,9 @@ function LiveManagement() {
                   title={group.title || "Untitled Group"}
                   color={group.color}
                   tabs={group.tabs}
+                  collapsed={group.collapsed}
+                  onToggleCollapsed={() => void toggleGroupCollapsed(group)}
+                  onCloseTabs={() => void closeGroupTabs(group)}
                   actions={
                     <div className="relative flex items-center gap-2">
                       {saveStatuses[group.id]?.state && saveStatuses[group.id].state !== "idle" && (
