@@ -102,14 +102,18 @@ function TabListItem({ tab, isOverlay }: IProps) {
       className={cn(
         'group relative select-none overflow-hidden',
         'grid grid-cols-[auto_1fr_auto] items-center',
-        'py-1.5 pl-3 pr-1.5 rounded-xl transition-all duration-200 outline-none border border-transparent',
-        !isOverlay && 'hover:bg-white/60 hover:border-black/5 hover:shadow-sm cursor-default',
+        'py-2 pl-3 pr-2 rounded-xl transition-all duration-300 outline-none border',
+        // Normal: Clean, semi-transparent white that blends with the tinted group background
+        !isOverlay &&
+          'bg-white/50 border-white/60 shadow-[0_1px_2px_rgba(0,0,0,0.02)] hover:bg-white/80 hover:border-white hover:shadow-[0_2px_6px_-1px_rgba(0,0,0,0.04)] cursor-default',
+        // Active: Pure white, elevated with a crisp, soft shadow
         tab.active &&
           !isOverlay &&
-          'bg-white border-black/5 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.08)] ring-1 ring-black/[0.01]',
-        isDragging && !isOverlay && 'opacity-20',
+          'bg-white border-white shadow-[0_4px_12px_-3px_rgba(0,0,0,0.08),0_2px_4px_-2px_rgba(0,0,0,0.04)] ring-1 ring-slate-200/50',
+        isDragging && !isOverlay && 'opacity-30',
+        // Dragging (Overlay): Highest elevation
         isOverlay &&
-          'bg-white border border-slate-200 shadow-2xl scale-[1.02] cursor-grabbing z-[1000]',
+          'bg-white border-slate-200 shadow-2xl scale-[1.03] cursor-grabbing z-[1000]',
       )}
       role="button"
       tabIndex={isOverlay ? -1 : 0}
@@ -128,7 +132,7 @@ function TabListItem({ tab, isOverlay }: IProps) {
 
       {/* Active Marker */}
       {tab.active && !isOverlay && (
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-slate-900 rounded-r-full" />
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-slate-900 rounded-full" />
       )}
 
       <div className="relative">
