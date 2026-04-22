@@ -27,8 +27,8 @@ export const SidePanel = () => {
   return (
     <Layout>
       <div className="flex flex-col h-[100vh] w-full overflow-hidden bg-background">
-        <Tabs 
-          tabs={TAB_MENU} 
+        <Tabs
+          tabs={TAB_MENU}
           defaultValue={ETabMenu.TAB_SYNC}
           onValueChange={(val) => setActiveTab(Number(val) as ETabMenu)}
           className="flex-1 min-h-0"
@@ -43,7 +43,7 @@ export const SidePanel = () => {
             <GroupManagement />
           </Tabs.Content>
         </Tabs>
-        
+
         {/* Fixed Footer Status Bar outside of scrollable area */}
         <div className="shrink-0">
           {activeTab === ETabMenu.TAB_SYNC && <LiveStatusBar />}

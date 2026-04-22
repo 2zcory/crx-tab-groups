@@ -1,8 +1,8 @@
-import ESchemeVersion from "../scheme-version.enum"
-import { IInputData } from "../types"
+import ESchemeVersion from '../scheme-version.enum'
+import { IInputData } from '../types'
 
 const getOrderSeed = (rule: any, fallbackOrder: number) => {
-  if (typeof rule.order === "number" && Number.isFinite(rule.order)) {
+  if (typeof rule.order === 'number' && Number.isFinite(rule.order)) {
     return rule.order
   }
 
@@ -28,7 +28,7 @@ const migrateSyncTo_1_5_0 = (data: IInputData) => {
 
       if (createdAtDelta !== 0) return createdAtDelta
 
-      return String(left.id || "").localeCompare(String(right.id || ""))
+      return String(left.id || '').localeCompare(String(right.id || ''))
     })
     .map((rule: any, index: number) => {
       const { __orderSeed, ...rest } = rule

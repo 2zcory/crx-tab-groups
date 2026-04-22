@@ -103,35 +103,43 @@ export const shouldIgnoreAutoGroupUrl = (url?: string) => {
   return INTERNAL_URL_PREFIXES.some((prefix) => normalizedUrl.startsWith(prefix))
 }
 
-export const getAutoGroupRulePatterns = (rule: Pick<NStorage.Sync.Schema.AutoGroupRule, 'urlPatterns' | 'urlPattern'>) => {
-  const candidates = Array.isArray(rule.urlPatterns) && rule.urlPatterns.length > 0
-    ? rule.urlPatterns
-    : rule.urlPattern
-      ? [rule.urlPattern]
-      : []
+export const getAutoGroupRulePatterns = (
+  rule: Pick<NStorage.Sync.Schema.AutoGroupRule, 'urlPatterns' | 'urlPattern'>,
+) => {
+  const candidates =
+    Array.isArray(rule.urlPatterns) && rule.urlPatterns.length > 0
+      ? rule.urlPatterns
+      : rule.urlPattern
+        ? [rule.urlPattern]
+        : []
 
   return Array.from(
-    new Set(
-      candidates
-        .map((pattern) => normalizeAutoGroupPattern(pattern))
-        .filter(Boolean)
-    )
+    new Set(candidates.map((pattern) => normalizeAutoGroupPattern(pattern)).filter(Boolean)),
   )
 }
 
 export const normalizeAutoGroupRuleOrder = <
   TRule extends Pick<NStorage.Sync.Schema.AutoGroupRule, 'createdAt' | 'title' | 'id'> &
-    Partial<Pick<NStorage.Sync.Schema.AutoGroupRule, 'order'>>
->(rules: TRule[]) => {
+    Partial<Pick<NStorage.Sync.Schema.AutoGroupRule, 'order'>>,
+>(
+  rules: TRule[],
+) => {
   return [...rules]
     .sort((left, right) => {
-      const leftOrder = typeof left.order === 'number' && Number.isFinite(left.order) ? left.order : Number.MAX_SAFE_INTEGER
-      const rightOrder = typeof right.order === 'number' && Number.isFinite(right.order) ? right.order : Number.MAX_SAFE_INTEGER
+      const leftOrder =
+        typeof left.order === 'number' && Number.isFinite(left.order)
+          ? left.order
+          : Number.MAX_SAFE_INTEGER
+      const rightOrder =
+        typeof right.order === 'number' && Number.isFinite(right.order)
+          ? right.order
+          : Number.MAX_SAFE_INTEGER
       const orderDelta = leftOrder - rightOrder
 
       if (orderDelta !== 0) return orderDelta
 
-      const createdAtDelta = new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime()
+      const createdAtDelta =
+        new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime()
 
       if (createdAtDelta !== 0) return createdAtDelta
 
@@ -148,8 +156,10 @@ export const normalizeAutoGroupRuleOrder = <
 
 export const sortAutoGroupRules = <
   TRule extends Pick<NStorage.Sync.Schema.AutoGroupRule, 'createdAt' | 'title' | 'id'> &
-    Partial<Pick<NStorage.Sync.Schema.AutoGroupRule, 'order'>>
->(rules: TRule[]) => {
+    Partial<Pick<NStorage.Sync.Schema.AutoGroupRule, 'order'>>,
+>(
+  rules: TRule[],
+) => {
   return [...normalizeAutoGroupRuleOrder(rules)].sort((left, right) => {
     const orderDelta = left.order - right.order
 
@@ -197,8 +207,13 @@ export const matchesAutoGroupRule = (url: string, pattern: string) => {
   }
 
   if (isHostLikePattern(normalizedPattern)) {
-    return targets.hostname === normalizedPattern || targets.hostname.endsWith(`.${normalizedPattern}`)
+    return (
+      targets.hostname === normalizedPattern || targets.hostname.endsWith(`.${normalizedPattern}`)
+    )
   }
 
-  return targets.hrefWithoutProtocol.includes(normalizedPattern) || targets.href.includes(normalizedPattern)
+  return (
+    targets.hrefWithoutProtocol.includes(normalizedPattern) ||
+    targets.href.includes(normalizedPattern)
+  )
 }

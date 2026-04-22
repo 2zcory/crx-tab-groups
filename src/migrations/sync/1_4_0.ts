@@ -1,15 +1,15 @@
-import ESchemeVersion from "../scheme-version.enum"
-import { IInputData } from "../types"
+import ESchemeVersion from '../scheme-version.enum'
+import { IInputData } from '../types'
 
 const normalizePatterns = (rule: any) => {
   const legacyPatterns = Array.isArray(rule.urlPatterns)
     ? rule.urlPatterns
-    : typeof rule.urlPattern === "string"
+    : typeof rule.urlPattern === 'string'
       ? [rule.urlPattern]
       : []
 
   const normalizedPatterns = legacyPatterns
-    .map((pattern: unknown) => (typeof pattern === "string" ? pattern.trim() : ""))
+    .map((pattern: unknown) => (typeof pattern === 'string' ? pattern.trim() : ''))
     .filter(Boolean)
 
   return Array.from(new Set(normalizedPatterns))

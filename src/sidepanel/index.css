@@ -1,5 +1,5 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -153,8 +153,14 @@ html {
 }
 
 @keyframes marquee {
-  0%, 20% { transform: translateX(0); }
-  80%, 100% { transform: translateX(var(--scroll-dist, 0px)); }
+  0%,
+  20% {
+    transform: translateX(0);
+  }
+  80%,
+  100% {
+    transform: translateX(var(--scroll-dist, 0px));
+  }
 }
 
 .no-scrollbar::-webkit-scrollbar {

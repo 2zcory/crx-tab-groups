@@ -1,7 +1,7 @@
-import StorageLocal from "./local"
+import StorageLocal from './local'
 
-const OWNERSHIP_KEY = "autoGroupOwnership"
-const AUDIT_KEY = "autoGroupAudit"
+const OWNERSHIP_KEY = 'autoGroupOwnership'
+const AUDIT_KEY = 'autoGroupAudit'
 const AUDIT_LIMIT = 40
 
 type OwnershipRegistry = Record<string, NStorage.Local.AutoGroupOwnershipEntry>
@@ -11,7 +11,8 @@ class StorageLocalAutoGroup {
   static auditKey = AUDIT_KEY
 
   static async getOwnershipRegistry() {
-    const data = await StorageLocal.get<Record<string, OwnershipRegistry | undefined>>(OWNERSHIP_KEY)
+    const data =
+      await StorageLocal.get<Record<string, OwnershipRegistry | undefined>>(OWNERSHIP_KEY)
 
     return data[OWNERSHIP_KEY] || {}
   }
@@ -21,7 +22,10 @@ class StorageLocalAutoGroup {
   }
 
   static async getAuditEntries() {
-    const data = await StorageLocal.get<Record<string, NStorage.Local.AutoGroupAuditEntry[] | undefined>>(AUDIT_KEY)
+    const data =
+      await StorageLocal.get<Record<string, NStorage.Local.AutoGroupAuditEntry[] | undefined>>(
+        AUDIT_KEY,
+      )
 
     return data[AUDIT_KEY] || []
   }

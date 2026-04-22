@@ -1,5 +1,5 @@
-import ESchemeVersion from "../scheme-version.enum"
-import { IInputData } from "../types"
+import ESchemeVersion from '../scheme-version.enum'
+import { IInputData } from '../types'
 
 /**
  * Migration 1.3.0: Initialize autoGroups array.
@@ -9,7 +9,7 @@ const migrateSyncTo_1_3_0 = (data: IInputData) => {
   return {
     ...data,
     autoGroups: data.autoGroups || [],
-    version: ESchemeVersion.SYNC_1_3_0
+    version: ESchemeVersion.SYNC_1_3_0,
   }
 }
 

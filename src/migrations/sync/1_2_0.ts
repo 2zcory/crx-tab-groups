@@ -1,5 +1,5 @@
-import ESchemeVersion from "../scheme-version.enum"
-import { IInputData } from "../types"
+import ESchemeVersion from '../scheme-version.enum'
+import { IInputData } from '../types'
 
 /**
  * Migration 1.2.0: Tag repaired tabs with isRepaired flag.
@@ -8,12 +8,12 @@ import { IInputData } from "../types"
 const migrateSyncTo_1_2_0 = (data: IInputData) => {
   const repairedTabs = (data.tabs || []).map((tab: any) => {
     // If it's already "about:blank" (from 1.1.0) or still missing URL
-    if (!tab.url || tab.url === "about:blank" || tab.url.trim() === "") {
+    if (!tab.url || tab.url === 'about:blank' || tab.url.trim() === '') {
       return {
         ...tab,
-        url: tab.url || "about:blank",
+        url: tab.url || 'about:blank',
         isRepaired: true,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       }
     }
     return tab
@@ -22,7 +22,7 @@ const migrateSyncTo_1_2_0 = (data: IInputData) => {
   return {
     ...data,
     tabs: repairedTabs,
-    version: ESchemeVersion.SYNC_1_2_0
+    version: ESchemeVersion.SYNC_1_2_0,
   }
 }
 

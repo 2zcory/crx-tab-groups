@@ -1,5 +1,7 @@
 class StorageLocal {
-  static async get<TReturn = Record<string, unknown>>(key: string | string[] | null): Promise<TReturn> {
+  static async get<TReturn = Record<string, unknown>>(
+    key: string | string[] | null,
+  ): Promise<TReturn> {
     const data = (await chrome.storage.local.get(key as any)) as TReturn
 
     return data

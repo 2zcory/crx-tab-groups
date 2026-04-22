@@ -7,5 +7,5 @@ export enum ETabMenu {
 
 export enum EMockGroup {
   PINNED = 1,
-  UNGROUP
+  UNGROUP,
 }

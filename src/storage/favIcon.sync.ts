@@ -1,10 +1,12 @@
-import StorageSync from "./core"
+import StorageSync from './core'
 
 class StorageSyncFavIcon {
-  static name: keyof NStorage.Sync.Schema.Database = "favIcons"
+  static name: keyof NStorage.Sync.Schema.Database = 'favIcons'
 
   static async get() {
-    const data = await StorageSync.get<Pick<NStorage.Sync.Schema.Database, "favIcons">>(StorageSyncFavIcon.name)
+    const data = await StorageSync.get<Pick<NStorage.Sync.Schema.Database, 'favIcons'>>(
+      StorageSyncFavIcon.name,
+    )
 
     return data.favIcons
   }

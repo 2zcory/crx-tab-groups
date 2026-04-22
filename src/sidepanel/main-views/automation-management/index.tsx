@@ -1,148 +1,181 @@
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button'
 import {
   describeRulePattern,
   getAutoGroupRulePatterns,
   normalizeAutoGroupPattern,
   sortAutoGroupRules,
   validateAutoGroupRulePattern,
-} from "@/helpers";
-import { cn } from "@/lib/utils";
-import StorageSyncAutoGroup from "@/storage/autoGroup.sync";
-import { Plus, Trash2, X, Play, Pause, Globe, Pencil, Check, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Bug, RefreshCw, Eraser } from "lucide-react";
-import { useEffect, useState } from "react";
-import Tooltip from "@/components/ui/tooltip";
+} from '@/helpers'
+import { cn } from '@/lib/utils'
+import StorageSyncAutoGroup from '@/storage/autoGroup.sync'
+import {
+  Plus,
+  Trash2,
+  X,
+  Play,
+  Pause,
+  Globe,
+  Pencil,
+  Check,
+  ArrowUp,
+  ArrowDown,
+  ChevronsUp,
+  ChevronsDown,
+  Bug,
+  RefreshCw,
+  Eraser,
+} from 'lucide-react'
+import { useEffect, useState } from 'react'
+import Tooltip from '@/components/ui/tooltip'
 
 const COLORS: NStorage.Sync.GroupColor[] = [
-  "grey", "blue", "red", "yellow", "green", "pink", "purple", "cyan", "orange"
-];
+  'grey',
+  'blue',
+  'red',
+  'yellow',
+  'green',
+  'pink',
+  'purple',
+  'cyan',
+  'orange',
+]
 
 const COLOR_MAP: Record<string, string> = {
-  grey: "bg-slate-400",
-  blue: "bg-blue-500",
-  red: "bg-red-500",
-  yellow: "bg-yellow-500",
-  green: "bg-green-500",
-  pink: "bg-pink-500",
-  purple: "bg-purple-500",
-  cyan: "bg-cyan-500",
-  orange: "bg-orange-500",
-};
+  grey: 'bg-slate-400',
+  blue: 'bg-blue-500',
+  red: 'bg-red-500',
+  yellow: 'bg-yellow-500',
+  green: 'bg-green-500',
+  pink: 'bg-pink-500',
+  purple: 'bg-purple-500',
+  cyan: 'bg-cyan-500',
+  orange: 'bg-orange-500',
+}
 
 function AutomationManagement() {
-  const [rules, setRules] = useState<NStorage.Sync.Schema.AutoGroupRule[]>([]);
-  const [ownershipEntries, setOwnershipEntries] = useState<NStorage.Local.AutoGroupOwnershipEntry[]>([]);
-  const [auditEntries, setAuditEntries] = useState<NStorage.Local.AutoGroupAuditEntry[]>([]);
-  const [showDebugState, setShowDebugState] = useState(false);
-  const [isAdding, setIsAdding] = useState(false);
+  const [rules, setRules] = useState<NStorage.Sync.Schema.AutoGroupRule[]>([])
+  const [ownershipEntries, setOwnershipEntries] = useState<
+    NStorage.Local.AutoGroupOwnershipEntry[]
+  >([])
+  const [auditEntries, setAuditEntries] = useState<NStorage.Local.AutoGroupAuditEntry[]>([])
+  const [showDebugState, setShowDebugState] = useState(false)
+  const [isAdding, setIsAdding] = useState(false)
   const [newRule, setNewRule] = useState({
-    title: "",
-    color: "blue" as NStorage.Sync.GroupColor,
-    patternDraft: "",
+    title: '',
+    color: 'blue' as NStorage.Sync.GroupColor,
+    patternDraft: '',
     urlPatterns: [] as string[],
-  });
-  const [formError, setFormError] = useState<string | null>(null);
-  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
-  const [editingPatternDraft, setEditingPatternDraft] = useState("");
-  const [editingPatterns, setEditingPatterns] = useState<string[]>([]);
+  })
+  const [formError, setFormError] = useState<string | null>(null)
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null)
+  const [editingPatternDraft, setEditingPatternDraft] = useState('')
+  const [editingPatterns, setEditingPatterns] = useState<string[]>([])
 
   const triggerAutoGroupScan = () => {
-    chrome.runtime.sendMessage({ action: "run_auto_group_scan" });
-  };
+    chrome.runtime.sendMessage({ action: 'run_auto_group_scan' })
+  }
 
   useEffect(() => {
-    fetchRules();
-    void fetchDebugState();
+    fetchRules()
+    void fetchDebugState()
 
     const handleStorageChange = (
       changes: Record<string, chrome.storage.StorageChange>,
-      areaName: chrome.storage.AreaName
+      areaName: chrome.storage.AreaName,
     ) => {
-      if (areaName === "local" && (changes.autoGroupOwnership || changes.autoGroupAudit)) {
-        void fetchDebugState();
+      if (areaName === 'local' && (changes.autoGroupOwnership || changes.autoGroupAudit)) {
+        void fetchDebugState()
       }
-    };
+    }
 
-    chrome.storage.onChanged.addListener(handleStorageChange);
+    chrome.storage.onChanged.addListener(handleStorageChange)
 
     return () => {
-      chrome.storage.onChanged.removeListener(handleStorageChange);
-    };
-  }, []);
+      chrome.storage.onChanged.removeListener(handleStorageChange)
+    }
+  }, [])
 
   const fetchRules = async () => {
-    const data = await StorageSyncAutoGroup.getList();
-    setRules(sortAutoGroupRules(data));
-  };
+    const data = await StorageSyncAutoGroup.getList()
+    setRules(sortAutoGroupRules(data))
+  }
 
   const fetchDebugState = async () => {
     return await new Promise<void>((resolve) => {
-      chrome.runtime.sendMessage({ action: "get_auto_group_debug_state" }, (response) => {
+      chrome.runtime.sendMessage({ action: 'get_auto_group_debug_state' }, (response) => {
         if (chrome.runtime.lastError || !response?.success) {
-          resolve();
-          return;
+          resolve()
+          return
         }
 
-        setOwnershipEntries((response.ownership || []) as NStorage.Local.AutoGroupOwnershipEntry[]);
-        setAuditEntries((response.audit || []) as NStorage.Local.AutoGroupAuditEntry[]);
-        resolve();
-      });
-    });
-  };
+        setOwnershipEntries((response.ownership || []) as NStorage.Local.AutoGroupOwnershipEntry[])
+        setAuditEntries((response.audit || []) as NStorage.Local.AutoGroupAuditEntry[])
+        resolve()
+      })
+    })
+  }
 
   const clearAuditEntries = async () => {
     await new Promise<void>((resolve) => {
-      chrome.runtime.sendMessage({ action: "clear_auto_group_audit" }, () => resolve());
-    });
+      chrome.runtime.sendMessage({ action: 'clear_auto_group_audit' }, () => resolve())
+    })
 
-    await fetchDebugState();
-  };
+    await fetchDebugState()
+  }
 
   const handleAddRule = async () => {
-    const title = newRule.title.trim();
+    const title = newRule.title.trim()
     const normalizedPatterns = Array.from(
-      new Set(newRule.urlPatterns.map((pattern) => normalizeAutoGroupPattern(pattern)).filter(Boolean))
-    );
+      new Set(
+        newRule.urlPatterns.map((pattern) => normalizeAutoGroupPattern(pattern)).filter(Boolean),
+      ),
+    )
 
     if (!title) {
-      setFormError("Group title is required.");
-      return;
+      setFormError('Group title is required.')
+      return
     }
 
     if (normalizedPatterns.length === 0) {
-      setFormError("At least one pattern is required.");
-      return;
+      setFormError('At least one pattern is required.')
+      return
     }
 
     for (const pattern of normalizedPatterns) {
-      const validation = validateAutoGroupRulePattern(pattern);
+      const validation = validateAutoGroupRulePattern(pattern)
       if (!validation.isValid) {
-        setFormError(validation.error || "Pattern is invalid.");
-        return;
+        setFormError(validation.error || 'Pattern is invalid.')
+        return
       }
     }
 
     const duplicateExactRule = rules.some((rule) => {
-      const existingPatterns = getAutoGroupRulePatterns(rule).map((pattern) => pattern.toLowerCase());
+      const existingPatterns = getAutoGroupRulePatterns(rule).map((pattern) =>
+        pattern.toLowerCase(),
+      )
       return (
         rule.title.trim().toLowerCase() === title.toLowerCase() &&
         existingPatterns.length === normalizedPatterns.length &&
-        existingPatterns.every((pattern, index) => pattern === normalizedPatterns.map((item) => item.toLowerCase())[index])
-      );
-    });
+        existingPatterns.every(
+          (pattern, index) =>
+            pattern === normalizedPatterns.map((item) => item.toLowerCase())[index],
+        )
+      )
+    })
 
     if (duplicateExactRule) {
-      setFormError("An identical rule already exists.");
-      return;
+      setFormError('An identical rule already exists.')
+      return
     }
 
-    const conflictingGroupIdentity = rules.some((rule) =>
-      rule.title.trim().toLowerCase() === title.toLowerCase() &&
-      rule.color !== newRule.color
-    );
+    const conflictingGroupIdentity = rules.some(
+      (rule) =>
+        rule.title.trim().toLowerCase() === title.toLowerCase() && rule.color !== newRule.color,
+    )
 
     if (conflictingGroupIdentity) {
-      setFormError("Rules with the same title should use the same color.");
-      return;
+      setFormError('Rules with the same title should use the same color.')
+      return
     }
 
     const rule: NStorage.Sync.Schema.AutoGroupRule = {
@@ -153,129 +186,133 @@ function AutomationManagement() {
       urlPatterns: normalizedPatterns,
       isActive: true,
       createdAt: new Date().toISOString(),
-    };
+    }
 
-    await StorageSyncAutoGroup.create(rule);
-    triggerAutoGroupScan();
-    setIsAdding(false);
-    setNewRule({ title: "", color: "blue", patternDraft: "", urlPatterns: [] });
-    setFormError(null);
-    void fetchRules();
-  };
+    await StorageSyncAutoGroup.create(rule)
+    triggerAutoGroupScan()
+    setIsAdding(false)
+    setNewRule({ title: '', color: 'blue', patternDraft: '', urlPatterns: [] })
+    setFormError(null)
+    void fetchRules()
+  }
 
   const toggleRule = async (rule: NStorage.Sync.Schema.AutoGroupRule) => {
-    await StorageSyncAutoGroup.update({ ...rule, isActive: !rule.isActive });
-    void fetchRules();
-  };
+    await StorageSyncAutoGroup.update({ ...rule, isActive: !rule.isActive })
+    void fetchRules()
+  }
 
   const deleteRule = async (id: string) => {
-    await StorageSyncAutoGroup.deleteById(id);
-    void fetchRules();
-  };
+    await StorageSyncAutoGroup.deleteById(id)
+    void fetchRules()
+  }
 
-  const moveRule = async (ruleId: string, direction: "up" | "down") => {
-    const currentIndex = rules.findIndex((rule) => rule.id === ruleId);
+  const moveRule = async (ruleId: string, direction: 'up' | 'down') => {
+    const currentIndex = rules.findIndex((rule) => rule.id === ruleId)
 
-    if (currentIndex === -1) return;
+    if (currentIndex === -1) return
 
-    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
 
-    if (targetIndex < 0 || targetIndex >= rules.length) return;
+    if (targetIndex < 0 || targetIndex >= rules.length) return
 
-    const nextRules = [...rules];
-    const [movedRule] = nextRules.splice(currentIndex, 1);
-    nextRules.splice(targetIndex, 0, movedRule);
+    const nextRules = [...rules]
+    const [movedRule] = nextRules.splice(currentIndex, 1)
+    nextRules.splice(targetIndex, 0, movedRule)
 
     const orderedRules = nextRules.map((rule, index) => ({
       ...rule,
       order: index + 1,
-    }));
+    }))
 
-    await StorageSyncAutoGroup.replaceAll(orderedRules);
-    setRules(orderedRules);
-    triggerAutoGroupScan();
-  };
+    await StorageSyncAutoGroup.replaceAll(orderedRules)
+    setRules(orderedRules)
+    triggerAutoGroupScan()
+  }
 
-  const moveRuleToEdge = async (ruleId: string, edge: "top" | "bottom") => {
-    const currentIndex = rules.findIndex((rule) => rule.id === ruleId);
+  const moveRuleToEdge = async (ruleId: string, edge: 'top' | 'bottom') => {
+    const currentIndex = rules.findIndex((rule) => rule.id === ruleId)
 
-    if (currentIndex === -1) return;
+    if (currentIndex === -1) return
 
-    const nextRules = [...rules];
-    const [movedRule] = nextRules.splice(currentIndex, 1);
+    const nextRules = [...rules]
+    const [movedRule] = nextRules.splice(currentIndex, 1)
 
-    if (edge === "top") {
-      nextRules.unshift(movedRule);
+    if (edge === 'top') {
+      nextRules.unshift(movedRule)
     } else {
-      nextRules.push(movedRule);
+      nextRules.push(movedRule)
     }
 
     const orderedRules = nextRules.map((rule, index) => ({
       ...rule,
       order: index + 1,
-    }));
+    }))
 
-    await StorageSyncAutoGroup.replaceAll(orderedRules);
-    setRules(orderedRules);
-    triggerAutoGroupScan();
-  };
+    await StorageSyncAutoGroup.replaceAll(orderedRules)
+    setRules(orderedRules)
+    triggerAutoGroupScan()
+  }
 
   const startPatternEditing = (rule: NStorage.Sync.Schema.AutoGroupRule) => {
-    setEditingRuleId(rule.id);
-    setEditingPatternDraft("");
-    setEditingPatterns(getAutoGroupRulePatterns(rule));
-  };
+    setEditingRuleId(rule.id)
+    setEditingPatternDraft('')
+    setEditingPatterns(getAutoGroupRulePatterns(rule))
+  }
 
   const cancelPatternEditing = () => {
-    setEditingRuleId(null);
-    setEditingPatternDraft("");
-    setEditingPatterns([]);
-  };
+    setEditingRuleId(null)
+    setEditingPatternDraft('')
+    setEditingPatterns([])
+  }
 
   const addPatternToDraftList = () => {
-    const validation = validateAutoGroupRulePattern(editingPatternDraft);
+    const validation = validateAutoGroupRulePattern(editingPatternDraft)
     if (!validation.isValid) {
-      setFormError(validation.error || "Pattern is invalid.");
-      return;
+      setFormError(validation.error || 'Pattern is invalid.')
+      return
     }
 
-    const duplicate = editingPatterns.some((pattern) => pattern.toLowerCase() === validation.normalizedPattern.toLowerCase());
+    const duplicate = editingPatterns.some(
+      (pattern) => pattern.toLowerCase() === validation.normalizedPattern.toLowerCase(),
+    )
     if (duplicate) {
-      setFormError("Pattern already exists in this rule.");
-      return;
+      setFormError('Pattern already exists in this rule.')
+      return
     }
 
-    setEditingPatterns((current) => [...current, validation.normalizedPattern]);
-    setEditingPatternDraft("");
-    setFormError(null);
-  };
+    setEditingPatterns((current) => [...current, validation.normalizedPattern])
+    setEditingPatternDraft('')
+    setFormError(null)
+  }
 
   const removePatternFromDraftList = (patternToRemove: string) => {
-    setEditingPatterns((current) => current.filter((pattern) => pattern !== patternToRemove));
-  };
+    setEditingPatterns((current) => current.filter((pattern) => pattern !== patternToRemove))
+  }
 
   const saveEditedPatterns = async (rule: NStorage.Sync.Schema.AutoGroupRule) => {
-    const normalizedPatterns = Array.from(new Set(editingPatterns.map((pattern) => normalizeAutoGroupPattern(pattern)).filter(Boolean)));
+    const normalizedPatterns = Array.from(
+      new Set(editingPatterns.map((pattern) => normalizeAutoGroupPattern(pattern)).filter(Boolean)),
+    )
 
     if (normalizedPatterns.length === 0) {
-      setFormError("At least one pattern is required.");
-      return;
+      setFormError('At least one pattern is required.')
+      return
     }
 
     await StorageSyncAutoGroup.update({
       ...rule,
       urlPatterns: normalizedPatterns,
-    });
+    })
 
-    triggerAutoGroupScan();
+    triggerAutoGroupScan()
 
-    cancelPatternEditing();
-    setFormError(null);
-    void fetchRules();
-  };
+    cancelPatternEditing()
+    setFormError(null)
+    void fetchRules()
+  }
 
-  const patternDraftValidation = validateAutoGroupRulePattern(newRule.patternDraft);
-  const patternKind = describeRulePattern(newRule.patternDraft);
+  const patternDraftValidation = validateAutoGroupRulePattern(newRule.patternDraft)
+  const patternKind = describeRulePattern(newRule.patternDraft)
 
   return (
     <div className="flex flex-col gap-4 p-2 pb-6">
@@ -289,8 +326,8 @@ function AutomationManagement() {
           size="sm"
           className="h-7 rounded-full bg-slate-900 px-3 text-[10px] font-bold text-white hover:bg-slate-800"
           onClick={() => {
-            setFormError(null);
-            setIsAdding(true);
+            setFormError(null)
+            setIsAdding(true)
           }}
         >
           <Plus size={12} className="mr-1" /> New Rule
@@ -317,7 +354,7 @@ function AutomationManagement() {
             </div>
           </div>
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            {showDebugState ? "Hide" : "Show"}
+            {showDebugState ? 'Hide' : 'Show'}
           </span>
         </button>
 
@@ -343,7 +380,9 @@ function AutomationManagement() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Ownership</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                Ownership
+              </p>
               {ownershipEntries.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-[11px] text-slate-400">
                   No persisted ownership hints yet.
@@ -351,9 +390,12 @@ function AutomationManagement() {
               ) : (
                 <div className="flex flex-col gap-2">
                   {ownershipEntries.map((entry) => (
-                    <div key={`${entry.windowId}-${entry.ruleId}`} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                    <div
+                      key={`${entry.windowId}-${entry.ruleId}`}
+                      className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
+                    >
                       <div className="flex items-center gap-2">
-                        <span className={cn("size-2 rounded-full", COLOR_MAP[entry.color])} />
+                        <span className={cn('size-2 rounded-full', COLOR_MAP[entry.color])} />
                         <span className="text-[11px] font-bold text-slate-700">{entry.title}</span>
                         <span className="rounded-full bg-white px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 ring-1 ring-slate-200">
                           window {entry.windowId}
@@ -372,7 +414,9 @@ function AutomationManagement() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Recent Audit</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                Recent Audit
+              </p>
               {auditEntries.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-[11px] text-slate-400">
                   No audit events yet.
@@ -380,13 +424,18 @@ function AutomationManagement() {
               ) : (
                 <div className="flex max-h-80 flex-col gap-2 overflow-y-auto pr-1">
                   {auditEntries.map((entry) => (
-                    <div key={entry.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                    <div
+                      key={entry.id}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2"
+                    >
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-600">
                           {entry.outcome}
                         </span>
                         {entry.ruleTitle && (
-                          <span className="text-[11px] font-bold text-slate-700">{entry.ruleTitle}</span>
+                          <span className="text-[11px] font-bold text-slate-700">
+                            {entry.ruleTitle}
+                          </span>
                         )}
                         <span className="text-[10px] text-slate-400">
                           {new Date(entry.createdAt).toLocaleString()}
@@ -395,9 +444,11 @@ function AutomationManagement() {
                       <p className="mt-1 text-[11px] text-slate-600">{entry.reason}</p>
                       <div className="mt-1 flex flex-wrap gap-1.5 text-[10px] text-slate-400">
                         {entry.matchedPattern && <span>pattern: {entry.matchedPattern}</span>}
-                        {typeof entry.windowId === "number" && <span>window: {entry.windowId}</span>}
-                        {typeof entry.groupId === "number" && <span>group: {entry.groupId}</span>}
-                        {typeof entry.tabId === "number" && <span>tab: {entry.tabId}</span>}
+                        {typeof entry.windowId === 'number' && (
+                          <span>window: {entry.windowId}</span>
+                        )}
+                        {typeof entry.groupId === 'number' && <span>group: {entry.groupId}</span>}
+                        {typeof entry.tabId === 'number' && <span>tab: {entry.tabId}</span>}
                       </div>
                       {entry.url && (
                         <p className="mt-1 truncate text-[10px] text-slate-400">{entry.url}</p>
@@ -417,13 +468,25 @@ function AutomationManagement() {
       {isAdding && (
         <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-md ring-1 ring-black/5">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Create New Rule</h3>
-            <button onClick={() => { setIsAdding(false); setFormError(null); }} className="text-slate-400 hover:text-slate-600"><X size={14} /></button>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Create New Rule
+            </h3>
+            <button
+              onClick={() => {
+                setIsAdding(false)
+                setFormError(null)
+              }}
+              className="text-slate-400 hover:text-slate-600"
+            >
+              <X size={14} />
+            </button>
           </div>
-          
+
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Group Identity</label>
+              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+                Group Identity
+              </label>
               <div className="flex items-center gap-2">
                 <input
                   autoFocus
@@ -433,13 +496,13 @@ function AutomationManagement() {
                   onChange={(e) => setNewRule({ ...newRule, title: e.target.value })}
                 />
                 <div className="flex flex-wrap gap-1 max-w-[120px]">
-                  {COLORS.map(c => (
+                  {COLORS.map((c) => (
                     <button
                       key={c}
                       className={cn(
-                        "size-4 rounded-full transition-transform hover:scale-110",
+                        'size-4 rounded-full transition-transform hover:scale-110',
                         COLOR_MAP[c],
-                        newRule.color === c && "ring-2 ring-slate-900 ring-offset-1 scale-110"
+                        newRule.color === c && 'ring-2 ring-slate-900 ring-offset-1 scale-110',
                       )}
                       onClick={() => setNewRule({ ...newRule, color: c })}
                     />
@@ -449,7 +512,9 @@ function AutomationManagement() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">URL Pattern</label>
+              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+                URL Pattern
+              </label>
               <div className="flex items-center gap-2">
                 <div className="flex flex-1 items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-slate-200 focus-within:ring-slate-900">
                   <Globe size={12} className="text-slate-400" />
@@ -463,24 +528,27 @@ function AutomationManagement() {
                     type="button"
                     className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] font-bold text-white"
                     onClick={() => {
-                      const validation = validateAutoGroupRulePattern(newRule.patternDraft);
+                      const validation = validateAutoGroupRulePattern(newRule.patternDraft)
                       if (!validation.isValid) {
-                        setFormError(validation.error || "Pattern is invalid.");
-                        return;
+                        setFormError(validation.error || 'Pattern is invalid.')
+                        return
                       }
 
-                      const duplicate = newRule.urlPatterns.some((pattern) => pattern.toLowerCase() === validation.normalizedPattern.toLowerCase());
+                      const duplicate = newRule.urlPatterns.some(
+                        (pattern) =>
+                          pattern.toLowerCase() === validation.normalizedPattern.toLowerCase(),
+                      )
                       if (duplicate) {
-                        setFormError("Pattern already exists in this rule.");
-                        return;
+                        setFormError('Pattern already exists in this rule.')
+                        return
                       }
 
                       setNewRule((current) => ({
                         ...current,
-                        patternDraft: "",
+                        patternDraft: '',
                         urlPatterns: [...current.urlPatterns, validation.normalizedPattern],
-                      }));
-                      setFormError(null);
+                      }))
+                      setFormError(null)
                     }}
                   >
                     Add
@@ -488,7 +556,8 @@ function AutomationManagement() {
                 </div>
               </div>
               <p className="ml-1 text-[10px] text-slate-400">
-                Plain host matches subdomains. Use <code className="font-mono">*</code> for glob or <code className="font-mono">re:</code> for explicit regex.
+                Plain host matches subdomains. Use <code className="font-mono">*</code> for glob or{' '}
+                <code className="font-mono">re:</code> for explicit regex.
               </p>
               <div className="ml-1 flex items-center gap-2">
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
@@ -503,7 +572,10 @@ function AutomationManagement() {
               {newRule.urlPatterns.length > 0 && (
                 <div className="ml-1 flex flex-wrap gap-1.5">
                   {newRule.urlPatterns.map((pattern) => (
-                    <span key={pattern} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-600">
+                    <span
+                      key={pattern}
+                      className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-600"
+                    >
                       <span>{pattern}</span>
                       <button
                         type="button"
@@ -522,7 +594,8 @@ function AutomationManagement() {
                 </div>
               )}
               <p className="ml-1 text-[10px] text-slate-400">
-                New rules start at the lowest priority. Higher priority rules win first when patterns overlap.
+                New rules start at the lowest priority. Higher priority rules win first when
+                patterns overlap.
               </p>
             </div>
 
@@ -550,22 +623,31 @@ function AutomationManagement() {
         )}
 
         {rules.map((rule) => (
-          <div key={rule.id} className={cn(
-            "group relative flex flex-col gap-3 rounded-2xl border p-3 transition-all hover:shadow-sm",
-            rule.isActive ? "bg-white border-slate-200" : "bg-slate-50 border-slate-100 opacity-70"
-          )}>
+          <div
+            key={rule.id}
+            className={cn(
+              'group relative flex flex-col gap-3 rounded-2xl border p-3 transition-all hover:shadow-sm',
+              rule.isActive
+                ? 'bg-white border-slate-200'
+                : 'bg-slate-50 border-slate-100 opacity-70',
+            )}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className={cn("size-2.5 rounded-full shadow-sm", COLOR_MAP[rule.color])} />
+                <div className={cn('size-2.5 rounded-full shadow-sm', COLOR_MAP[rule.color])} />
                 <h3 className="text-[13px] font-bold text-slate-800">{rule.title}</h3>
-                {!rule.isActive && <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[9px] font-bold uppercase text-slate-500">Paused</span>}
+                {!rule.isActive && (
+                  <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[9px] font-bold uppercase text-slate-500">
+                    Paused
+                  </span>
+                )}
               </div>
-              
+
               <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                 <Tooltip>
                   <Tooltip.Trigger asChild>
                     <button
-                      onClick={() => void moveRuleToEdge(rule.id, "top")}
+                      onClick={() => void moveRuleToEdge(rule.id, 'top')}
                       disabled={rule.order <= 1}
                       className="flex size-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
                     >
@@ -579,7 +661,7 @@ function AutomationManagement() {
                 <Tooltip>
                   <Tooltip.Trigger asChild>
                     <button
-                      onClick={() => void moveRule(rule.id, "up")}
+                      onClick={() => void moveRule(rule.id, 'up')}
                       disabled={rule.order <= 1}
                       className="flex size-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
                     >
@@ -593,7 +675,7 @@ function AutomationManagement() {
                 <Tooltip>
                   <Tooltip.Trigger asChild>
                     <button
-                      onClick={() => void moveRule(rule.id, "down")}
+                      onClick={() => void moveRule(rule.id, 'down')}
                       disabled={rule.order >= rules.length}
                       className="flex size-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
                     >
@@ -607,7 +689,7 @@ function AutomationManagement() {
                 <Tooltip>
                   <Tooltip.Trigger asChild>
                     <button
-                      onClick={() => void moveRuleToEdge(rule.id, "bottom")}
+                      onClick={() => void moveRuleToEdge(rule.id, 'bottom')}
                       disabled={rule.order >= rules.length}
                       className="flex size-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
                     >
@@ -636,15 +718,17 @@ function AutomationManagement() {
                     <button
                       onClick={() => toggleRule(rule)}
                       className={cn(
-                        "flex size-7 items-center justify-center rounded-full transition-colors",
-                        rule.isActive ? "text-amber-500 hover:bg-amber-50" : "text-emerald-500 hover:bg-emerald-50"
+                        'flex size-7 items-center justify-center rounded-full transition-colors',
+                        rule.isActive
+                          ? 'text-amber-500 hover:bg-amber-50'
+                          : 'text-emerald-500 hover:bg-emerald-50',
                       )}
                     >
                       {rule.isActive ? <Pause size={12} /> : <Play size={12} />}
                     </button>
                   </Tooltip.Trigger>
                   <Tooltip.Content className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] text-white">
-                    {rule.isActive ? "Pause Rule" : "Resume Rule"}
+                    {rule.isActive ? 'Pause Rule' : 'Resume Rule'}
                   </Tooltip.Content>
                 </Tooltip>
 
@@ -666,14 +750,15 @@ function AutomationManagement() {
 
             <div className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-2 ring-1 ring-slate-100 ring-inset">
               <span className="rounded-full bg-slate-200 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-500">
-                {rule.order === 1 ? "Highest Priority" : `Priority ${rule.order}`}
+                {rule.order === 1 ? 'Highest Priority' : `Priority ${rule.order}`}
               </span>
               {getAutoGroupRulePatterns(rule).map((pattern) => (
-                <div key={pattern} className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 ring-1 ring-slate-200">
+                <div
+                  key={pattern}
+                  className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 ring-1 ring-slate-200"
+                >
                   <Globe size={10} className="text-slate-400" />
-                  <code className="text-[10px] font-medium text-slate-500">
-                    {pattern}
-                  </code>
+                  <code className="text-[10px] font-medium text-slate-500">{pattern}</code>
                   <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-400">
                     {describeRulePattern(pattern)}
                   </span>
@@ -684,8 +769,14 @@ function AutomationManagement() {
             {editingRuleId === rule.id && (
               <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Manage Patterns</p>
-                  <button type="button" className="text-slate-400 hover:text-slate-600" onClick={cancelPatternEditing}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Manage Patterns
+                  </p>
+                  <button
+                    type="button"
+                    className="text-slate-400 hover:text-slate-600"
+                    onClick={cancelPatternEditing}
+                  >
                     <X size={12} />
                   </button>
                 </div>
@@ -699,9 +790,9 @@ function AutomationManagement() {
                       value={editingPatternDraft}
                       onChange={(e) => setEditingPatternDraft(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          addPatternToDraftList();
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          addPatternToDraftList()
                         }
                       }}
                     />
@@ -717,9 +808,16 @@ function AutomationManagement() {
 
                 <div className="flex flex-wrap gap-1.5">
                   {editingPatterns.map((pattern) => (
-                    <span key={pattern} className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-[10px] font-medium text-slate-600 ring-1 ring-slate-200">
+                    <span
+                      key={pattern}
+                      className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-[10px] font-medium text-slate-600 ring-1 ring-slate-200"
+                    >
                       <span>{pattern}</span>
-                      <button type="button" className="text-slate-400 hover:text-rose-500" onClick={() => removePatternFromDraftList(pattern)}>
+                      <button
+                        type="button"
+                        className="text-slate-400 hover:text-rose-500"
+                        onClick={() => removePatternFromDraftList(pattern)}
+                      >
                         <Trash2 size={10} />
                       </button>
                     </span>
@@ -727,10 +825,18 @@ function AutomationManagement() {
                 </div>
 
                 <div className="flex items-center justify-end gap-2">
-                  <button type="button" className="rounded-lg bg-white px-3 py-1.5 text-[10px] font-bold text-slate-600 ring-1 ring-slate-200" onClick={cancelPatternEditing}>
+                  <button
+                    type="button"
+                    className="rounded-lg bg-white px-3 py-1.5 text-[10px] font-bold text-slate-600 ring-1 ring-slate-200"
+                    onClick={cancelPatternEditing}
+                  >
                     Cancel
                   </button>
-                  <button type="button" className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-bold text-white" onClick={() => void saveEditedPatterns(rule)}>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-bold text-white"
+                    onClick={() => void saveEditedPatterns(rule)}
+                  >
                     <Check size={10} />
                     Save Patterns
                   </button>
@@ -741,7 +847,7 @@ function AutomationManagement() {
         ))}
       </div>
     </div>
-  );
+  )
 }
 
-export default AutomationManagement;
+export default AutomationManagement

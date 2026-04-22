@@ -1,20 +1,20 @@
-import { Pin, PinOff, RefreshCw, X } from "lucide-react"
-import { Button } from "../../../../components/ui/button"
-import { KeyboardEventHandler, MouseEventHandler, useEffect, useRef, useState } from "react"
-import AvatarIcon from "../../../../components/ui/avatar"
-import { cn } from "@/lib/utils";
-import { formatTimeAgo } from "@/helpers";
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { Pin, PinOff, RefreshCw, X, ZapOff } from 'lucide-react'
+import { Button } from '../../../../components/ui/button'
+import { KeyboardEventHandler, MouseEventHandler, useEffect, useRef, useState } from 'react'
+import AvatarIcon from '../../../../components/ui/avatar'
+import { cn } from '@/lib/utils'
+import { formatTimeAgo, extractDomainNameFromUrl } from '@/helpers'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
-interface IButtonIconProps extends React.ComponentPropsWithoutRef<"button"> { }
+interface IButtonIconProps extends React.ComponentPropsWithoutRef<'button'> {}
 
 function ButtonIcon({ children, className, onClick, ...props }: IButtonIconProps) {
   return (
-    <Button 
-      variant="ghost" 
-      size="icon" 
-      className={cn("cursor-pointer hover:bg-gray-200 size-6 shrink-0", className)} 
+    <Button
+      variant="ghost"
+      size="icon"
+      className={cn('cursor-pointer hover:bg-black/5 size-5 shrink-0 rounded-md', className)}
       onClick={onClick}
       {...props}
     >
@@ -29,38 +29,33 @@ interface IProps {
 }
 
 function TabListItem({ tab, isOverlay }: IProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: tab.id! });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: tab.id!,
+  })
 
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,
     zIndex: isDragging ? 100 : undefined,
-  };
+  }
 
-  const textRef = useRef<HTMLDivElement>(null);
-  const [isOverflowing, setIsOverflowing] = useState(false);
-  const [scrollDistance, setScrollDistance] = useState(0);
+  const textRef = useRef<HTMLDivElement>(null)
+  const [isOverflowing, setIsOverflowing] = useState(false)
+  const [scrollDistance, setScrollDistance] = useState(0)
 
   useEffect(() => {
     if (textRef.current) {
-      const { scrollWidth, clientWidth } = textRef.current;
-      const overflowing = scrollWidth > clientWidth;
-      setIsOverflowing(overflowing);
+      const { scrollWidth, clientWidth } = textRef.current
+      const overflowing = scrollWidth > clientWidth
+      setIsOverflowing(overflowing)
       if (overflowing) {
-        setScrollDistance(scrollWidth - clientWidth);
+        setScrollDistance(scrollWidth - clientWidth)
       }
     }
-  }, [tab.title]);
+  }, [tab.title])
 
   const handleActiveTab: MouseEventHandler<HTMLDivElement> = (e) => {
-    if (isDragging || isOverlay) return;
+    if (isDragging || isOverlay) return
     e.stopPropagation()
     if (tab.id) {
       void chrome.tabs.update(tab.id, { active: true })
@@ -86,13 +81,17 @@ function TabListItem({ tab, isOverlay }: IProps) {
   }
 
   const handleKeyDown: KeyboardEventHandler<HTMLDivElement> = (e) => {
-    if (e.key !== "Enter" && e.key !== " ") return
+    if (e.key !== 'Enter' && e.key !== ' ') return
     e.preventDefault()
     if (tab.id) {
       void chrome.tabs.update(tab.id, { active: true })
       void chrome.windows.update(tab.windowId, { focused: true })
     }
   }
+
+  const domain = tab.url ? extractDomainNameFromUrl(tab.url) : null
+  const isLoading = tab.status === 'loading'
+  const isDiscarded = (tab as any).discarded
 
   return (
     <div
@@ -101,71 +100,112 @@ function TabListItem({ tab, isOverlay }: IProps) {
       {...attributes}
       {...listeners}
       className={cn(
-        "group relative select-none",
-        "grid grid-cols-[auto_1fr_auto] items-center",
-        "py-2 pl-3 pr-1.5 rounded-xl transition-all outline-none",
-        !isOverlay && "hover:bg-black/5 cursor-default",
-        tab.active && !isOverlay && "bg-black/[0.04]",
-        isDragging && !isOverlay && "opacity-20",
-        isOverlay && "bg-white border border-slate-200 shadow-2xl scale-[1.02] cursor-grabbing z-[1000]"
+        'group relative select-none overflow-hidden',
+        'grid grid-cols-[auto_1fr_auto] items-center',
+        'py-1.5 pl-3 pr-1.5 rounded-xl transition-all duration-200 outline-none border border-transparent',
+        !isOverlay && 'hover:bg-white/60 hover:border-black/5 hover:shadow-sm cursor-default',
+        tab.active &&
+          !isOverlay &&
+          'bg-white border-black/5 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.08)] ring-1 ring-black/[0.01]',
+        isDragging && !isOverlay && 'opacity-20',
+        isOverlay &&
+          'bg-white border border-slate-200 shadow-2xl scale-[1.02] cursor-grabbing z-[1000]',
       )}
       role="button"
       tabIndex={isOverlay ? -1 : 0}
       onClick={handleActiveTab}
       onKeyDown={handleKeyDown}
     >
-      {tab.active && !isOverlay && (
-        <div className="absolute left-1 top-1/2 -translate-y-1/2 w-1 h-5 bg-slate-800 rounded-full" />
+      {/* Loading Indicator */}
+      {isLoading && !isOverlay && (
+        <div className="absolute bottom-0 left-0 h-[1px] bg-emerald-500/40 w-full overflow-hidden">
+          <div
+            className="h-full bg-emerald-500 animate-[loading-bar_1.5s_infinite_ease-in-out]"
+            style={{ width: '30%' }}
+          />
+        </div>
       )}
-      
-      <AvatarIcon 
-        src={tab.favIconUrl} 
-        fallbackString={(tab.title?.[0] || "").toUpperCase()} 
-        className={cn("size-5 shrink-0", { "ring-1 ring-black/5": tab.active && !isOverlay })}
-      />
-      
-      <div className="ml-2 overflow-hidden pointer-events-none">
+
+      {/* Active Marker */}
+      {tab.active && !isOverlay && (
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-slate-900 rounded-r-full" />
+      )}
+
+      <div className="relative">
+        <AvatarIcon
+          src={tab.favIconUrl}
+          fallbackString={(tab.title?.[0] || '').toUpperCase()}
+          className={cn(
+            'size-4 shrink-0 transition-transform duration-200 group-hover:scale-105',
+            { 'ring-1 ring-black/5': tab.active && !isOverlay },
+            isDiscarded && 'grayscale opacity-50',
+          )}
+        />
+        {isDiscarded && !isOverlay && (
+          <div className="absolute -bottom-0.5 -right-0.5 bg-white rounded-full p-0.5 shadow-sm">
+            <ZapOff size={7} className="text-slate-400" />
+          </div>
+        )}
+      </div>
+
+      <div className="ml-2.5 overflow-hidden pointer-events-none flex flex-col justify-center">
         <div className="w-full overflow-hidden" ref={textRef}>
-          <div 
+          <div
             className={cn(
-              "text-xs transition-colors whitespace-nowrap marquee-target", 
-              { 
-                "font-bold text-black active-marquee": tab.active && isOverflowing && !isOverlay, 
-                "text-slate-600": !tab.active || isOverlay,
-                "hidden-marquee": !isOverflowing || isOverlay
-              }
+              'text-[11px] leading-tight transition-colors whitespace-nowrap marquee-target',
+              {
+                'font-bold text-slate-900 active-marquee':
+                  tab.active && isOverflowing && !isOverlay,
+                'text-slate-700': !tab.active || isOverlay,
+                'hidden-marquee': !isOverflowing || isOverlay,
+              },
             )}
-            style={{ 
+            style={{
               ['--marquee-duration' as string]: `${Math.max(4, (tab.title?.length || 0) / 5)}s`,
-              ['--scroll-dist' as string]: `-${scrollDistance + 10}px` 
+              ['--scroll-dist' as string]: `-${scrollDistance + 10}px`,
             }}
           >
             {tab.title}
           </div>
         </div>
-        <div className="text-[10px] text-slate-400">{formatTimeAgo((tab as chrome.tabs.Tab & { lastAccessed?: number }).lastAccessed)}</div>
+        <div className="flex items-center gap-1.5">
+          {domain && (
+            <span className="text-[9px] font-medium text-slate-400 truncate max-w-[100px]">
+              {domain}
+            </span>
+          )}
+          {domain && <span className="size-0.5 rounded-full bg-slate-300" />}
+          <span className="text-[9px] text-slate-300 font-medium">
+            {formatTimeAgo((tab as any).lastAccessed || (tab as any).lastOpened)}
+          </span>
+        </div>
       </div>
 
       {!isOverlay && (
         <div className="flex items-center gap-0.5 ml-1">
-          <div className="hidden group-hover:flex group-focus-within:flex items-center gap-0.5 bg-white/80 backdrop-blur-sm border border-black/5 shadow-sm rounded-lg p-0.5 animate-in fade-in slide-in-from-right-2 duration-200">
-            <ButtonIcon onClick={togglePin} title={tab.pinned ? "Unpin tab" : "Pin tab"}>
-              {tab.pinned ? <PinOff size={14} className="text-slate-600" /> : <Pin size={14} className="text-slate-600" />}
+          <div className="hidden group-hover:flex group-focus-within:flex items-center gap-0.5 bg-white/95 backdrop-blur-sm border border-black/5 shadow-sm rounded-lg p-0.5 animate-in fade-in zoom-in-95 duration-150">
+            <ButtonIcon onClick={togglePin} title={tab.pinned ? 'Unpin tab' : 'Pin tab'}>
+              {tab.pinned ? (
+                <PinOff size={11} className="text-slate-600" />
+              ) : (
+                <Pin size={11} className="text-slate-600" />
+              )}
             </ButtonIcon>
             <ButtonIcon onClick={handleReloadTab} title="Reload tab">
-              <RefreshCw size={14} className="text-slate-600" />
+              <RefreshCw size={11} className="text-slate-600" />
+            </ButtonIcon>
+            <div className="w-px h-2.5 bg-black/5 mx-0.5" />
+            <ButtonIcon
+              onClick={handleCloseTab}
+              title="Close tab"
+              className="hover:bg-red-50 hover:text-red-600"
+            >
+              <X size={11} className="text-slate-600 group-hover:text-red-600" />
             </ButtonIcon>
           </div>
-          <ButtonIcon
-            onClick={handleCloseTab}
-            title="Close tab"
-            className="opacity-80 hover:bg-red-50 hover:text-red-600 group/close"
-          >
-            <X size={14} className="text-slate-600 group-hover/close:text-red-600" />
-          </ButtonIcon>
         </div>
       )}
-    </div >
+    </div>
   )
 }
 
