@@ -11,7 +11,7 @@ function TabsContainer({
   return (
     <TabsPrimitive.Root
       data-slot="tabs"
-      className={cn("flex flex-col h-screen", className)}
+      className={cn("flex flex-col min-h-0", className)}
       {...props}
     />
   )
@@ -25,7 +25,7 @@ function TabsList({
     <TabsPrimitive.List
       data-slot="tabs-list"
       className={cn(
-        "inline-flex h-9 w-full items-center justify-start border-b border-black/[0.03] px-2 gap-4 bg-background z-50",
+        "relative inline-flex h-9 w-full shrink-0 items-center justify-start border-b border-black/[0.03] px-2 gap-4 bg-background z-50",
         className
       )}
       {...props}
@@ -61,7 +61,7 @@ function TabsContent({
   return (
     <TabsPrimitive.Content
       data-slot="tabs-content"
-      className={cn("flex-1 outline-none overflow-y-auto pt-2 pb-10", className)}
+      className={cn("flex-1 outline-none overflow-y-auto pt-2", className)}
       value={`${value}`}
       {...props}
     />
@@ -71,11 +71,23 @@ function TabsContent({
 interface IProps {
   tabs: NCommon.Option<ETabMenu>[];
   defaultValue?: ETabMenu;
+  value?: ETabMenu;
+  onValueChange?: (value: string) => void;
   children: React.ReactNode;
+  className?: string;
 }
 
 function Tabs(props: IProps) {
-  const [activeValue, setActiveValue] = React.useState(`${props.defaultValue || props.tabs[0].value}`);
+  const [internalValue, setInternalValue] = React.useState(`${props.defaultValue || props.tabs[0].value}`);
+  const activeValue = props.value !== undefined ? `${props.value}` : internalValue;
+  
+  const handleValueChange = (val: string) => {
+    if (props.value === undefined) {
+      setInternalValue(val);
+    }
+    props.onValueChange?.(val);
+  };
+
   const [indicatorStyle, setIndicatorStyle] = React.useState({ left: 0, width: 0 });
   const triggerRefs = React.useRef<Record<string, HTMLButtonElement | null>>({});
 
@@ -105,7 +117,7 @@ function Tabs(props: IProps) {
   }, [activeValue]);
 
   return (
-    <TabsContainer value={activeValue} onValueChange={setActiveValue}>
+    <TabsContainer value={activeValue} onValueChange={handleValueChange} className={props.className}>
       <TabsList>
         {
           props.tabs.map(tab => (
