@@ -203,6 +203,30 @@ function LiveManagement() {
     setSavedSnapshots(res || [])
   }
 
+  const setSaveStatus = (groupId: number, status: SaveStatus) => {
+    setSaveStatuses((current) => ({
+      ...current,
+      [groupId]: status,
+    }))
+  }
+
+  const getUniqueSnapshotTitle = (title: string) => {
+    const existingTitles = new Set(savedSnapshots.map((snapshot) => snapshot.title.toLowerCase()))
+    const baseTitle = title.trim() || 'Untitled Group'
+
+    if (!existingTitles.has(baseTitle.toLowerCase())) return baseTitle
+
+    let counter = 1
+    let candidate = `${baseTitle} (${counter})`
+
+    while (existingTitles.has(candidate.toLowerCase())) {
+      counter += 1
+      candidate = `${baseTitle} (${counter})`
+    }
+
+    return candidate
+  }
+
   const openSaveMenu = (group: TabGroup) => {
     setShowSaveMenu(group.id)
     setNewSnapshotTitle(group.title || 'Untitled Group')
@@ -210,9 +234,13 @@ function LiveManagement() {
   }
 
   const saveGroupSnapshot = async (group: TabGroup) => {
-    const finalTitle = newSnapshotTitle.trim() || group.title || 'Untitled Group'
+    const finalTitle = getUniqueSnapshotTitle(newSnapshotTitle || group.title || 'Untitled Group')
     setShowSaveMenu(null)
     setIsNamingNewSnapshot(false)
+    setSaveStatus(group.id, {
+      state: 'pending',
+      message: 'Saving...',
+    })
 
     const now = new Date().toISOString()
     const snapshotGroupId = crypto.randomUUID()
@@ -240,9 +268,17 @@ function LiveManagement() {
     try {
       await StorageSyncGroup.create(snapshotGroup)
       await StorageSyncTab.create(...snapshotTabs)
-      void fetchSavedSnapshots()
+      await fetchSavedSnapshots()
+      setSaveStatus(group.id, {
+        state: 'saved',
+        message: 'Saved',
+      })
     } catch (e) {
       console.error(e)
+      setSaveStatus(group.id, {
+        state: 'failed',
+        message: 'Save failed',
+      })
     }
   }
 
@@ -251,6 +287,12 @@ function LiveManagement() {
     savedSnapshot: NStorage.Sync.Response.Group,
   ) => {
     setShowSaveMenu(null)
+    setIsNamingNewSnapshot(false)
+    setSaveStatus(liveGroup.id, {
+      state: 'pending',
+      message: 'Saving...',
+    })
+
     const now = new Date().toISOString()
     const updatedGroup: NStorage.Sync.Schema.Group = {
       id: savedSnapshot.id,
@@ -277,9 +319,17 @@ function LiveManagement() {
       await StorageSyncGroup.update(updatedGroup)
       await StorageSyncTab.deleteTabsByGroupId(savedSnapshot.id)
       await StorageSyncTab.create(...newTabs)
-      void fetchSavedSnapshots()
+      await fetchSavedSnapshots()
+      setSaveStatus(liveGroup.id, {
+        state: 'saved',
+        message: 'Saved',
+      })
     } catch (e) {
       console.error(e)
+      setSaveStatus(liveGroup.id, {
+        state: 'failed',
+        message: 'Save failed',
+      })
     }
   }
 
@@ -666,6 +716,75 @@ function LiveManagement() {
                               'Snapshot'}
                           </span>
                         </Button>
+
+                        {showSaveMenu === group.id && (
+                          <div
+                            className="absolute right-0 top-9 z-50 flex w-64 flex-col gap-1 rounded-xl border border-slate-200 bg-white p-2 text-left shadow-xl"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              className="flex items-center justify-between rounded-lg px-2 py-1.5 text-[11px] font-bold text-slate-700 transition-colors hover:bg-slate-50"
+                              onClick={() => setIsNamingNewSnapshot((current) => !current)}
+                            >
+                              <span>Save as new snapshot</span>
+                              <FolderPlus size={12} className="text-slate-400" />
+                            </button>
+
+                            {isNamingNewSnapshot && (
+                              <div className="flex items-center gap-1.5 rounded-lg bg-slate-50 p-1.5">
+                                <input
+                                  autoFocus
+                                  className="min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 outline-none focus:border-slate-400"
+                                  value={newSnapshotTitle}
+                                  onChange={(event) => setNewSnapshotTitle(event.target.value)}
+                                  onKeyDown={(event) => {
+                                    if (event.key === 'Enter') void saveGroupSnapshot(group)
+                                    if (event.key === 'Escape') setIsNamingNewSnapshot(false)
+                                  }}
+                                />
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="h-7 rounded-md px-2 text-[10px] font-bold"
+                                  onClick={() => void saveGroupSnapshot(group)}
+                                >
+                                  Save
+                                </Button>
+                              </div>
+                            )}
+
+                            <div className="my-1 h-px bg-slate-100" />
+
+                            <p className="px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                              Overwrite existing
+                            </p>
+
+                            {savedSnapshots.length > 0 ? (
+                              <div className="flex max-h-48 flex-col gap-0.5 overflow-y-auto">
+                                {savedSnapshots.map((snapshot) => (
+                                  <button
+                                    key={snapshot.id}
+                                    type="button"
+                                    className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-[11px] transition-colors hover:bg-slate-50"
+                                    onClick={() => void updateExistingSnapshot(group, snapshot)}
+                                  >
+                                    <span className="min-w-0 truncate font-medium text-slate-600">
+                                      {snapshot.title || 'Untitled Snapshot'}
+                                    </span>
+                                    <span className="shrink-0 text-[9px] font-bold text-slate-400">
+                                      {snapshot.tabs.length}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="px-2 py-1.5 text-[10px] italic text-slate-400">
+                                No saved snapshots yet
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     }
                   />
