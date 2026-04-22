@@ -293,7 +293,7 @@ function LiveManagement() {
             </p>
             <Tooltip>
               <Tooltip.Trigger asChild>
-                <button type="button" className="inline-flex size-5 items-center justify-center rounded-full border border-black/5 bg-slate-50 text-slate-500 transition-colors hover:bg-slate-100">
+                <button type="button" className="inline-flex size-5 cursor-pointer items-center justify-center rounded-full border border-black/5 bg-slate-50 text-slate-500 transition-colors hover:bg-slate-100">
                   <Info size={12} />
                 </button>
               </Tooltip.Trigger>
@@ -308,7 +308,7 @@ function LiveManagement() {
                   onClick={() => {
                     runAutoGroupScan();
                   }}
-                  className="inline-flex size-5 items-center justify-center rounded-full border border-emerald-100 bg-emerald-50 text-emerald-600 transition-colors hover:bg-emerald-100"
+                  className="inline-flex size-5 cursor-pointer items-center justify-center rounded-full border border-emerald-100 bg-emerald-50 text-emerald-600 transition-colors hover:bg-emerald-100"
                 >
                   <Sparkles size={11} />
                 </button>
@@ -437,12 +437,12 @@ function LiveManagement() {
                                   onChange={(e) => setNewSnapshotTitle(e.target.value)}
                                   onKeyDown={(e) => { if (e.key === "Enter") void saveGroupSnapshot(group); if (e.key === "Escape") setIsNamingNewSnapshot(false); }}
                                 />
-                                <button type="button" aria-label="Save new snapshot" onClick={() => void saveGroupSnapshot(group)} className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-white"><Check size={14} /></button>
-                                <button type="button" aria-label="Cancel snapshot naming" onClick={() => setIsNamingNewSnapshot(false)} className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400"><X size={14} /></button>
+                                <button type="button" aria-label="Save new snapshot" onClick={() => void saveGroupSnapshot(group)} className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-emerald-500 text-white"><Check size={14} /></button>
+                                <button type="button" aria-label="Cancel snapshot naming" onClick={() => setIsNamingNewSnapshot(false)} className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-slate-100 text-slate-400"><X size={14} /></button>
                               </div>
                             </div>
                           ) : (
-                            <button type="button" role="menuitem" className="flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[11px] font-bold text-emerald-600 transition-colors hover:bg-emerald-50" onClick={() => setIsNamingNewSnapshot(true)}>
+                            <button type="button" role="menuitem" className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left text-[11px] font-bold text-emerald-600 transition-colors hover:bg-emerald-50" onClick={() => setIsNamingNewSnapshot(true)}>
                               <FolderPlus size={12} /> New Snapshot
                             </button>
                           )}
@@ -452,7 +452,7 @@ function LiveManagement() {
                               <p className="px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">Overwrite snapshot:</p>
                               <div className="flex max-h-32 flex-col gap-0.5 overflow-y-auto pr-0.5 text-slate-600">
                                 {savedSnapshots.map((ss) => (
-                                  <button key={ss.id} type="button" role="menuitem" className="flex items-center justify-between rounded-lg px-2 py-1.5 text-left text-[11px] transition-colors hover:bg-slate-50" onClick={() => updateExistingSnapshot(group, ss)}>
+                                  <button key={ss.id} type="button" role="menuitem" className="flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 text-left text-[11px] transition-colors hover:bg-slate-50" onClick={() => updateExistingSnapshot(group, ss)}>
                                     <span className="truncate font-medium">{ss.title}</span>
                                     <RefreshCw size={10} className="text-slate-300" />
                                   </button>

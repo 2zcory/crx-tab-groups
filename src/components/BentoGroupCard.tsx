@@ -53,7 +53,7 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
               type="button"
               aria-label={collapsed ? `Expand ${title}` : `Collapse ${title}`}
               aria-expanded={!collapsed}
-              className="flex size-5 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-white/60 hover:text-slate-800"
+              className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-white/60 hover:text-slate-800"
               onClick={(event) => {
                 event.stopPropagation()
                 onToggleCollapsed()
@@ -76,7 +76,7 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
               <button
                 type="button"
                 aria-label={`Close all tabs in ${title}`}
-                className="flex size-7 shrink-0 items-center justify-center rounded-full border border-rose-100 bg-white/70 text-rose-500 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-rose-100 bg-white/70 text-rose-500 transition-colors hover:bg-rose-50 hover:text-rose-600"
                 onClick={(event) => {
                   event.stopPropagation()
                   onCloseTabs()
