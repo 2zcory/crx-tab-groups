@@ -74,6 +74,35 @@ const updateTabGroup = (groupId: number, updates: chrome.tabGroups.UpdatePropert
     })
   })
 
+const getCurrentWindow = () =>
+  new Promise<chrome.windows.Window>((resolve, reject) => {
+    chrome.windows.getCurrent((window) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message))
+        return
+      }
+      resolve(window)
+    })
+  })
+
+const createRestoredTab = (url: string, windowId?: number) =>
+  new Promise<chrome.tabs.Tab>((resolve, reject) => {
+    chrome.tabs.create(
+      {
+        url,
+        active: false,
+        ...(typeof windowId === 'number' ? { windowId } : {}),
+      },
+      (tab) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message))
+          return
+        }
+        resolve(tab)
+      },
+    )
+  })
+
 function GroupManagement() {
   const [groups, setGroups] = useState<NStorage.Sync.Response.Group[]>([])
   const [liveGroups, setLiveGroups] = useState<LiveTabGroup[]>([])
@@ -275,12 +304,18 @@ function GroupManagement() {
       return
     }
 
+    let restoreWindowId: number | undefined
+
+    try {
+      const currentWindow = await getCurrentWindow()
+      restoreWindowId = currentWindow.id
+    } catch {
+      restoreWindowId = undefined
+    }
+
     for (const tab of tabsWithUrls) {
       try {
-        const createdTab = await chrome.tabs.create({
-          url: tab.url,
-          active: false,
-        })
+        const createdTab = await createRestoredTab(tab.url!, restoreWindowId)
 
         if (typeof createdTab.id === 'number') {
           createdTabIds.push(createdTab.id)
