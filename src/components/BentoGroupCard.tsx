@@ -3,8 +3,10 @@ import { ChevronDown, ChevronRight, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 import TabListItem from '@/sidepanel/main-views/live/components/TabListItem'
+import { useDroppable } from '@dnd-kit/core'
 
 interface BentoGroupCardProps {
+  id: string
   title: string
   color?: string
   tabs: chrome.tabs.Tab[]
@@ -16,6 +18,7 @@ interface BentoGroupCardProps {
 }
 
 export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
+  id,
   title,
   color,
   tabs,
@@ -25,6 +28,10 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
   onToggleCollapsed,
   onCloseTabs
 }) => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: id,
+  })
+
   // Map Chrome colors to Tailwind colors
   const colorMap: Record<string, string> = {
     grey: 'bg-gray-100 border-gray-200',
@@ -41,11 +48,14 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
   const cardStyle = color ? colorMap[color] : 'bg-white border-slate-200'
 
   return (
-    <div className={cn(
-      "p-3 rounded-2xl border transition-all hover:shadow-sm",
-      cardStyle,
-      className
-    )}>
+    <div 
+      className={cn(
+        "p-3 rounded-2xl border transition-all hover:shadow-sm",
+        cardStyle,
+        isOver && "ring-2 ring-slate-400 ring-offset-2 scale-[1.01] bg-white/80",
+        className
+      )}
+    >
       <div className="flex items-center justify-between mb-2 px-1 gap-2">
         <div
           className={cn(
@@ -98,13 +108,22 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
       </div>
 
       {!collapsed && (
-        <div className="flex flex-col gap-1">
+        <div 
+          ref={setNodeRef}
+          className={cn(
+            "flex flex-col gap-1 min-h-[32px] transition-all rounded-lg",
+            isOver && tabs.length === 0 && "bg-black/5 border border-dashed border-slate-300"
+          )}
+        >
           {tabs.map((tab) => (
             <TabListItem
               key={tab.id}
               tab={tab}
             />
           ))}
+          {tabs.length === 0 && !isOver && (
+            <div className="py-2 text-center text-[10px] text-slate-400 font-medium">Empty Group</div>
+          )}
         </div>
       )}
     </div>
