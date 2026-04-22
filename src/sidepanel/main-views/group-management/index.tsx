@@ -24,6 +24,7 @@ interface RestoreStatus {
   message?: string
   openedCount?: number
   failedCount?: number
+  groupSetupFailed?: boolean
 }
 
 const STATUS_STYLES: Record<Exclude<RestoreState, 'idle' | 'pending'>, string> = {
@@ -32,6 +33,19 @@ const STATUS_STYLES: Record<Exclude<RestoreState, 'idle' | 'pending'>, string> =
   failed: 'border-rose-200 bg-rose-50 text-rose-700',
   updated: 'border-sky-200 bg-sky-50 text-sky-700',
   deleted: 'border-slate-200 bg-slate-50 text-slate-600',
+}
+
+const getStatusDetail = (status: RestoreStatus) => {
+  if (typeof status.openedCount !== 'number' && typeof status.failedCount !== 'number') {
+    return status.message
+  }
+
+  const openedCount = status.openedCount ?? 0
+  const failedCount = status.failedCount ?? 0
+
+  const groupDetail = status.groupSetupFailed ? '; group setup did not complete' : ''
+
+  return `${status.message}: ${openedCount} opened, ${failedCount} missed${groupDetail}`
 }
 
 interface LiveTabGroup extends chrome.tabGroups.TabGroup {
@@ -173,7 +187,7 @@ function GroupManagement() {
 
     const updatedGroup: NStorage.Sync.Schema.Group = {
       id: savedGroup.id,
-      title: liveGroup.title || 'Untitled Group',
+      title: savedGroup.title,
       color: liveGroup.color,
       order: savedGroup.order,
       createdAt: savedGroup.createdAt,
@@ -238,8 +252,10 @@ function GroupManagement() {
   }
 
   const restoreGroup = async (group: NStorage.Sync.Response.Group) => {
+    setShowUpdateMenu(null)
     setRestoreStatus(group.id, {
       state: 'pending',
+      message: 'Restoring...',
     })
 
     const sortedTabs = [...group.tabs].sort((a, b) => a.order - b.order)
@@ -253,6 +269,8 @@ function GroupManagement() {
       setRestoreStatus(group.id, {
         state: 'failed',
         message: 'No URLs',
+        openedCount: 0,
+        failedCount,
       })
       return
     }
@@ -275,6 +293,8 @@ function GroupManagement() {
       }
     }
 
+    let groupSetupFailed = false
+
     if (createdTabIds.length > 0) {
       try {
         const liveGroupId = await groupTabs(createdTabIds as [number, ...number[]])
@@ -290,6 +310,7 @@ function GroupManagement() {
         createdGroup = true
       } catch {
         createdGroup = false
+        groupSetupFailed = true
       }
     }
 
@@ -297,16 +318,23 @@ function GroupManagement() {
       setRestoreStatus(group.id, {
         state: 'failed',
         message: 'Restore failed',
+        openedCount,
+        failedCount,
       })
       return
     }
 
-    const isFullRestore = failedCount === 0 && createdGroup
+    const isFullRestore = failedCount === 0 && createdGroup && !groupSetupFailed
 
     setRestoreStatus(group.id, {
       state: isFullRestore ? 'full' : 'partial',
-      message: isFullRestore ? 'Restored' : `Partial`,
+      message: isFullRestore ? 'Restored' : `Partial ${openedCount}/${sortedTabs.length}`,
+      openedCount,
+      failedCount,
+      groupSetupFailed,
     })
+
+    await fetchLiveGroups()
   }
 
   return (
@@ -406,6 +434,7 @@ function GroupManagement() {
                           'flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider shadow-sm',
                           STATUS_STYLES[status.state],
                         )}
+                        title={getStatusDetail(status)}
                       >
                         {status.message}
                       </div>

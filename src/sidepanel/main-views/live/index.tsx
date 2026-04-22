@@ -586,17 +586,19 @@ function LiveManagement() {
             </div>
 
             <div className="grid grid-cols-1 gap-2.5">
-              <SortableContext
-                items={win.tabsPinned.map((t) => t.id!)}
-                strategy={verticalListSortingStrategy}
-              >
-                <BentoGroupCard
-                  id={`ungroup-pinned-${win.id}`}
-                  title={MOCK_GROUP[EMockGroup.PINNED]}
-                  tabs={win.tabsPinned}
-                  className="bg-slate-50 border-slate-200"
-                />
-              </SortableContext>
+              {win.tabsPinned.length > 0 && (
+                <SortableContext
+                  items={win.tabsPinned.map((t) => t.id!)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <BentoGroupCard
+                    id={`ungroup-pinned-${win.id}`}
+                    title={MOCK_GROUP[EMockGroup.PINNED]}
+                    tabs={win.tabsPinned}
+                    className="bg-slate-50 border-slate-200"
+                  />
+                </SortableContext>
+              )}
 
               {win.groups.map((group) => (
                 <SortableContext
@@ -670,17 +672,19 @@ function LiveManagement() {
                 </SortableContext>
               ))}
 
-              <SortableContext
-                items={win.tabsUngroup.map((t) => t.id!)}
-                strategy={verticalListSortingStrategy}
-              >
-                <BentoGroupCard
-                  id={`ungroup-${win.id}`}
-                  title={MOCK_GROUP[EMockGroup.UNGROUP]}
-                  tabs={win.tabsUngroup}
-                  className="bg-white border-dashed border-slate-300"
-                />
-              </SortableContext>
+              {win.tabsUngroup.length > 0 && (
+                <SortableContext
+                  items={win.tabsUngroup.map((t) => t.id!)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <BentoGroupCard
+                    id={`ungroup-${win.id}`}
+                    title={MOCK_GROUP[EMockGroup.UNGROUP]}
+                    tabs={win.tabsUngroup}
+                    className="bg-white border-dashed border-slate-300"
+                  />
+                </SortableContext>
+              )}
             </div>
           </div>
         ))}
