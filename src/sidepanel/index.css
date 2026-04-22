@@ -62,6 +62,13 @@
 body {
   min-width: 20rem;
   margin: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+html {
+  height: 100vh;
+  overflow: hidden;
 }
 
 @theme inline {

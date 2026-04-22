@@ -11,7 +11,7 @@ function TabsContainer({
   return (
     <TabsPrimitive.Root
       data-slot="tabs"
-      className={cn("flex flex-col gap-2", className)}
+      className={cn("flex flex-col h-screen", className)}
       {...props}
     />
   )
@@ -25,7 +25,7 @@ function TabsList({
     <TabsPrimitive.List
       data-slot="tabs-list"
       className={cn(
-        "inline-flex h-9 w-full items-center justify-start border-b border-black/[0.03] px-2 gap-4",
+        "inline-flex h-9 w-full items-center justify-start border-b border-black/[0.03] px-2 gap-4 bg-background z-50",
         className
       )}
       {...props}
@@ -61,7 +61,7 @@ function TabsContent({
   return (
     <TabsPrimitive.Content
       data-slot="tabs-content"
-      className={cn("flex-1 outline-none", className)}
+      className={cn("flex-1 outline-none overflow-y-auto pt-2 pb-10", className)}
       value={`${value}`}
       {...props}
     />
@@ -106,7 +106,7 @@ function Tabs(props: IProps) {
 
   return (
     <TabsContainer value={activeValue} onValueChange={setActiveValue}>
-      <TabsList className="relative">
+      <TabsList>
         {
           props.tabs.map(tab => (
             <TabsTrigger 
