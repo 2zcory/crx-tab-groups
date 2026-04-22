@@ -79,7 +79,7 @@ function LiveManagement() {
     const finalTitle = newSnapshotTitle.trim() || group.title || "Untitled Group";
     setShowSaveMenu(null);
     setIsNamingNewSnapshot(false);
-    setSaveStatus(group.id, { state: "pending", message: "Saving..." });
+    setSaveStatus(group.id, { state: "pending", message: "Saving snapshot..." });
 
     let uniqueTitle = finalTitle;
     const existingTitles = savedSnapshots.map(s => s.title.toLowerCase());
@@ -120,16 +120,16 @@ function LiveManagement() {
     try {
       await StorageSyncGroup.create(snapshotGroup);
       await StorageSyncTab.create(...snapshotTabs);
-      setSaveStatus(group.id, { state: "saved", message: `Saved as "${uniqueTitle}"` });
+      setSaveStatus(group.id, { state: "saved", message: `Saved snapshot "${uniqueTitle}"` });
       void fetchSavedSnapshots();
     } catch {
-      setSaveStatus(group.id, { state: "failed", message: "Failed" });
+      setSaveStatus(group.id, { state: "failed", message: "Failed to save snapshot" });
     }
   };
 
   const updateExistingSnapshot = async (liveGroup: TabGroup, savedSnapshot: NStorage.Sync.Response.Group) => {
     setShowSaveMenu(null);
-    setSaveStatus(liveGroup.id, { state: "pending", message: `Updating...` });
+    setSaveStatus(liveGroup.id, { state: "pending", message: "Updating snapshot..." });
     const now = new Date().toISOString();
 
     const updatedGroup: NStorage.Sync.Schema.Group = {
@@ -158,10 +158,10 @@ function LiveManagement() {
       await StorageSyncGroup.update(updatedGroup);
       await StorageSyncTab.deleteTabsByGroupId(savedSnapshot.id);
       await StorageSyncTab.create(...newTabs);
-      setSaveStatus(liveGroup.id, { state: "saved", message: `Updated "${savedSnapshot.title}"` });
+      setSaveStatus(liveGroup.id, { state: "saved", message: `Updated snapshot "${savedSnapshot.title}"` });
       void fetchSavedSnapshots();
     } catch {
-      setSaveStatus(liveGroup.id, { state: "failed", message: "Failed" });
+      setSaveStatus(liveGroup.id, { state: "failed", message: "Failed to update snapshot" });
     }
   };
 
@@ -371,7 +371,9 @@ function LiveManagement() {
                       {saveStatuses[group.id]?.state && saveStatuses[group.id].state !== "idle" && (
                         <span className={cn(
                           "hidden rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider md:inline-flex",
-                          saveStatuses[group.id].state === "saved" ? "bg-emerald-100 text-emerald-700" : "bg-slate-200"
+                          saveStatuses[group.id].state === "saved" && "bg-emerald-100 text-emerald-700",
+                          saveStatuses[group.id].state === "failed" && "bg-rose-100 text-rose-700",
+                          saveStatuses[group.id].state === "pending" && "bg-slate-200 text-slate-600"
                         )}>
                           {saveStatuses[group.id].state}
                         </span>
@@ -385,6 +387,9 @@ function LiveManagement() {
                           showSaveMenu === group.id && "bg-slate-100"
                         )}
                         disabled={saveStatuses[group.id]?.state === "pending"}
+                        aria-haspopup="menu"
+                        aria-expanded={showSaveMenu === group.id}
+                        aria-label={`Save ${group.title || "Untitled Group"} as a snapshot`}
                         onClick={(event) => {
                           event.stopPropagation();
                           if (showSaveMenu === group.id) { setShowSaveMenu(null); setIsNamingNewSnapshot(false); }
@@ -392,11 +397,15 @@ function LiveManagement() {
                         }}
                       >
                         {saveStatuses[group.id]?.state === "pending" ? <LoaderCircle className="animate-spin" size={12} /> : saveStatuses[group.id]?.state === "saved" ? <CheckCircle2 size={12} /> : <FolderPlus size={12} />}
-                        <span className="ml-1">{saveStatuses[group.id]?.state === "saved" ? "Done" : "Save"}</span>
+                        <span className="ml-1">
+                          {saveStatuses[group.id]?.state === "pending" && "Saving"}
+                          {saveStatuses[group.id]?.state === "saved" && "Saved"}
+                          {saveStatuses[group.id]?.state !== "pending" && saveStatuses[group.id]?.state !== "saved" && "Snapshot"}
+                        </span>
                       </Button>
 
                       {showSaveMenu === group.id && (
-                        <div className="absolute right-0 top-full z-50 mt-1.5 flex min-w-48 flex-col gap-1 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl ring-1 ring-black/5" onClick={(e) => e.stopPropagation()}>
+                        <div className="absolute right-0 top-full z-50 mt-1.5 flex min-w-56 flex-col gap-1 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl ring-1 ring-black/5" role="menu" onClick={(e) => e.stopPropagation()}>
                           {isNamingNewSnapshot ? (
                             <div className="flex flex-col gap-2 p-1">
                               <p className="px-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">Snapshot Name:</p>
@@ -408,22 +417,22 @@ function LiveManagement() {
                                   onChange={(e) => setNewSnapshotTitle(e.target.value)}
                                   onKeyDown={(e) => { if (e.key === "Enter") void saveGroupSnapshot(group); if (e.key === "Escape") setIsNamingNewSnapshot(false); }}
                                 />
-                                <button onClick={() => void saveGroupSnapshot(group)} className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-white"><Check size={14} /></button>
-                                <button onClick={() => setIsNamingNewSnapshot(false)} className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400"><X size={14} /></button>
+                                <button type="button" aria-label="Save new snapshot" onClick={() => void saveGroupSnapshot(group)} className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-white"><Check size={14} /></button>
+                                <button type="button" aria-label="Cancel snapshot naming" onClick={() => setIsNamingNewSnapshot(false)} className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400"><X size={14} /></button>
                               </div>
                             </div>
                           ) : (
-                            <button className="flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[11px] font-bold text-emerald-600 transition-colors hover:bg-emerald-50" onClick={() => setIsNamingNewSnapshot(true)}>
-                              <FolderPlus size={12} /> Save as New Snapshot
+                            <button type="button" role="menuitem" className="flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[11px] font-bold text-emerald-600 transition-colors hover:bg-emerald-50" onClick={() => setIsNamingNewSnapshot(true)}>
+                              <FolderPlus size={12} /> New Snapshot
                             </button>
                           )}
                           {!isNamingNewSnapshot && savedSnapshots.length > 0 && (
                             <>
                               <div className="my-0.5 h-px bg-slate-100" />
-                              <p className="px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">Overwrite existing:</p>
+                              <p className="px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">Overwrite snapshot:</p>
                               <div className="flex max-h-32 flex-col gap-0.5 overflow-y-auto pr-0.5 text-slate-600">
                                 {savedSnapshots.map((ss) => (
-                                  <button key={ss.id} className="flex items-center justify-between rounded-lg px-2 py-1.5 text-left text-[11px] transition-colors hover:bg-slate-50" onClick={() => updateExistingSnapshot(group, ss)}>
+                                  <button key={ss.id} type="button" role="menuitem" className="flex items-center justify-between rounded-lg px-2 py-1.5 text-left text-[11px] transition-colors hover:bg-slate-50" onClick={() => updateExistingSnapshot(group, ss)}>
                                     <span className="truncate font-medium">{ss.title}</span>
                                     <RefreshCw size={10} className="text-slate-300" />
                                   </button>
@@ -458,7 +467,9 @@ function LiveManagement() {
             return (
               <div key={group.id} className={cn(
                 "rounded-2xl border px-3 py-2 text-xs font-medium shadow-sm",
-                status?.state === "saved" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-600"
+                status?.state === "saved" && "border-emerald-200 bg-emerald-50 text-emerald-700",
+                status?.state === "failed" && "border-rose-200 bg-rose-50 text-rose-700",
+                status?.state === "pending" && "border-slate-200 bg-slate-50 text-slate-600"
               )}>
                 {group.title || "Untitled Group"}: {status.message}
               </div>
