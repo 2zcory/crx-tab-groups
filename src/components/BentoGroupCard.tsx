@@ -15,6 +15,10 @@ interface BentoGroupCardProps {
   collapsed?: boolean
   onToggleCollapsed?: () => void
   onCloseTabs?: () => void
+  onCreateQuickRuleFromTab?: (
+    tab: chrome.tabs.Tab,
+    sourceGroup?: { title?: string; color?: NStorage.Sync.GroupColor },
+  ) => void
 }
 
 export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
@@ -27,6 +31,7 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
   collapsed,
   onToggleCollapsed,
   onCloseTabs,
+  onCreateQuickRuleFromTab,
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: id,
@@ -120,7 +125,19 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
           )}
         >
           {tabs.map((tab) => (
-            <TabListItem key={tab.id} tab={tab} />
+            <TabListItem
+              key={tab.id}
+              tab={tab}
+              onCreateQuickRuleFromTab={
+                onCreateQuickRuleFromTab
+                  ? () =>
+                      onCreateQuickRuleFromTab(tab, {
+                        title,
+                        color: color as NStorage.Sync.GroupColor | undefined,
+                      })
+                  : undefined
+              }
+            />
           ))}
           {tabs.length === 0 && (
             <div className="flex-1 flex items-center justify-center py-4 border border-dashed border-slate-200 rounded-lg bg-slate-50/50">

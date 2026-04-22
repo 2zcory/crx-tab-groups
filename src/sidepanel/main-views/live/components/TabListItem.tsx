@@ -1,4 +1,4 @@
-import { Pin, PinOff, RefreshCw, X, ZapOff } from 'lucide-react'
+import { ListPlus, Pin, PinOff, RefreshCw, X, ZapOff } from 'lucide-react'
 import { Button } from '../../../../components/ui/button'
 import { KeyboardEventHandler, MouseEventHandler, useEffect, useRef, useState } from 'react'
 import AvatarIcon from '../../../../components/ui/avatar'
@@ -26,9 +26,10 @@ function ButtonIcon({ children, className, onClick, ...props }: IButtonIconProps
 interface IProps {
   tab: chrome.tabs.Tab
   isOverlay?: boolean
+  onCreateQuickRuleFromTab?: () => void
 }
 
-function TabListItem({ tab, isOverlay }: IProps) {
+function TabListItem({ tab, isOverlay, onCreateQuickRuleFromTab }: IProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: tab.id!,
   })
@@ -78,6 +79,11 @@ function TabListItem({ tab, isOverlay }: IProps) {
   const handleReloadTab: MouseEventHandler<HTMLButtonElement> = (e) => {
     e.stopPropagation()
     tab.id && chrome.tabs.reload(tab.id)
+  }
+
+  const handleCreateQuickRule: MouseEventHandler<HTMLButtonElement> = (e) => {
+    e.stopPropagation()
+    onCreateQuickRuleFromTab?.()
   }
 
   const handleKeyDown: KeyboardEventHandler<HTMLDivElement> = (e) => {
@@ -188,6 +194,14 @@ function TabListItem({ tab, isOverlay }: IProps) {
       {!isOverlay && (
         <div className="flex items-center gap-0.5 ml-1">
           <div className="hidden group-hover:flex group-focus-within:flex items-center gap-0.5 bg-white/95 backdrop-blur-sm border border-black/5 shadow-sm rounded-lg p-0.5 animate-in fade-in zoom-in-95 duration-150">
+            {onCreateQuickRuleFromTab && (
+              <>
+                <ButtonIcon onClick={handleCreateQuickRule} title="Create quick rule from tab">
+                  <ListPlus size={11} className="text-slate-600" />
+                </ButtonIcon>
+                <div className="w-px h-2.5 bg-black/5 mx-0.5" />
+              </>
+            )}
             <ButtonIcon onClick={togglePin} title={tab.pinned ? 'Unpin tab' : 'Pin tab'}>
               {tab.pinned ? (
                 <PinOff size={11} className="text-slate-600" />

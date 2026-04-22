@@ -3,6 +3,7 @@ import { EMockGroup } from '@/enums'
 import onTabUpdated from '@/listeners/onTabUpdated'
 import StorageSyncGroup from '@/storage/group.sync'
 import StorageSyncTab from '@/storage/tab.sync'
+import StorageSyncAutoGroup from '@/storage/autoGroup.sync'
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { CheckCircle2, FolderPlus, LoaderCircle, Monitor } from 'lucide-react'
 import TopSites from './components/TopSites'
@@ -26,6 +27,13 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import TabListItem from './components/TabListItem'
+import {
+  getAutoGroupRulePatterns,
+  normalizeAutoGroupPattern,
+  shouldIgnoreAutoGroupUrl,
+  sortAutoGroupRules,
+  validateAutoGroupRulePattern,
+} from '@/helpers'
 
 interface TabGroup extends chrome.tabGroups.TabGroup {
   tabs: chrome.tabs.Tab[]
@@ -50,6 +58,11 @@ interface SaveStatus {
 interface AutoGroupScanStatus {
   tone: 'idle' | 'success' | 'warning' | 'error'
   message?: string
+}
+
+interface QuickRuleSourceGroup {
+  title?: string
+  color?: NStorage.Sync.GroupColor
 }
 
 type TabContainerKind = 'pinned' | 'ungrouped' | 'group'
@@ -108,6 +121,23 @@ const getDropTargetForTab = (windows: WindowData[], tabId: number): TabDropTarge
 
 const getValidTabId = (tab: chrome.tabs.Tab | undefined): number | null =>
   typeof tab?.id === 'number' ? tab.id : null
+
+const getHostnamePatternFromTab = (tab: chrome.tabs.Tab) => {
+  if (!tab.url || shouldIgnoreAutoGroupUrl(tab.url)) return null
+
+  try {
+    return new URL(tab.url).hostname.toLowerCase()
+  } catch {
+    return null
+  }
+}
+
+const getQuickRuleTitle = (tab: chrome.tabs.Tab, sourceGroup?: QuickRuleSourceGroup) => {
+  const groupTitle = sourceGroup?.title?.trim()
+  if (groupTitle) return groupTitle
+
+  return getHostnamePatternFromTab(tab) || tab.title?.trim() || 'Quick Rule'
+}
 
 function LiveManagement() {
   const [windows, setWindows] = useState<WindowData[]>([])
@@ -354,10 +384,126 @@ function LiveManagement() {
     void getActiveGroups()
   }
 
+  const triggerAutoGroupScan = () =>
+    new Promise<void>((resolve) => {
+      chrome.runtime.sendMessage({ action: 'run_auto_group_scan' }, () => {
+        resolve()
+      })
+    })
+
   const runAutoGroupScan = () => {
-    chrome.runtime.sendMessage({ action: 'run_auto_group_scan' }, () => {
+    setAutoGroupScanStatus({
+      tone: 'idle',
+      message: 'Scanning browser...',
+    })
+
+    chrome.runtime.sendMessage({ action: 'run_auto_group_scan' }, (response) => {
+      if (chrome.runtime.lastError || !response?.success) {
+        setAutoGroupScanStatus({
+          tone: 'error',
+          message: 'Auto-group scan failed',
+        })
+        void getActiveGroups()
+        return
+      }
+
+      const summary = response.summary
+      setAutoGroupScanStatus({
+        tone: summary?.grouped > 0 ? 'success' : 'warning',
+        message:
+          summary?.grouped > 0
+            ? `Grouped ${summary.grouped} tab${summary.grouped === 1 ? '' : 's'}`
+            : 'No matching tabs found',
+      })
       void getActiveGroups()
     })
+  }
+
+  const createQuickRuleFromTab = async (
+    tab: chrome.tabs.Tab,
+    sourceGroup?: QuickRuleSourceGroup,
+  ) => {
+    const pattern = getHostnamePatternFromTab(tab)
+
+    if (!pattern) {
+      setAutoGroupScanStatus({
+        tone: 'warning',
+        message: 'Cannot create a rule from this tab URL',
+      })
+      return
+    }
+
+    const normalizedPattern = normalizeAutoGroupPattern(pattern)
+    const validation = validateAutoGroupRulePattern(normalizedPattern)
+
+    if (!validation.isValid) {
+      setAutoGroupScanStatus({
+        tone: 'warning',
+        message: validation.error || 'Rule pattern is invalid',
+      })
+      return
+    }
+
+    const title = getQuickRuleTitle(tab, sourceGroup)
+    const color = sourceGroup?.color || 'blue'
+
+    try {
+      const currentRules = sortAutoGroupRules(await StorageSyncAutoGroup.getList())
+      const existingExactRule = currentRules.some((rule) => {
+        const existingPatterns = getAutoGroupRulePatterns(rule).map((item) => item.toLowerCase())
+
+        return (
+          rule.title.trim().toLowerCase() === title.toLowerCase() &&
+          existingPatterns.includes(validation.normalizedPattern.toLowerCase())
+        )
+      })
+
+      if (existingExactRule) {
+        setAutoGroupScanStatus({
+          tone: 'warning',
+          message: `Rule already exists for ${validation.normalizedPattern}`,
+        })
+        return
+      }
+
+      const conflictingGroupIdentity = currentRules.some(
+        (rule) => rule.title.trim().toLowerCase() === title.toLowerCase() && rule.color !== color,
+      )
+
+      if (conflictingGroupIdentity) {
+        setAutoGroupScanStatus({
+          tone: 'warning',
+          message: `Rule title "${title}" already uses another color`,
+        })
+        return
+      }
+
+      const now = new Date().toISOString()
+      const rule: NStorage.Sync.Schema.AutoGroupRule = {
+        id: crypto.randomUUID(),
+        title,
+        color,
+        order: currentRules.length + 1,
+        urlPatterns: [validation.normalizedPattern],
+        isActive: true,
+        createdAt: now,
+      }
+
+      await StorageSyncAutoGroup.create(rule)
+      await triggerAutoGroupScan()
+
+      setAutoGroupScanStatus({
+        tone: 'success',
+        message: `Rule created for ${validation.normalizedPattern}`,
+      })
+      void getActiveGroups()
+    } catch (e) {
+      console.error(e)
+      setAutoGroupScanStatus({
+        tone: 'error',
+        message: 'Rule creation failed',
+      })
+    }
   }
 
   const findTabById = (id: number) => {
@@ -646,6 +792,7 @@ function LiveManagement() {
                     title={MOCK_GROUP[EMockGroup.PINNED]}
                     tabs={win.tabsPinned}
                     className="bg-slate-50 border-slate-200"
+                    onCreateQuickRuleFromTab={(tab) => void createQuickRuleFromTab(tab)}
                   />
                 </SortableContext>
               )}
@@ -664,6 +811,12 @@ function LiveManagement() {
                     collapsed={group.collapsed}
                     onToggleCollapsed={() => void toggleGroupCollapsed(group)}
                     onCloseTabs={() => void closeGroupTabs(group)}
+                    onCreateQuickRuleFromTab={(tab) =>
+                      void createQuickRuleFromTab(tab, {
+                        title: group.title || undefined,
+                        color: group.color,
+                      })
+                    }
                     actions={
                       <div className="relative flex items-center gap-2">
                         {saveStatuses[group.id]?.state &&
@@ -801,12 +954,29 @@ function LiveManagement() {
                     title={MOCK_GROUP[EMockGroup.UNGROUP]}
                     tabs={win.tabsUngroup}
                     className="bg-white border-dashed border-slate-300"
+                    onCreateQuickRuleFromTab={(tab) => void createQuickRuleFromTab(tab)}
                   />
                 </SortableContext>
               )}
             </div>
           </div>
         ))}
+
+        {autoGroupScanStatus.message && (
+          <div
+            className={cn(
+              'rounded-2xl border px-3 py-2 text-[11px] font-bold',
+              autoGroupScanStatus.tone === 'success' &&
+                'border-emerald-200 bg-emerald-50 text-emerald-700',
+              autoGroupScanStatus.tone === 'warning' &&
+                'border-amber-200 bg-amber-50 text-amber-700',
+              autoGroupScanStatus.tone === 'error' && 'border-rose-200 bg-rose-50 text-rose-700',
+              autoGroupScanStatus.tone === 'idle' && 'border-slate-200 bg-slate-50 text-slate-600',
+            )}
+          >
+            {autoGroupScanStatus.message}
+          </div>
+        )}
       </div>
 
       {totalTabsAllCount > 0 && <TopSites />}
