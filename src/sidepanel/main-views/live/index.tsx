@@ -5,7 +5,7 @@ import StorageSyncGroup from '@/storage/group.sync'
 import StorageSyncTab from '@/storage/tab.sync'
 import StorageSyncAutoGroup from '@/storage/autoGroup.sync'
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
-import { CheckCircle2, FolderPlus, LoaderCircle, Monitor } from 'lucide-react'
+import { CheckCircle2, FolderPlus, LoaderCircle, Monitor, X } from 'lucide-react'
 import TopSites from './components/TopSites'
 import { BentoGroupCard } from '@/components/BentoGroupCard'
 import Tooltip from '@/components/ui/tooltip'
@@ -65,6 +65,18 @@ interface QuickRuleSourceGroup {
   color?: NStorage.Sync.GroupColor
 }
 
+interface AddToRulesDraft {
+  tabId: number
+  tabTitle?: string
+  url: string
+  hostname: string
+  patternDraft: string
+  destinationRuleId: string
+  newRuleTitle: string
+  newRuleColor: NStorage.Sync.GroupColor
+  sourceGroup?: QuickRuleSourceGroup
+}
+
 type TabContainerKind = 'pinned' | 'ungrouped' | 'group'
 
 interface TabDropTarget {
@@ -89,6 +101,31 @@ const getContainerGroupId = (containerId: string) => {
 }
 
 const TAB_GROUP_NONE = -1
+const NEW_RULE_DESTINATION_ID = 'new'
+
+const COLORS: NStorage.Sync.GroupColor[] = [
+  'grey',
+  'blue',
+  'red',
+  'yellow',
+  'green',
+  'pink',
+  'purple',
+  'cyan',
+  'orange',
+]
+
+const COLOR_MAP: Record<NStorage.Sync.GroupColor, string> = {
+  grey: 'bg-slate-400',
+  blue: 'bg-blue-500',
+  red: 'bg-red-500',
+  yellow: 'bg-yellow-500',
+  green: 'bg-green-500',
+  pink: 'bg-pink-500',
+  purple: 'bg-purple-500',
+  cyan: 'bg-cyan-500',
+  orange: 'bg-orange-500',
+}
 
 const getDropTargetForTab = (windows: WindowData[], tabId: number): TabDropTarget | null => {
   for (const win of windows) {
@@ -132,6 +169,35 @@ const getHostnamePatternFromTab = (tab: chrome.tabs.Tab) => {
   }
 }
 
+const getPathPatternFromTab = (tab: chrome.tabs.Tab) => {
+  if (!tab.url || shouldIgnoreAutoGroupUrl(tab.url)) return null
+
+  try {
+    const parsedUrl = new URL(tab.url)
+    const pathname = parsedUrl.pathname
+
+    if (!pathname || pathname === '/') return parsedUrl.hostname.toLowerCase()
+
+    const segments = pathname.split('/').filter(Boolean)
+    const firstSegment = segments[0]
+
+    return `${parsedUrl.hostname.toLowerCase()}/${firstSegment}/*`
+  } catch {
+    return null
+  }
+}
+
+const getExactPatternFromTab = (tab: chrome.tabs.Tab) => {
+  if (!tab.url || shouldIgnoreAutoGroupUrl(tab.url)) return null
+
+  try {
+    const parsedUrl = new URL(tab.url)
+    return parsedUrl.href.replace(/^[a-z]+:\/\//i, '')
+  } catch {
+    return null
+  }
+}
+
 const getQuickRuleTitle = (tab: chrome.tabs.Tab, sourceGroup?: QuickRuleSourceGroup) => {
   const groupTitle = sourceGroup?.title?.trim()
   if (groupTitle) return groupTitle
@@ -148,6 +214,8 @@ function LiveManagement() {
   const [showSaveMenu, setShowSaveMenu] = useState<number | null>(null)
   const [newSnapshotTitle, setNewSnapshotTitle] = useState('')
   const [isNamingNewSnapshot, setIsNamingNewSnapshot] = useState(false)
+  const [autoGroupRules, setAutoGroupRules] = useState<NStorage.Sync.Schema.AutoGroupRule[]>([])
+  const [addToRulesDraft, setAddToRulesDraft] = useState<AddToRulesDraft | null>(null)
   const [autoGroupScanStatus, setAutoGroupScanStatus] = useState<AutoGroupScanStatus>({
     tone: 'idle',
   })
@@ -226,11 +294,17 @@ function LiveManagement() {
   useEffect(() => {
     getActiveGroups()
     fetchSavedSnapshots()
+    fetchAutoGroupRules()
   }, [getActiveGroups])
 
   const fetchSavedSnapshots = async () => {
     const res = await StorageSyncGroup.getListWithTabs()
     setSavedSnapshots(res || [])
+  }
+
+  const fetchAutoGroupRules = async () => {
+    const rules = await StorageSyncAutoGroup.getList()
+    setAutoGroupRules(sortAutoGroupRules(rules))
   }
 
   const setSaveStatus = (groupId: number, status: SaveStatus) => {
@@ -419,21 +493,40 @@ function LiveManagement() {
     })
   }
 
-  const createQuickRuleFromTab = async (
-    tab: chrome.tabs.Tab,
-    sourceGroup?: QuickRuleSourceGroup,
-  ) => {
-    const pattern = getHostnamePatternFromTab(tab)
+  const openAddToRulesDraft = (tab: chrome.tabs.Tab, sourceGroup?: QuickRuleSourceGroup) => {
+    const hostname = getHostnamePatternFromTab(tab)
 
-    if (!pattern) {
+    if (!hostname || !tab.url || typeof tab.id !== 'number') {
       setAutoGroupScanStatus({
         tone: 'warning',
-        message: 'Cannot create a rule from this tab URL',
+        message: 'Cannot add this tab URL to Rules',
       })
       return
     }
 
-    const normalizedPattern = normalizeAutoGroupPattern(pattern)
+    const title = getQuickRuleTitle(tab, sourceGroup)
+    const color = sourceGroup?.color || 'blue'
+    const matchingRule = autoGroupRules.find(
+      (rule) => rule.title.trim().toLowerCase() === title.toLowerCase() && rule.color === color,
+    )
+
+    setAddToRulesDraft({
+      tabId: tab.id,
+      tabTitle: tab.title,
+      url: tab.url,
+      hostname,
+      patternDraft: hostname,
+      destinationRuleId: matchingRule?.id || NEW_RULE_DESTINATION_ID,
+      newRuleTitle: title,
+      newRuleColor: color,
+      sourceGroup,
+    })
+  }
+
+  const applyAddToRulesDraft = async () => {
+    if (!addToRulesDraft) return
+
+    const normalizedPattern = normalizeAutoGroupPattern(addToRulesDraft.patternDraft)
     const validation = validateAutoGroupRulePattern(normalizedPattern)
 
     if (!validation.isValid) {
@@ -444,64 +537,112 @@ function LiveManagement() {
       return
     }
 
-    const title = getQuickRuleTitle(tab, sourceGroup)
-    const color = sourceGroup?.color || 'blue'
+    const title = addToRulesDraft.newRuleTitle.trim()
+
+    if (addToRulesDraft.destinationRuleId === NEW_RULE_DESTINATION_ID && !title) {
+      setAutoGroupScanStatus({
+        tone: 'warning',
+        message: 'Rule title is required',
+      })
+      return
+    }
 
     try {
       const currentRules = sortAutoGroupRules(await StorageSyncAutoGroup.getList())
-      const existingExactRule = currentRules.some((rule) => {
-        const existingPatterns = getAutoGroupRulePatterns(rule).map((item) => item.toLowerCase())
+      const selectedRule =
+        addToRulesDraft.destinationRuleId === NEW_RULE_DESTINATION_ID
+          ? null
+          : currentRules.find((rule) => rule.id === addToRulesDraft.destinationRuleId)
 
-        return (
-          rule.title.trim().toLowerCase() === title.toLowerCase() &&
-          existingPatterns.includes(validation.normalizedPattern.toLowerCase())
+      if (addToRulesDraft.destinationRuleId !== NEW_RULE_DESTINATION_ID && !selectedRule) {
+        setAutoGroupScanStatus({
+          tone: 'warning',
+          message: 'Selected rule no longer exists',
+        })
+        await fetchAutoGroupRules()
+        return
+      }
+
+      if (selectedRule) {
+        const duplicatePattern = getAutoGroupRulePatterns(selectedRule).some(
+          (pattern) => pattern.toLowerCase() === validation.normalizedPattern.toLowerCase(),
         )
-      })
 
-      if (existingExactRule) {
-        setAutoGroupScanStatus({
-          tone: 'warning',
-          message: `Rule already exists for ${validation.normalizedPattern}`,
+        if (duplicatePattern) {
+          setAutoGroupScanStatus({
+            tone: 'warning',
+            message: `Pattern already exists in ${selectedRule.title}`,
+          })
+          return
+        }
+
+        await StorageSyncAutoGroup.update({
+          ...selectedRule,
+          urlPatterns: [...getAutoGroupRulePatterns(selectedRule), validation.normalizedPattern],
         })
-        return
-      }
+      } else {
+        const existingExactRule = currentRules.some((rule) => {
+          const existingPatterns = getAutoGroupRulePatterns(rule).map((item) => item.toLowerCase())
 
-      const conflictingGroupIdentity = currentRules.some(
-        (rule) => rule.title.trim().toLowerCase() === title.toLowerCase() && rule.color !== color,
-      )
-
-      if (conflictingGroupIdentity) {
-        setAutoGroupScanStatus({
-          tone: 'warning',
-          message: `Rule title "${title}" already uses another color`,
+          return (
+            rule.title.trim().toLowerCase() === title.toLowerCase() &&
+            existingPatterns.includes(validation.normalizedPattern.toLowerCase())
+          )
         })
-        return
+
+        if (existingExactRule) {
+          setAutoGroupScanStatus({
+            tone: 'warning',
+            message: `Pattern already exists under ${title}`,
+          })
+          return
+        }
+
+        const conflictingGroupIdentity = currentRules.some(
+          (rule) =>
+            rule.title.trim().toLowerCase() === title.toLowerCase() &&
+            rule.color !== addToRulesDraft.newRuleColor,
+        )
+
+        if (conflictingGroupIdentity) {
+          setAutoGroupScanStatus({
+            tone: 'warning',
+            message: `Rule title "${title}" already uses another color`,
+          })
+          return
+        }
+
+        const now = new Date().toISOString()
+        const rule: NStorage.Sync.Schema.AutoGroupRule = {
+          id: crypto.randomUUID(),
+          title,
+          color: addToRulesDraft.newRuleColor,
+          order: currentRules.length + 1,
+          urlPatterns: [validation.normalizedPattern],
+          isActive: true,
+          createdAt: now,
+        }
+
+        await StorageSyncAutoGroup.create(rule)
       }
 
-      const now = new Date().toISOString()
-      const rule: NStorage.Sync.Schema.AutoGroupRule = {
-        id: crypto.randomUUID(),
-        title,
-        color,
-        order: currentRules.length + 1,
-        urlPatterns: [validation.normalizedPattern],
-        isActive: true,
-        createdAt: now,
-      }
-
-      await StorageSyncAutoGroup.create(rule)
       await triggerAutoGroupScan()
+      await fetchAutoGroupRules()
 
       setAutoGroupScanStatus({
         tone: 'success',
-        message: `Rule created for ${validation.normalizedPattern}`,
+        message:
+          addToRulesDraft.destinationRuleId === NEW_RULE_DESTINATION_ID
+            ? `Rule created for ${validation.normalizedPattern}`
+            : `Pattern added: ${validation.normalizedPattern}`,
       })
+      setAddToRulesDraft(null)
       void getActiveGroups()
     } catch (e) {
       console.error(e)
       setAutoGroupScanStatus({
         tone: 'error',
-        message: 'Rule creation failed',
+        message: 'Add to Rules failed',
       })
     }
   }
@@ -743,6 +884,26 @@ function LiveManagement() {
     [activeTabId, windows],
   )
 
+  const addToRulesPatternSuggestions = useMemo(() => {
+    if (!addToRulesDraft) return []
+
+    const draftTab: chrome.tabs.Tab = {
+      id: addToRulesDraft.tabId,
+      url: addToRulesDraft.url,
+      title: addToRulesDraft.tabTitle,
+    } as chrome.tabs.Tab
+    const hostPattern = getHostnamePatternFromTab(draftTab)
+    const pathPattern = getPathPatternFromTab(draftTab)
+    const exactPattern = getExactPatternFromTab(draftTab)
+    const suggestions = [
+      hostPattern ? { label: 'Host', value: hostPattern } : null,
+      pathPattern ? { label: 'Path', value: pathPattern } : null,
+      exactPattern ? { label: 'Exact', value: exactPattern } : null,
+    ].filter((item): item is { label: string; value: string } => Boolean(item))
+
+    return Array.from(new Map(suggestions.map((item) => [item.value, item])).values())
+  }, [addToRulesDraft])
+
   return (
     <DndContext
       sensors={sensors}
@@ -792,7 +953,7 @@ function LiveManagement() {
                     title={MOCK_GROUP[EMockGroup.PINNED]}
                     tabs={win.tabsPinned}
                     className="bg-slate-50 border-slate-200"
-                    onCreateQuickRuleFromTab={(tab) => void createQuickRuleFromTab(tab)}
+                    onAddTabToRules={(tab) => openAddToRulesDraft(tab)}
                   />
                 </SortableContext>
               )}
@@ -811,8 +972,8 @@ function LiveManagement() {
                     collapsed={group.collapsed}
                     onToggleCollapsed={() => void toggleGroupCollapsed(group)}
                     onCloseTabs={() => void closeGroupTabs(group)}
-                    onCreateQuickRuleFromTab={(tab) =>
-                      void createQuickRuleFromTab(tab, {
+                    onAddTabToRules={(tab) =>
+                      openAddToRulesDraft(tab, {
                         title: group.title || undefined,
                         color: group.color,
                       })
@@ -954,13 +1115,137 @@ function LiveManagement() {
                     title={MOCK_GROUP[EMockGroup.UNGROUP]}
                     tabs={win.tabsUngroup}
                     className="bg-white border-dashed border-slate-300"
-                    onCreateQuickRuleFromTab={(tab) => void createQuickRuleFromTab(tab)}
+                    onAddTabToRules={(tab) => openAddToRulesDraft(tab)}
                   />
                 </SortableContext>
               )}
             </div>
           </div>
         ))}
+
+        {addToRulesDraft && (
+          <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                  Add To Rules
+                </p>
+                <p className="mt-0.5 truncate text-[12px] font-bold text-slate-700">
+                  {addToRulesDraft.tabTitle || addToRulesDraft.hostname}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="flex size-7 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                onClick={() => setAddToRulesDraft(null)}
+              >
+                <X size={13} />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label className="ml-1 text-[10px] font-bold uppercase text-slate-500">
+                  Pattern
+                </label>
+                <input
+                  className="w-full rounded-xl border-none bg-slate-50 px-3 py-2 text-[12px] font-medium text-slate-700 outline-none ring-1 ring-slate-200 focus:ring-slate-900"
+                  value={addToRulesDraft.patternDraft}
+                  onChange={(event) =>
+                    setAddToRulesDraft((current) =>
+                      current ? { ...current, patternDraft: event.target.value } : current,
+                    )
+                  }
+                />
+                <div className="flex flex-wrap gap-1.5">
+                  {addToRulesPatternSuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion.value}
+                      type="button"
+                      className={cn(
+                        'rounded-full px-2 py-1 text-[10px] font-bold ring-1 transition-colors',
+                        addToRulesDraft.patternDraft === suggestion.value
+                          ? 'bg-slate-900 text-white ring-slate-900'
+                          : 'bg-white text-slate-500 ring-slate-200 hover:bg-slate-50',
+                      )}
+                      onClick={() =>
+                        setAddToRulesDraft((current) =>
+                          current ? { ...current, patternDraft: suggestion.value } : current,
+                        )
+                      }
+                    >
+                      {suggestion.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="ml-1 text-[10px] font-bold uppercase text-slate-500">
+                  Destination
+                </label>
+                <select
+                  className="w-full rounded-xl border-none bg-slate-50 px-3 py-2 text-[12px] font-bold text-slate-700 outline-none ring-1 ring-slate-200 focus:ring-slate-900"
+                  value={addToRulesDraft.destinationRuleId}
+                  onChange={(event) =>
+                    setAddToRulesDraft((current) =>
+                      current ? { ...current, destinationRuleId: event.target.value } : current,
+                    )
+                  }
+                >
+                  <option value={NEW_RULE_DESTINATION_ID}>Create new rule</option>
+                  {autoGroupRules.map((rule) => (
+                    <option key={rule.id} value={rule.id}>
+                      {rule.title} - priority {rule.order}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {addToRulesDraft.destinationRuleId === NEW_RULE_DESTINATION_ID && (
+                <div className="flex flex-col gap-2 rounded-xl bg-slate-50 p-2 ring-1 ring-slate-100">
+                  <input
+                    className="w-full rounded-lg border-none bg-white px-2.5 py-2 text-[12px] font-bold text-slate-700 outline-none ring-1 ring-slate-200 focus:ring-slate-900"
+                    value={addToRulesDraft.newRuleTitle}
+                    onChange={(event) =>
+                      setAddToRulesDraft((current) =>
+                        current ? { ...current, newRuleTitle: event.target.value } : current,
+                      )
+                    }
+                    placeholder="New rule title"
+                  />
+                  <div className="flex flex-wrap gap-1.5">
+                    {COLORS.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        className={cn(
+                          'size-4 rounded-full transition-transform hover:scale-110',
+                          COLOR_MAP[color],
+                          addToRulesDraft.newRuleColor === color &&
+                            'scale-110 ring-2 ring-slate-900 ring-offset-1',
+                        )}
+                        onClick={() =>
+                          setAddToRulesDraft((current) =>
+                            current ? { ...current, newRuleColor: color } : current,
+                          )
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Button
+                type="button"
+                className="h-8 rounded-xl bg-slate-900 text-[11px] font-bold text-white hover:bg-slate-800"
+                onClick={() => void applyAddToRulesDraft()}
+              >
+                Add Pattern
+              </Button>
+            </div>
+          </section>
+        )}
 
         {autoGroupScanStatus.message && (
           <div

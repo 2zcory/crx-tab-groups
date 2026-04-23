@@ -26,10 +26,10 @@ function ButtonIcon({ children, className, onClick, ...props }: IButtonIconProps
 interface IProps {
   tab: chrome.tabs.Tab
   isOverlay?: boolean
-  onCreateQuickRuleFromTab?: () => void
+  onAddTabToRules?: () => void
 }
 
-function TabListItem({ tab, isOverlay, onCreateQuickRuleFromTab }: IProps) {
+function TabListItem({ tab, isOverlay, onAddTabToRules }: IProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: tab.id!,
   })
@@ -83,7 +83,7 @@ function TabListItem({ tab, isOverlay, onCreateQuickRuleFromTab }: IProps) {
 
   const handleCreateQuickRule: MouseEventHandler<HTMLButtonElement> = (e) => {
     e.stopPropagation()
-    onCreateQuickRuleFromTab?.()
+    onAddTabToRules?.()
   }
 
   const handleKeyDown: KeyboardEventHandler<HTMLDivElement> = (e) => {
@@ -194,9 +194,9 @@ function TabListItem({ tab, isOverlay, onCreateQuickRuleFromTab }: IProps) {
       {!isOverlay && (
         <div className="flex items-center gap-0.5 ml-1">
           <div className="hidden group-hover:flex group-focus-within:flex items-center gap-0.5 bg-white/95 backdrop-blur-sm border border-black/5 shadow-sm rounded-lg p-0.5 animate-in fade-in zoom-in-95 duration-150">
-            {onCreateQuickRuleFromTab && (
+            {onAddTabToRules && (
               <>
-                <ButtonIcon onClick={handleCreateQuickRule} title="Create quick rule from tab">
+                <ButtonIcon onClick={handleCreateQuickRule} title="Add to Rules">
                   <ListPlus size={11} className="text-slate-600" />
                 </ButtonIcon>
                 <div className="w-px h-2.5 bg-black/5 mx-0.5" />
