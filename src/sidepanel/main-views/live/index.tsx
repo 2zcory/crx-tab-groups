@@ -1032,7 +1032,7 @@ function LiveManagement() {
           >
             <div
               className={cn(
-                'pointer-events-auto w-full max-w-[min(100%,22rem)] rounded-2xl border px-3 py-2 shadow-lg backdrop-blur',
+                'pointer-events-auto w-full max-w-[min(100%,22rem)] rounded-2xl border px-3 py-2 shadow-lg backdrop-blur will-change-transform will-change-opacity',
                 autoGroupToastPhase === 'entering' && 'live-toast-enter',
                 autoGroupToastPhase === 'exiting' && 'live-toast-exit',
                 autoGroupToastPhase === 'visible' && 'live-toast-idle',
@@ -1046,13 +1046,13 @@ function LiveManagement() {
                   'border-slate-200 bg-slate-50/95 text-slate-600',
               )}
             >
-              <div className="flex items-start gap-2.5">
+              <div className="live-toast-content flex items-start gap-2.5">
                 <p className="min-w-0 flex-1 break-words pr-1 text-[11px] font-bold leading-4 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] overflow-hidden">
                   {renderedAutoGroupScanStatus.message}
                 </p>
                 <button
                   type="button"
-                  className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-current/60 transition-colors hover:bg-black/5 hover:text-current"
+                  className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-current/60 transition-all duration-200 hover:bg-black/5 hover:text-current hover:scale-105"
                   onClick={() => setAutoGroupScanStatus({ tone: 'idle' })}
                   aria-label="Dismiss status message"
                 >
