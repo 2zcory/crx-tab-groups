@@ -987,7 +987,7 @@ function LiveManagement() {
         {autoGroupScanStatus.message && (
           <div
             className={cn(
-              'pointer-events-none absolute inset-x-2 top-2 z-30 flex justify-end',
+              'pointer-events-none absolute inset-x-2 bottom-2 z-30 flex justify-center',
             )}
             role="status"
             aria-live="polite"
@@ -995,15 +995,16 @@ function LiveManagement() {
             <div
               className={cn(
                 'pointer-events-auto w-full max-w-[min(100%,22rem)] rounded-2xl border px-3 py-2 shadow-lg backdrop-blur',
-              autoGroupScanStatus.tone === 'success' &&
-                'border-emerald-200 bg-emerald-50/95 text-emerald-700',
-              autoGroupScanStatus.tone === 'warning' &&
-                'border-amber-200 bg-amber-50/95 text-amber-700',
-              autoGroupScanStatus.tone === 'error' &&
-                'border-rose-200 bg-rose-50/95 text-rose-700',
-              autoGroupScanStatus.tone === 'idle' &&
-                'border-slate-200 bg-slate-50/95 text-slate-600',
-            )}
+                'animate-[live-toast-in_220ms_cubic-bezier(0.22,1,0.36,1)]',
+                autoGroupScanStatus.tone === 'success' &&
+                  'border-emerald-200 bg-emerald-50/95 text-emerald-700',
+                autoGroupScanStatus.tone === 'warning' &&
+                  'border-amber-200 bg-amber-50/95 text-amber-700',
+                autoGroupScanStatus.tone === 'error' &&
+                  'border-rose-200 bg-rose-50/95 text-rose-700',
+                autoGroupScanStatus.tone === 'idle' &&
+                  'border-slate-200 bg-slate-50/95 text-slate-600',
+              )}
             >
               <div className="flex items-start gap-2.5">
                 <p className="min-w-0 flex-1 break-words pr-1 text-[11px] font-bold leading-4 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] overflow-hidden">
