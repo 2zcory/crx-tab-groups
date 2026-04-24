@@ -983,12 +983,18 @@ function LiveManagement() {
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex flex-col gap-6 p-2 pb-6">
+      <div className="relative flex flex-col gap-6 p-2 pb-6">
         {autoGroupScanStatus.message && (
           <div
             className={cn(
-              'sticky top-2 z-20 rounded-2xl border px-3 py-2 shadow-sm backdrop-blur',
-              'mx-auto w-full max-w-[min(100%,28rem)]',
+              'pointer-events-none absolute inset-x-2 top-2 z-30 flex justify-end',
+            )}
+            role="status"
+            aria-live="polite"
+          >
+            <div
+              className={cn(
+                'pointer-events-auto w-full max-w-[min(100%,22rem)] rounded-2xl border px-3 py-2 shadow-lg backdrop-blur',
               autoGroupScanStatus.tone === 'success' &&
                 'border-emerald-200 bg-emerald-50/95 text-emerald-700',
               autoGroupScanStatus.tone === 'warning' &&
@@ -998,21 +1004,20 @@ function LiveManagement() {
               autoGroupScanStatus.tone === 'idle' &&
                 'border-slate-200 bg-slate-50/95 text-slate-600',
             )}
-            role="status"
-            aria-live="polite"
-          >
-            <div className="flex items-start gap-2.5">
-              <p className="min-w-0 flex-1 break-words pr-1 text-[11px] font-bold leading-4 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] overflow-hidden">
-                {autoGroupScanStatus.message}
-              </p>
-              <button
-                type="button"
-                className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-current/60 transition-colors hover:bg-black/5 hover:text-current"
-                onClick={() => setAutoGroupScanStatus({ tone: 'idle' })}
-                aria-label="Dismiss status message"
-              >
-                <X size={11} />
-              </button>
+            >
+              <div className="flex items-start gap-2.5">
+                <p className="min-w-0 flex-1 break-words pr-1 text-[11px] font-bold leading-4 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] overflow-hidden">
+                  {autoGroupScanStatus.message}
+                </p>
+                <button
+                  type="button"
+                  className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-current/60 transition-colors hover:bg-black/5 hover:text-current"
+                  onClick={() => setAutoGroupScanStatus({ tone: 'idle' })}
+                  aria-label="Dismiss status message"
+                >
+                  <X size={11} />
+                </button>
+              </div>
             </div>
           </div>
         )}
