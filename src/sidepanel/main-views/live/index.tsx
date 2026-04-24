@@ -61,6 +61,10 @@ interface AutoGroupScanStatus {
 }
 
 const AUTO_GROUP_STATUS_AUTO_DISMISS_MS = 5000
+const AUTO_GROUP_STATUS_EXIT_MS = 180
+const LIVE_TOAST_BOTTOM_OFFSET_PX = 68
+
+type AutoGroupToastPhase = 'entering' | 'visible' | 'exiting'
 
 interface AutoGroupScanResponse {
   success: boolean
@@ -256,7 +260,11 @@ function LiveManagement() {
   const [autoGroupScanStatus, setAutoGroupScanStatus] = useState<AutoGroupScanStatus>({
     tone: 'idle',
   })
+  const [renderedAutoGroupScanStatus, setRenderedAutoGroupScanStatus] =
+    useState<AutoGroupScanStatus | null>(null)
+  const [autoGroupToastPhase, setAutoGroupToastPhase] = useState<AutoGroupToastPhase>('visible')
   const autoGroupStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const autoGroupStatusExitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // DND State
   const [activeTabId, setActiveTabId] = useState<number | null>(null)
@@ -341,7 +349,29 @@ function LiveManagement() {
       autoGroupStatusTimerRef.current = null
     }
 
-    if (!autoGroupScanStatus.message) return
+    if (autoGroupStatusExitTimerRef.current) {
+      clearTimeout(autoGroupStatusExitTimerRef.current)
+      autoGroupStatusExitTimerRef.current = null
+    }
+
+    if (!autoGroupScanStatus.message) {
+      if (renderedAutoGroupScanStatus?.message) {
+        setAutoGroupToastPhase('exiting')
+        autoGroupStatusExitTimerRef.current = setTimeout(() => {
+          setRenderedAutoGroupScanStatus(null)
+          setAutoGroupToastPhase('visible')
+          autoGroupStatusExitTimerRef.current = null
+        }, AUTO_GROUP_STATUS_EXIT_MS)
+      }
+      return
+    }
+
+    setRenderedAutoGroupScanStatus(autoGroupScanStatus)
+    setAutoGroupToastPhase('entering')
+
+    const enterTimer = setTimeout(() => {
+      setAutoGroupToastPhase('visible')
+    }, 20)
 
     autoGroupStatusTimerRef.current = setTimeout(() => {
       setAutoGroupScanStatus({ tone: 'idle' })
@@ -349,12 +379,19 @@ function LiveManagement() {
     }, AUTO_GROUP_STATUS_AUTO_DISMISS_MS)
 
     return () => {
+      clearTimeout(enterTimer)
+
       if (autoGroupStatusTimerRef.current) {
         clearTimeout(autoGroupStatusTimerRef.current)
         autoGroupStatusTimerRef.current = null
       }
+
+      if (autoGroupStatusExitTimerRef.current) {
+        clearTimeout(autoGroupStatusExitTimerRef.current)
+        autoGroupStatusExitTimerRef.current = null
+      }
     }
-  }, [autoGroupScanStatus.message])
+  }, [autoGroupScanStatus, renderedAutoGroupScanStatus?.message])
 
   const fetchSavedSnapshots = async () => {
     const res = await StorageSyncGroup.getListWithTabs()
@@ -984,31 +1021,34 @@ function LiveManagement() {
       onDragEnd={handleDragEnd}
     >
       <div className="relative flex flex-col gap-6 p-2 pb-6">
-        {autoGroupScanStatus.message && (
+        {renderedAutoGroupScanStatus?.message && (
           <div
             className={cn(
-              'pointer-events-none fixed inset-x-0 bottom-3 z-40 flex justify-center px-2',
+              'pointer-events-none fixed inset-x-0 z-40 flex justify-center px-2',
             )}
+            style={{ bottom: `${LIVE_TOAST_BOTTOM_OFFSET_PX}px` }}
             role="status"
             aria-live="polite"
           >
             <div
               className={cn(
                 'pointer-events-auto w-full max-w-[min(100%,22rem)] rounded-2xl border px-3 py-2 shadow-lg backdrop-blur',
-                'live-toast-enter',
-                autoGroupScanStatus.tone === 'success' &&
+                autoGroupToastPhase === 'entering' && 'live-toast-enter',
+                autoGroupToastPhase === 'exiting' && 'live-toast-exit',
+                autoGroupToastPhase === 'visible' && 'live-toast-idle',
+                renderedAutoGroupScanStatus.tone === 'success' &&
                   'border-emerald-200 bg-emerald-50/95 text-emerald-700',
-                autoGroupScanStatus.tone === 'warning' &&
+                renderedAutoGroupScanStatus.tone === 'warning' &&
                   'border-amber-200 bg-amber-50/95 text-amber-700',
-                autoGroupScanStatus.tone === 'error' &&
+                renderedAutoGroupScanStatus.tone === 'error' &&
                   'border-rose-200 bg-rose-50/95 text-rose-700',
-                autoGroupScanStatus.tone === 'idle' &&
+                renderedAutoGroupScanStatus.tone === 'idle' &&
                   'border-slate-200 bg-slate-50/95 text-slate-600',
               )}
             >
               <div className="flex items-start gap-2.5">
                 <p className="min-w-0 flex-1 break-words pr-1 text-[11px] font-bold leading-4 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] overflow-hidden">
-                  {autoGroupScanStatus.message}
+                  {renderedAutoGroupScanStatus.message}
                 </p>
                 <button
                   type="button"
