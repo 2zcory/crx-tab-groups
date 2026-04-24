@@ -166,28 +166,28 @@ html {
 @keyframes live-toast-in {
   0% {
     opacity: 0;
-    transform: translateY(18px) scale(0.94);
-    filter: blur(8px);
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+    transform: translateY(16px) scale(0.965);
+    filter: blur(10px);
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
   }
 
-  58% {
+  62% {
     opacity: 1;
-    transform: translateY(-4px) scale(1.015);
-    filter: blur(0);
-    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.18);
+    transform: translateY(-2px) scale(1.006);
+    filter: blur(1px);
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12);
   }
 
   100% {
     opacity: 1;
     transform: translateY(0) scale(1);
     filter: blur(0);
-    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.11);
   }
 }
 
 .live-toast-enter {
-  animation: live-toast-in 360ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: live-toast-in 420ms cubic-bezier(0.19, 1, 0.22, 1) forwards;
 }
 
 @keyframes live-toast-out {
@@ -195,43 +195,48 @@ html {
     opacity: 1;
     transform: translateY(0) scale(1);
     filter: blur(0);
-    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.11);
   }
 
-  35% {
-    opacity: 1;
-    transform: translateY(-2px) scale(0.995);
-    filter: blur(0);
+  28% {
+    opacity: 0.98;
+    transform: translateY(-1px) scale(0.998);
+    filter: blur(0.5px);
   }
 
   100% {
     opacity: 0;
-    transform: translateY(20px) scale(0.94);
-    filter: blur(8px);
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+    transform: translateY(14px) scale(0.97);
+    filter: blur(10px);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
   }
 }
 
 .live-toast-exit {
-  animation: live-toast-out 240ms cubic-bezier(0.4, 0, 1, 1) forwards;
+  animation: live-toast-out 260ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 .live-toast-idle {
   opacity: 1;
   transform: translateY(0) scale(1);
   filter: blur(0);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.11);
 }
 
 .live-toast-content {
-  animation: live-toast-content-in 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: live-toast-content-in 460ms cubic-bezier(0.19, 1, 0.22, 1);
   transform-origin: center bottom;
 }
 
 @keyframes live-toast-content-in {
   0% {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(6px);
+  }
+
+  70% {
+    opacity: 1;
+    transform: translateY(-1px);
   }
 
   100% {
