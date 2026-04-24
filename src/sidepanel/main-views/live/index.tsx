@@ -79,6 +79,28 @@ interface AddToRulesDraft {
 
 type TabContainerKind = 'pinned' | 'ungrouped' | 'group'
 
+const toSnapshotTab = (
+  tab: chrome.tabs.Tab,
+  groupId: string,
+  order: number,
+  now: string,
+): NStorage.Sync.Schema.Tab => {
+  const url = tab.url || 'about:blank'
+
+  return {
+    id: crypto.randomUUID(),
+    title: tab.title || 'Untitled Tab',
+    url,
+    favIconUrl: tab.favIconUrl,
+    order,
+    groupId,
+    isRepaired: shouldIgnoreAutoGroupUrl(url),
+    createdAt: now,
+    updatedAt: now,
+    lastOpened: tab.lastAccessed ? new Date(tab.lastAccessed).toISOString() : now,
+  }
+}
+
 interface TabDropTarget {
   kind: TabContainerKind
   windowId: number
@@ -357,17 +379,9 @@ function LiveManagement() {
       updatedAt: now,
     }
 
-    const snapshotTabs: NStorage.Sync.Schema.Tab[] = group.tabs.map((tab, index) => ({
-      id: crypto.randomUUID(),
-      title: tab.title || 'Untitled Tab',
-      url: tab.url || 'about:blank',
-      favIconUrl: tab.favIconUrl,
-      order: index + 1,
-      groupId: snapshotGroupId,
-      createdAt: now,
-      updatedAt: now,
-      lastOpened: tab.lastAccessed ? new Date(tab.lastAccessed).toISOString() : now,
-    }))
+    const snapshotTabs: NStorage.Sync.Schema.Tab[] = group.tabs.map((tab, index) =>
+      toSnapshotTab(tab, snapshotGroupId, index + 1, now),
+    )
 
     try {
       await StorageSyncGroup.create(snapshotGroup)
@@ -407,17 +421,9 @@ function LiveManagement() {
       updatedAt: now,
     }
 
-    const newTabs: NStorage.Sync.Schema.Tab[] = liveGroup.tabs.map((tab, index) => ({
-      id: crypto.randomUUID(),
-      title: tab.title || 'Untitled Tab',
-      url: tab.url || 'about:blank',
-      favIconUrl: tab.favIconUrl,
-      order: index + 1,
-      groupId: savedSnapshot.id,
-      createdAt: now,
-      updatedAt: now,
-      lastOpened: tab.lastAccessed ? new Date(tab.lastAccessed).toISOString() : now,
-    }))
+    const newTabs: NStorage.Sync.Schema.Tab[] = liveGroup.tabs.map((tab, index) =>
+      toSnapshotTab(tab, savedSnapshot.id, index + 1, now),
+    )
 
     try {
       await StorageSyncGroup.update(updatedGroup)

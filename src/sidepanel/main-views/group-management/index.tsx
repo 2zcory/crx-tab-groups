@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button'
+import { shouldIgnoreAutoGroupUrl } from '@/helpers'
 import { cn } from '@/lib/utils'
 import StorageSyncGroup from '@/storage/group.sync'
 import StorageSyncTab from '@/storage/tab.sync'
@@ -102,6 +103,9 @@ const createRestoredTab = (url: string, windowId?: number) =>
       },
     )
   })
+
+const canRestoreSavedTab = (tab: NStorage.Sync.Schema.Tab) =>
+  Boolean(tab.url) && !tab.isRepaired && !shouldIgnoreAutoGroupUrl(tab.url)
 
 function GroupManagement() {
   const [groups, setGroups] = useState<NStorage.Sync.Response.Group[]>([])
@@ -288,16 +292,16 @@ function GroupManagement() {
     })
 
     const sortedTabs = [...group.tabs].sort((a, b) => a.order - b.order)
-    const tabsWithUrls = sortedTabs.filter((tab) => Boolean(tab.url))
-    let failedCount = sortedTabs.length - tabsWithUrls.length
+    const restorableTabs = sortedTabs.filter(canRestoreSavedTab)
+    let failedCount = sortedTabs.length - restorableTabs.length
     let openedCount = 0
     let createdGroup = false
     const createdTabIds: number[] = []
 
-    if (tabsWithUrls.length === 0) {
+    if (restorableTabs.length === 0) {
       setRestoreStatus(group.id, {
         state: 'failed',
-        message: 'No URLs',
+        message: 'Nothing restorable',
         openedCount: 0,
         failedCount,
       })
@@ -313,7 +317,7 @@ function GroupManagement() {
       restoreWindowId = undefined
     }
 
-    for (const tab of tabsWithUrls) {
+    for (const tab of restorableTabs) {
       try {
         const createdTab = await createRestoredTab(tab.url!, restoreWindowId)
 
