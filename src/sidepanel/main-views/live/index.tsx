@@ -60,6 +60,8 @@ interface AutoGroupScanStatus {
   message?: string
 }
 
+const AUTO_GROUP_STATUS_AUTO_DISMISS_MS = 5000
+
 interface AutoGroupScanResponse {
   success: boolean
   summary?: {
@@ -254,6 +256,7 @@ function LiveManagement() {
   const [autoGroupScanStatus, setAutoGroupScanStatus] = useState<AutoGroupScanStatus>({
     tone: 'idle',
   })
+  const autoGroupStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // DND State
   const [activeTabId, setActiveTabId] = useState<number | null>(null)
@@ -331,6 +334,27 @@ function LiveManagement() {
     fetchSavedSnapshots()
     fetchAutoGroupRules()
   }, [getActiveGroups])
+
+  useEffect(() => {
+    if (autoGroupStatusTimerRef.current) {
+      clearTimeout(autoGroupStatusTimerRef.current)
+      autoGroupStatusTimerRef.current = null
+    }
+
+    if (!autoGroupScanStatus.message) return
+
+    autoGroupStatusTimerRef.current = setTimeout(() => {
+      setAutoGroupScanStatus({ tone: 'idle' })
+      autoGroupStatusTimerRef.current = null
+    }, AUTO_GROUP_STATUS_AUTO_DISMISS_MS)
+
+    return () => {
+      if (autoGroupStatusTimerRef.current) {
+        clearTimeout(autoGroupStatusTimerRef.current)
+        autoGroupStatusTimerRef.current = null
+      }
+    }
+  }, [autoGroupScanStatus.message])
 
   const fetchSavedSnapshots = async () => {
     const res = await StorageSyncGroup.getListWithTabs()
@@ -960,6 +984,39 @@ function LiveManagement() {
       onDragEnd={handleDragEnd}
     >
       <div className="flex flex-col gap-6 p-2 pb-6">
+        {autoGroupScanStatus.message && (
+          <div
+            className={cn(
+              'sticky top-2 z-20 rounded-2xl border px-3 py-2 shadow-sm backdrop-blur',
+              'mx-auto w-full max-w-[min(100%,28rem)]',
+              autoGroupScanStatus.tone === 'success' &&
+                'border-emerald-200 bg-emerald-50/95 text-emerald-700',
+              autoGroupScanStatus.tone === 'warning' &&
+                'border-amber-200 bg-amber-50/95 text-amber-700',
+              autoGroupScanStatus.tone === 'error' &&
+                'border-rose-200 bg-rose-50/95 text-rose-700',
+              autoGroupScanStatus.tone === 'idle' &&
+                'border-slate-200 bg-slate-50/95 text-slate-600',
+            )}
+            role="status"
+            aria-live="polite"
+          >
+            <div className="flex items-start gap-2.5">
+              <p className="min-w-0 flex-1 break-words pr-1 text-[11px] font-bold leading-4 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] overflow-hidden">
+                {autoGroupScanStatus.message}
+              </p>
+              <button
+                type="button"
+                className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-current/60 transition-colors hover:bg-black/5 hover:text-current"
+                onClick={() => setAutoGroupScanStatus({ tone: 'idle' })}
+                aria-label="Dismiss status message"
+              >
+                <X size={11} />
+              </button>
+            </div>
+          </div>
+        )}
+
         {windows.map((win) => (
           <div key={win.id} className="flex flex-col gap-2.5">
             <div
@@ -1294,21 +1351,6 @@ function LiveManagement() {
           </section>
         )}
 
-        {autoGroupScanStatus.message && (
-          <div
-            className={cn(
-              'rounded-2xl border px-3 py-2 text-[11px] font-bold',
-              autoGroupScanStatus.tone === 'success' &&
-                'border-emerald-200 bg-emerald-50 text-emerald-700',
-              autoGroupScanStatus.tone === 'warning' &&
-                'border-amber-200 bg-amber-50 text-amber-700',
-              autoGroupScanStatus.tone === 'error' && 'border-rose-200 bg-rose-50 text-rose-700',
-              autoGroupScanStatus.tone === 'idle' && 'border-slate-200 bg-slate-50 text-slate-600',
-            )}
-          >
-            {autoGroupScanStatus.message}
-          </div>
-        )}
       </div>
 
       {totalTabsAllCount > 0 && <TopSites />}
