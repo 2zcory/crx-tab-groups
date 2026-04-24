@@ -987,7 +987,7 @@ function LiveManagement() {
         {autoGroupScanStatus.message && (
           <div
             className={cn(
-              'pointer-events-none absolute inset-x-2 bottom-2 z-30 flex justify-center',
+              'pointer-events-none fixed inset-x-0 bottom-3 z-40 flex justify-center px-2',
             )}
             role="status"
             aria-live="polite"
@@ -995,7 +995,7 @@ function LiveManagement() {
             <div
               className={cn(
                 'pointer-events-auto w-full max-w-[min(100%,22rem)] rounded-2xl border px-3 py-2 shadow-lg backdrop-blur',
-                'animate-[live-toast-in_220ms_cubic-bezier(0.22,1,0.36,1)]',
+                'live-toast-enter',
                 autoGroupScanStatus.tone === 'success' &&
                   'border-emerald-200 bg-emerald-50/95 text-emerald-700',
                 autoGroupScanStatus.tone === 'warning' &&
