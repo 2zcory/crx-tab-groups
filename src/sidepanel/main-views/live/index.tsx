@@ -60,6 +60,19 @@ interface AutoGroupScanStatus {
   message?: string
 }
 
+interface AutoGroupScanResponse {
+  success: boolean
+  summary?: {
+    scanned: number
+    matched: number
+    grouped: number
+    created: number
+    alreadyGrouped: number
+    errors: number
+  }
+  error?: string
+}
+
 interface QuickRuleSourceGroup {
   title?: string
   color?: NStorage.Sync.GroupColor
@@ -465,9 +478,17 @@ function LiveManagement() {
   }
 
   const triggerAutoGroupScan = () =>
-    new Promise<void>((resolve) => {
-      chrome.runtime.sendMessage({ action: 'run_auto_group_scan' }, () => {
-        resolve()
+    new Promise<AutoGroupScanResponse>((resolve) => {
+      chrome.runtime.sendMessage({ action: 'run_auto_group_scan' }, (response) => {
+        if (chrome.runtime.lastError) {
+          resolve({
+            success: false,
+            error: chrome.runtime.lastError.message || 'Auto-group scan failed',
+          })
+          return
+        }
+
+        resolve((response || { success: false, error: 'Auto-group scan failed' }) as AutoGroupScanResponse)
       })
     })
 
@@ -632,16 +653,36 @@ function LiveManagement() {
         await StorageSyncAutoGroup.create(rule)
       }
 
-      await triggerAutoGroupScan()
+      const scanResponse = await triggerAutoGroupScan()
       await fetchAutoGroupRules()
 
-      setAutoGroupScanStatus({
-        tone: 'success',
-        message:
-          addToRulesDraft.destinationRuleId === NEW_RULE_DESTINATION_ID
-            ? `Rule created for ${validation.normalizedPattern}`
-            : `Pattern added: ${validation.normalizedPattern}`,
-      })
+      const savedMessage =
+        addToRulesDraft.destinationRuleId === NEW_RULE_DESTINATION_ID
+          ? `Rule created for ${validation.normalizedPattern}`
+          : `Pattern added: ${validation.normalizedPattern}`
+
+      if (!scanResponse.success) {
+        setAutoGroupScanStatus({
+          tone: 'warning',
+          message: `${savedMessage}. Auto-group scan failed.`,
+        })
+      } else if (scanResponse.summary?.grouped && scanResponse.summary.grouped > 0) {
+        setAutoGroupScanStatus({
+          tone: 'success',
+          message: `${savedMessage}. Grouped ${scanResponse.summary.grouped} tab${scanResponse.summary.grouped === 1 ? '' : 's'}.`,
+        })
+      } else if (scanResponse.summary?.alreadyGrouped && scanResponse.summary.alreadyGrouped > 0) {
+        setAutoGroupScanStatus({
+          tone: 'success',
+          message: `${savedMessage}. Matching tab${scanResponse.summary.alreadyGrouped === 1 ? '' : 's'} already grouped.`,
+        })
+      } else {
+        setAutoGroupScanStatus({
+          tone: 'warning',
+          message: `${savedMessage}. No matching tabs were grouped.`,
+        })
+      }
+
       setAddToRulesDraft(null)
       void getActiveGroups()
     } catch (e) {
