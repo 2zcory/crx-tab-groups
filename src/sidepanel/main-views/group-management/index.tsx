@@ -104,8 +104,15 @@ const createRestoredTab = (url: string, windowId?: number) =>
     )
   })
 
-const canRestoreSavedTab = (tab: NStorage.Sync.Schema.Tab) =>
-  Boolean(tab.url) && !tab.isRepaired && !shouldIgnoreAutoGroupUrl(tab.url)
+const canRestoreSavedTab = (tab: NStorage.Sync.Schema.Tab) => {
+  if (!tab.url) return false
+
+  // Repaired tabs intentionally keep `about:blank` so restore can degrade gracefully
+  // instead of being rejected before the restore attempt begins.
+  if (tab.url === 'about:blank') return true
+
+  return !shouldIgnoreAutoGroupUrl(tab.url)
+}
 
 function GroupManagement() {
   const [groups, setGroups] = useState<NStorage.Sync.Response.Group[]>([])
