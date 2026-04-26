@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { X, Settings2 } from 'lucide-react'
 
 import './SidePanel.css'
@@ -86,6 +86,33 @@ export const SidePanel = () => {
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light')
   const [glassStyle, setGlassStyle] = useState<GlassStyle>(DEFAULT_GLASS_STYLE)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [dragY, setDragY] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const dragStartY = useRef(0)
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    setIsDragging(true)
+    dragStartY.current = e.clientY
+    setDragY(0)
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+  }
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging) return
+    const deltaY = e.clientY - dragStartY.current
+    if (deltaY > 0) {
+      setDragY(deltaY)
+    }
+  }
+
+  const handlePointerUp = () => {
+    if (!isDragging) return
+    setIsDragging(false)
+    if (dragY > 100) {
+      setIsSettingsOpen(false)
+    }
+    setDragY(0)
+  }
 
   useEffect(() => {
     setIsMigrating(true)
@@ -269,8 +296,21 @@ export const SidePanel = () => {
           className={`sp-sheet-backdrop ${isSettingsOpen ? 'sp-sheet-backdrop-open' : ''}`}
           onClick={() => setIsSettingsOpen(false)}
         />
-        <div className={`sp-sheet ${isSettingsOpen ? 'sp-sheet-open' : ''}`}>
-          <div className="sp-sheet-header">
+        <div 
+          className={`sp-sheet ${isSettingsOpen ? 'sp-sheet-open' : ''}`}
+          style={{ 
+            transform: isSettingsOpen 
+              ? `translateY(${dragY}px)` 
+              : 'translateY(100%)',
+            transition: isDragging ? 'none' : undefined
+          }}
+        >
+          <div 
+            className="sp-sheet-header cursor-grab active:cursor-grabbing touch-none"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+          >
             <div className="sp-sheet-handle" />
             <div className="flex items-center justify-between px-5 pt-5 pb-2">
               <div>
