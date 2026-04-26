@@ -5,24 +5,23 @@ class StorageSyncGroup {
   static name: keyof NStorage.Sync.Schema.Database = 'groups'
 
   static async getList() {
-    // TODO: Handle error - unprotected aync code
     const data = await StorageSync.get<Pick<NStorage.Sync.Schema.Database, 'groups'>>(
       StorageSyncGroup.name,
     )
-
-    return data.groups
+    return data.groups || []
   }
 
   static async getListWithTabs<TResponse = NStorage.Sync.Response.Group[]>() {
-    // TODO: Handle error - unprotected aync code
     const data = await StorageSync.get<Pick<NStorage.Sync.Schema.Database, 'groups' | 'tabs'>>([
       StorageSyncGroup.name,
       StorageSyncTab.name,
     ])
 
-    const tabs = Object.groupBy(data.tabs, ({ groupId }) => groupId)
+    const groups = data.groups || []
+    const tabsData = data.tabs || []
+    const tabs = Object.groupBy(tabsData, ({ groupId }) => groupId)
 
-    const res: TResponse = data.groups.map((group) => ({
+    const res: TResponse = groups.map((group) => ({
       ...group,
       tabs: tabs[group.id] || [],
     })) as TResponse
@@ -31,52 +30,38 @@ class StorageSyncGroup {
   }
 
   static async create(...groups: NStorage.Sync.Schema.Group[]) {
-    const params: Pick<NStorage.Sync.Schema.Database, 'groups'> = { groups: [] }
-
-    // TODO: Handle error - unprotected aync code
-    params.groups = await StorageSyncGroup.getList()
-
-    for (let group of groups) {
-      params.groups.push(group)
-    }
-
-    // TODO: Handle error - unprotected aync code
-    await StorageSync.set(params)
+    return StorageSync.runExclusive(async () => {
+      const currentGroups = await StorageSyncGroup.getList()
+      const params: Pick<NStorage.Sync.Schema.Database, 'groups'> = {
+        groups: [...currentGroups, ...groups],
+      }
+      await StorageSync.set(params)
+    })
   }
 
   static async update(...groups: NStorage.Sync.Schema.Group[]) {
-    const params: Pick<NStorage.Sync.Schema.Database, 'groups'> = { groups: [] }
-
-    // TODO: Handle error - unprotected aync code
-    params.groups = await StorageSyncGroup.getList()
-
-    for (let newGroup of groups) {
-      params.groups = params.groups.map((group) => {
-        if (group.id === newGroup.id) {
-          return {
-            ...group,
-            ...newGroup,
-          }
-        }
-
-        return group
+    return StorageSync.runExclusive(async () => {
+      const currentGroups = await StorageSyncGroup.getList()
+      const updatedGroups = currentGroups.map((group) => {
+        const matchingNewGroup = groups.find((newG) => newG.id === group.id)
+        return matchingNewGroup ? { ...group, ...matchingNewGroup } : group
       })
-    }
-
-    // TODO: Handle error - unprotected aync code
-    await StorageSync.set(params)
+      
+      const params: Pick<NStorage.Sync.Schema.Database, 'groups'> = {
+        groups: updatedGroups,
+      }
+      await StorageSync.set(params)
+    })
   }
 
   static async deleteGroupById(id: string) {
-    const params: Pick<NStorage.Sync.Schema.Database, 'groups'> = { groups: [] }
-
-    // TODO: Handle error - unprotected aync code
-    params.groups = await StorageSyncGroup.getList()
-
-    params.groups = params.groups.filter((group) => group.id !== id)
-
-    // TODO: Handle error - unprotected aync code
-    await StorageSync.set(params)
+    return StorageSync.runExclusive(async () => {
+      const currentGroups = await StorageSyncGroup.getList()
+      const params: Pick<NStorage.Sync.Schema.Database, 'groups'> = {
+        groups: currentGroups.filter((group) => group.id !== id),
+      }
+      await StorageSync.set(params)
+    })
   }
 }
 

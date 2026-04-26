@@ -7,64 +7,42 @@ class StorageSyncTab {
     const data = await StorageSync.get<Pick<NStorage.Sync.Schema.Database, 'tabs'>>(
       StorageSyncTab.name,
     )
-
-    return data.tabs
+    return data.tabs || []
   }
 
   static async create(...tabs: NStorage.Sync.Schema.Tab[]) {
-    const params: Pick<NStorage.Sync.Schema.Database, 'tabs'> = { tabs: [] }
-
-    params.tabs = await StorageSyncTab.getList()
-
-    for (let tab of tabs) {
-      params.tabs.push(tab)
-    }
-
-    await StorageSync.set(params)
+    return StorageSync.runExclusive(async () => {
+      const currentTabs = await StorageSyncTab.getList()
+      const params: Pick<NStorage.Sync.Schema.Database, 'tabs'> = {
+        tabs: [...currentTabs, ...tabs],
+      }
+      await StorageSync.set(params)
+    })
   }
 
   static async update(...tabs: NStorage.Sync.Schema.Tab[]) {
-    const params: Pick<NStorage.Sync.Schema.Database, 'tabs'> = { tabs: [] }
-
-    params.tabs = await StorageSyncTab.getList()
-
-    for (let newTab of tabs) {
-      params.tabs = params.tabs.map((tab) => {
-        if (tab.id === newTab.id) {
-          return {
-            ...tab,
-            ...newTab,
-          }
-        }
-        return tab
+    return StorageSync.runExclusive(async () => {
+      const currentTabs = await StorageSyncTab.getList()
+      const updatedTabs = currentTabs.map((tab) => {
+        const matchingNewTab = tabs.find((newT) => newT.id === tab.id)
+        return matchingNewTab ? { ...tab, ...matchingNewTab } : tab
       })
-    }
 
-    await StorageSync.set(params)
-  }
-
-  static async deleteTabById(id: string) {
-    const params: Pick<NStorage.Sync.Schema.Database, 'tabs'> = { tabs: [] }
-
-    // TODO: Handle error - unprotected aync code
-    params.tabs = await StorageSyncTab.getList()
-
-    params.tabs = params.tabs.filter((tab) => tab.id !== id)
-
-    // TODO: Handle error - unprotected aync code
-    await StorageSync.set(params)
+      const params: Pick<NStorage.Sync.Schema.Database, 'tabs'> = {
+        tabs: updatedTabs,
+      }
+      await StorageSync.set(params)
+    })
   }
 
   static async deleteTabsByGroupId(groupId: string) {
-    const params: Pick<NStorage.Sync.Schema.Database, 'tabs'> = { tabs: [] }
-
-    // TODO: Handle error - unprotected aync code
-    params.tabs = await StorageSyncTab.getList()
-
-    params.tabs = params.tabs.filter((tab) => tab.groupId !== groupId)
-
-    // TODO: Handle error - unprotected aync code
-    await StorageSync.set(params)
+    return StorageSync.runExclusive(async () => {
+      const currentTabs = await StorageSyncTab.getList()
+      const params: Pick<NStorage.Sync.Schema.Database, 'tabs'> = {
+        tabs: currentTabs.filter((tab) => tab.groupId !== groupId),
+      }
+      await StorageSync.set(params)
+    })
   }
 }
 
