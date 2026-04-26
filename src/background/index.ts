@@ -373,5 +373,70 @@ chrome.sidePanel
   .setPanelBehavior({ openPanelOnActionClick: true })
   .catch((error) => console.error(error))
 
+// --- SESSION TRACKING LOGIC ---
+
+const SESSION_STORAGE_KEY = 'last_known_good_session'
+const TRACKING_DEBOUNCE_MS = 2000
+
+let trackingTimer: ReturnType<typeof setTimeout> | null = null
+
+const trackCurrentSession = async () => {
+  if (trackingTimer) clearTimeout(trackingTimer)
+
+  trackingTimer = setTimeout(async () => {
+    try {
+      const allWindows = await chrome.windows.getAll({ populate: true, windowTypes: ['normal'] })
+      const allGroups = await chrome.tabGroups.query({})
+
+      const sessionSnapshot = {
+        timestamp: new Date().toISOString(),
+        windowCount: allWindows.length,
+        tabCount: allWindows.reduce((acc, win) => acc + (win.tabs?.length || 0), 0),
+        windows: allWindows.map((win) => ({
+          id: win.id,
+          tabs: (win.tabs || []).map((tab) => ({
+            url: tab.url,
+            title: tab.title,
+            favIconUrl: tab.favIconUrl,
+            pinned: tab.pinned,
+            groupId: tab.groupId,
+          })),
+          groups: allGroups
+            .filter((g) => g.windowId === win.id)
+            .map((g) => ({
+              id: g.id,
+              title: g.title,
+              color: g.color,
+              collapsed: g.collapsed,
+            })),
+        })),
+      }
+
+      // Only save if there are actually tabs open (to prevent overwriting with an empty session)
+      if (sessionSnapshot.tabCount > 0) {
+        await chrome.storage.local.set({ [SESSION_STORAGE_KEY]: sessionSnapshot })
+        console.log(`[SessionTracker] Saved state: ${sessionSnapshot.tabCount} tabs in ${sessionSnapshot.windowCount} windows.`)
+      }
+    } catch (e) {
+      console.error('[SessionTracker] Error saving session:', e)
+    } finally {
+      trackingTimer = null
+    }
+  }, TRACKING_DEBOUNCE_MS)
+}
+
+// Attach tracking hooks
+chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
+  if (changeInfo.url || changeInfo.status === 'complete') trackCurrentSession()
+})
+chrome.tabs.onRemoved.addListener(() => trackCurrentSession())
+chrome.tabs.onMoved.addListener(() => trackCurrentSession())
+chrome.tabs.onAttached.addListener(() => trackCurrentSession())
+chrome.tabs.onDetached.addListener(() => trackCurrentSession())
+chrome.windows.onCreated.addListener(() => trackCurrentSession())
+chrome.windows.onRemoved.addListener(() => trackCurrentSession())
+
+// --- END SESSION TRACKING LOGIC ---
+
 // Initial notification to confirm background is alive
 notify('Crx Tab Groups', 'Automation Service is active 🚀')
