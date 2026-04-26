@@ -14,7 +14,12 @@ import StorageLocal from '@/storage/local'
 
 type ThemeMode = 'light' | 'dark' | 'system' | 'glass'
 type ResolvedTheme = 'light' | 'dark' | 'glass'
-type GlassStyle = 'frosted-light' | 'aurora-dark' | 'minimal-clear'
+type GlassStyle =
+  | 'frosted-light'
+  | 'aurora-dark'
+  | 'minimal-clear'
+  | 'warm-glass'
+  | 'monochrome-glass'
 
 const THEME_STORAGE_KEY = 'themeMode'
 const GLASS_STYLE_STORAGE_KEY = 'glassStyle'
@@ -56,6 +61,20 @@ const GLASS_STYLE_OPTIONS: Array<{
     shortLabel: 'Minimal',
     description: 'Lower blur and easier readability.',
     accentLabel: 'Low blur',
+  },
+  {
+    value: 'warm-glass',
+    label: 'Warm Glass',
+    shortLabel: 'Warm',
+    description: 'Amber-tinted glass with softer warmth.',
+    accentLabel: 'Warm tone',
+  },
+  {
+    value: 'monochrome-glass',
+    label: 'Monochrome Glass',
+    shortLabel: 'Mono',
+    description: 'Neutral grayscale glass with mature contrast.',
+    accentLabel: 'Mono calm',
   },
 ]
 

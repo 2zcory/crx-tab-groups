@@ -457,6 +457,158 @@ html {
   --sp-style-preview-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
+[data-theme='glass'][data-glass-style='warm-glass'] {
+  background:
+    radial-gradient(circle at top left, rgba(251, 191, 36, 0.22), transparent 32%),
+    radial-gradient(circle at top right, rgba(251, 113, 133, 0.18), transparent 30%),
+    linear-gradient(180deg, #f4e7da 0%, #ead9c9 52%, #e2cfbc 100%);
+  --background: oklch(0.96 0.02 72);
+  --foreground: oklch(0.27 0.02 45);
+  --card: oklch(0.99 0.01 70 / 0.46);
+  --card-foreground: oklch(0.27 0.02 45);
+  --popover: oklch(1 0.01 70 / 0.54);
+  --popover-foreground: oklch(0.27 0.02 45);
+  --primary: oklch(0.46 0.07 55);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.94 0.02 70 / 0.82);
+  --secondary-foreground: oklch(0.31 0.02 45);
+  --muted: oklch(0.95 0.02 70 / 0.8);
+  --muted-foreground: oklch(0.48 0.02 45);
+  --accent: oklch(0.94 0.03 55 / 0.82);
+  --accent-foreground: oklch(0.31 0.02 45);
+  --border: oklch(0.98 0.01 70 / 0.42);
+  --input: oklch(0.99 0.01 70 / 0.36);
+  --ring: oklch(0.72 0.09 58);
+  --surface: rgba(255, 248, 241, 0.38);
+  --surface-elevated: rgba(255, 250, 244, 0.52);
+  --surface-muted: rgba(250, 241, 233, 0.58);
+  --border-strong: rgba(180, 120, 82, 0.18);
+  --text-primary: #442a20;
+  --text-secondary: #6a4a3a;
+  --text-muted: #8a6a58;
+  --glass-surface: rgba(255, 248, 241, 0.34);
+  --glass-surface-elevated: rgba(255, 250, 244, 0.48);
+  --glass-border: rgba(255, 238, 225, 0.56);
+  --glass-highlight: rgba(255, 246, 237, 0.42);
+  --glass-shadow: 0 24px 54px rgba(91, 53, 33, 0.16);
+  --glass-depth-shadow: 0 14px 34px rgba(91, 53, 33, 0.14);
+  --glass-panel-sheen:
+    linear-gradient(180deg, rgba(255, 248, 241, 0.34), rgba(255, 248, 241, 0.04) 58%);
+  --glass-panel-sheen-opacity: 1;
+  --sp-shell-bg: linear-gradient(180deg, rgba(255, 248, 241, 0.34), rgba(251, 241, 231, 0.28));
+  --sp-shell-gradient: radial-gradient(circle at top, rgba(251, 191, 36, 0.18), transparent 50%);
+  --sp-shell-sheen:
+    linear-gradient(180deg, rgba(255, 244, 235, 0.2), rgba(255, 244, 235, 0.02) 54%);
+  --sp-shell-sheen-opacity: 1;
+  --sp-card-bg: var(--glass-surface);
+  --sp-card-border: var(--glass-border);
+  --sp-card-hover: var(--glass-surface-elevated);
+  --sp-footer-bg: rgba(255, 247, 239, 0.36);
+  --sp-footer-border: rgba(255, 234, 220, 0.5);
+  --sp-tab-pill-bg: rgba(255, 245, 236, 0.28);
+  --sp-tab-pill-active: #5b3928;
+  --sp-tab-pill-text: #8a6a58;
+  --sp-statusbar-bg: rgba(255, 247, 239, 0.34);
+  --sp-statusbar-border: rgba(255, 234, 220, 0.48);
+  --sp-overlay-bg: color-mix(in srgb, var(--surface-elevated) 92%, rgba(255, 245, 236, 0.14));
+  --sp-overlay-shadow: 0 24px 52px rgba(91, 53, 33, 0.18);
+  --sp-action-rail-bg: color-mix(in srgb, var(--surface-elevated) 92%, rgba(255, 244, 235, 0.1));
+  --sp-action-rail-shadow: 0 12px 28px rgba(91, 53, 33, 0.14);
+  --sp-tab-card-bg: color-mix(in srgb, var(--surface-elevated) 80%, rgba(255, 244, 235, 0.12));
+  --sp-tab-card-hover-bg: color-mix(in srgb, var(--surface-elevated) 92%, rgba(255, 244, 235, 0.16));
+  --sp-tab-card-active-bg: color-mix(in srgb, var(--surface-elevated) 96%, rgba(255, 244, 235, 0.22));
+  --sp-tab-card-shadow: 0 8px 20px rgba(91, 53, 33, 0.08);
+  --sp-tab-card-hover-shadow: 0 14px 30px rgba(91, 53, 33, 0.12);
+  --sp-tab-card-active-shadow: 0 18px 40px rgba(91, 53, 33, 0.16);
+  --sp-chip-active-bg: linear-gradient(135deg, rgba(91, 57, 40, 0.94), rgba(138, 106, 88, 0.88));
+  --sp-chip-active-border: rgba(255, 232, 214, 0.62);
+  --sp-chip-active-color: #fff7f0;
+  --sp-style-preview-bg:
+    radial-gradient(circle at top left, rgba(251, 191, 36, 0.24), transparent 34%),
+    radial-gradient(circle at top right, rgba(251, 113, 133, 0.2), transparent 32%),
+    linear-gradient(180deg, #f4e7da 0%, #ead9c9 100%);
+  --sp-style-preview-glow:
+    linear-gradient(180deg, rgba(255, 247, 239, 0.22), rgba(255, 247, 239, 0.02) 64%);
+  --sp-style-preview-surface: rgba(255, 248, 241, 0.48);
+  --sp-style-preview-border: rgba(255, 234, 220, 0.52);
+  --sp-style-preview-shadow: inset 0 1px 0 rgba(255, 248, 241, 0.3);
+}
+
+[data-theme='glass'][data-glass-style='monochrome-glass'] {
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.16), transparent 30%),
+    linear-gradient(180deg, #d8dbe0 0%, #c4c9d0 48%, #b4bac3 100%);
+  --background: oklch(0.92 0 0);
+  --foreground: oklch(0.21 0 0);
+  --card: oklch(1 0 0 / 0.36);
+  --card-foreground: oklch(0.21 0 0);
+  --popover: oklch(1 0 0 / 0.44);
+  --popover-foreground: oklch(0.21 0 0);
+  --primary: oklch(0.28 0 0);
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.9 0 0 / 0.76);
+  --secondary-foreground: oklch(0.24 0 0);
+  --muted: oklch(0.88 0 0 / 0.74);
+  --muted-foreground: oklch(0.46 0 0);
+  --accent: oklch(0.91 0 0 / 0.8);
+  --accent-foreground: oklch(0.24 0 0);
+  --border: oklch(1 0 0 / 0.34);
+  --input: oklch(1 0 0 / 0.3);
+  --ring: oklch(0.56 0 0);
+  --surface: rgba(255, 255, 255, 0.28);
+  --surface-elevated: rgba(255, 255, 255, 0.4);
+  --surface-muted: rgba(241, 245, 249, 0.42);
+  --border-strong: rgba(71, 85, 105, 0.16);
+  --text-primary: #181b20;
+  --text-secondary: #3e4653;
+  --text-muted: #66707f;
+  --glass-surface: rgba(255, 255, 255, 0.26);
+  --glass-surface-elevated: rgba(255, 255, 255, 0.38);
+  --glass-border: rgba(255, 255, 255, 0.44);
+  --glass-highlight: rgba(255, 255, 255, 0.28);
+  --glass-shadow: 0 24px 54px rgba(17, 24, 39, 0.18);
+  --glass-depth-shadow: 0 14px 32px rgba(17, 24, 39, 0.16);
+  --glass-panel-sheen:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.02) 60%);
+  --glass-panel-sheen-opacity: 1;
+  --sp-shell-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(241, 245, 249, 0.22));
+  --sp-shell-gradient: radial-gradient(circle at top, rgba(255, 255, 255, 0.22), transparent 48%);
+  --sp-shell-sheen:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.02) 56%);
+  --sp-shell-sheen-opacity: 1;
+  --sp-card-bg: var(--glass-surface);
+  --sp-card-border: var(--glass-border);
+  --sp-card-hover: var(--glass-surface-elevated);
+  --sp-footer-bg: rgba(255, 255, 255, 0.28);
+  --sp-footer-border: rgba(255, 255, 255, 0.42);
+  --sp-tab-pill-bg: rgba(255, 255, 255, 0.22);
+  --sp-tab-pill-active: #181b20;
+  --sp-tab-pill-text: #66707f;
+  --sp-statusbar-bg: rgba(255, 255, 255, 0.24);
+  --sp-statusbar-border: rgba(255, 255, 255, 0.38);
+  --sp-overlay-bg: color-mix(in srgb, var(--surface-elevated) 92%, rgba(255, 255, 255, 0.08));
+  --sp-overlay-shadow: 0 24px 52px rgba(17, 24, 39, 0.2);
+  --sp-action-rail-bg: color-mix(in srgb, var(--surface-elevated) 94%, rgba(255, 255, 255, 0.06));
+  --sp-action-rail-shadow: 0 12px 28px rgba(17, 24, 39, 0.16);
+  --sp-tab-card-bg: color-mix(in srgb, var(--surface-elevated) 78%, rgba(255, 255, 255, 0.08));
+  --sp-tab-card-hover-bg: color-mix(in srgb, var(--surface-elevated) 90%, rgba(255, 255, 255, 0.12));
+  --sp-tab-card-active-bg: color-mix(in srgb, var(--surface-elevated) 96%, rgba(255, 255, 255, 0.18));
+  --sp-tab-card-shadow: 0 8px 18px rgba(17, 24, 39, 0.08);
+  --sp-tab-card-hover-shadow: 0 14px 30px rgba(17, 24, 39, 0.12);
+  --sp-tab-card-active-shadow: 0 18px 40px rgba(17, 24, 39, 0.16);
+  --sp-chip-active-bg: linear-gradient(135deg, rgba(24, 27, 32, 0.94), rgba(62, 70, 83, 0.9));
+  --sp-chip-active-border: rgba(255, 255, 255, 0.58);
+  --sp-chip-active-color: #f8fafc;
+  --sp-style-preview-bg:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.2), transparent 32%),
+    linear-gradient(180deg, #d8dbe0 0%, #bec4cc 100%);
+  --sp-style-preview-glow:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02) 64%);
+  --sp-style-preview-surface: rgba(255, 255, 255, 0.4);
+  --sp-style-preview-border: rgba(255, 255, 255, 0.48);
+  --sp-style-preview-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

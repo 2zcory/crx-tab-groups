@@ -19,6 +19,13 @@ const TARGET_TIMEOUT_MS = 20000
 const POLL_INTERVAL_MS = 250
 const EXTENSION_URL_PREFIX = 'chrome-extension://'
 const DEFAULT_GLASS_STYLE = 'frosted-light'
+const EXPECTED_GLASS_STYLES = [
+  'frosted-light',
+  'aurora-dark',
+  'minimal-clear',
+  'warm-glass',
+  'monochrome-glass',
+]
 
 const chromePath =
   process.env.CHROME_PATH || DEFAULT_BROWSER_CANDIDATES.find((candidate) => existsSync(candidate))
@@ -384,12 +391,14 @@ const main = async () => {
 
     const glassPickerUi = await sidepanelClient.evaluate(buildGlassStyleUiSnapshotExpression())
     assert(
-      glassPickerUi.cardCount === 3 &&
+      glassPickerUi.cardCount === EXPECTED_GLASS_STYLES.length &&
         glassPickerUi.activeCount === 1 &&
         glassPickerUi.activeStyle === DEFAULT_GLASS_STYLE &&
         glassPickerUi.labels.includes('Frosted Light') &&
         glassPickerUi.labels.includes('Aurora Dark') &&
-        glassPickerUi.labels.includes('Minimal Clear'),
+        glassPickerUi.labels.includes('Minimal Clear') &&
+        glassPickerUi.labels.includes('Warm Glass') &&
+        glassPickerUi.labels.includes('Monochrome Glass'),
       `Glass picker UI mismatch: ${JSON.stringify(glassPickerUi)}`,
     )
 
@@ -409,6 +418,43 @@ const main = async () => {
       `Aurora glass picker active state mismatch: ${JSON.stringify(auroraGlassPickerUi)}`,
     )
 
+    const warmGlassState = await sidepanelClient.evaluate(buildSetGlassStyleExpression('warm-glass'))
+    assert(
+      warmGlassState.themeMode === 'glass' &&
+        warmGlassState.resolvedTheme === 'glass' &&
+        warmGlassState.glassStyle === 'warm-glass' &&
+        warmGlassState.rootGlassStyle === 'warm-glass' &&
+        warmGlassState.storedGlassStyle === 'warm-glass',
+      `Warm glass style contract mismatch: ${JSON.stringify(warmGlassState)}`,
+    )
+
+    const warmGlassPickerUi = await sidepanelClient.evaluate(buildGlassStyleUiSnapshotExpression())
+    assert(
+      warmGlassPickerUi.activeCount === 1 && warmGlassPickerUi.activeStyle === 'warm-glass',
+      `Warm glass picker active state mismatch: ${JSON.stringify(warmGlassPickerUi)}`,
+    )
+
+    const monochromeGlassState = await sidepanelClient.evaluate(
+      buildSetGlassStyleExpression('monochrome-glass'),
+    )
+    assert(
+      monochromeGlassState.themeMode === 'glass' &&
+        monochromeGlassState.resolvedTheme === 'glass' &&
+        monochromeGlassState.glassStyle === 'monochrome-glass' &&
+        monochromeGlassState.rootGlassStyle === 'monochrome-glass' &&
+        monochromeGlassState.storedGlassStyle === 'monochrome-glass',
+      `Monochrome glass style contract mismatch: ${JSON.stringify(monochromeGlassState)}`,
+    )
+
+    const monochromeGlassPickerUi = await sidepanelClient.evaluate(
+      buildGlassStyleUiSnapshotExpression(),
+    )
+    assert(
+      monochromeGlassPickerUi.activeCount === 1 &&
+        monochromeGlassPickerUi.activeStyle === 'monochrome-glass',
+      `Monochrome glass picker active state mismatch: ${JSON.stringify(monochromeGlassPickerUi)}`,
+    )
+
     await sidepanelClient.close()
     sidepanelClient = await openHarnessSidepanel(extensionId, 'light')
 
@@ -418,8 +464,8 @@ const main = async () => {
       (state) =>
         state.themeMode === 'glass' &&
         state.resolvedTheme === 'glass' &&
-        state.glassStyle === 'aurora-dark' &&
-        state.rootGlassStyle === 'aurora-dark',
+        state.glassStyle === 'monochrome-glass' &&
+        state.rootGlassStyle === 'monochrome-glass',
     )
 
     const result = {
@@ -441,6 +487,10 @@ const main = async () => {
         glassPickerUi,
         auroraGlassState,
         auroraGlassPickerUi,
+        warmGlassState,
+        warmGlassPickerUi,
+        monochromeGlassState,
+        monochromeGlassPickerUi,
         glassPersisted,
       },
     }
