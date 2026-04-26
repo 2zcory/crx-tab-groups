@@ -108,6 +108,7 @@ function TabListItem({ tab, isOverlay, onAddTabToRules }: IProps) {
       style={style}
       {...attributes}
       {...listeners}
+      data-live-surface={isOverlay ? 'drag-overlay' : 'tab-item'}
       className={cn(
         'group relative select-none overflow-hidden',
         'grid grid-cols-[auto_1fr_auto] items-center',
@@ -189,7 +190,10 @@ function TabListItem({ tab, isOverlay, onAddTabToRules }: IProps) {
 
       {!isOverlay && (
         <div className="flex items-center gap-0.5 ml-1">
-          <div className="sp-action-rail hidden group-hover:flex group-focus-within:flex items-center gap-0.5 rounded-lg p-0.5 animate-in fade-in zoom-in-95 duration-150">
+          <div
+            className="sp-action-rail hidden group-hover:flex group-focus-within:flex items-center gap-0.5 rounded-lg p-0.5 animate-in fade-in zoom-in-95 duration-150"
+            data-live-surface="action-rail"
+          >
             {onAddTabToRules && (
               <>
                 <ButtonIcon onClick={handleCreateQuickRule} title="Add to Rules">

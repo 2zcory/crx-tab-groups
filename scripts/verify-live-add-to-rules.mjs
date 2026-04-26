@@ -204,7 +204,16 @@ const buildHarnessReadyExpression = () => `(
       window.__CRX_TAB_GROUPS_HARNESS__ &&
         typeof window.__CRX_TAB_GROUPS_HARNESS__.getExampleTabDraftOptions === 'function' &&
         typeof window.__CRX_TAB_GROUPS_HARNESS__.applyExampleTabToRule === 'function' &&
-        typeof window.__CRX_TAB_GROUPS_HARNESS__.getAddToRulesState === 'function',
+        typeof window.__CRX_TAB_GROUPS_HARNESS__.getAddToRulesState === 'function' &&
+        typeof window.__CRX_TAB_GROUPS_HARNESS__.showThemeSmokeState === 'function',
+    )
+)()`
+
+const buildHarnessMethodReadyExpression = (methodName) => `(
+  () =>
+    Boolean(
+      window.__CRX_TAB_GROUPS_HARNESS__ &&
+        typeof window.__CRX_TAB_GROUPS_HARNESS__.${methodName} === 'function',
     )
 )()`
 
@@ -226,6 +235,79 @@ const buildHarnessStateExpression = () => `(
   }
 )()`
 
+const buildShowThemeSmokeStateExpression = () => `(
+  async () => {
+    return window.__CRX_TAB_GROUPS_HARNESS__.showThemeSmokeState()
+  }
+)()`
+
+const buildSetGlassThemeExpression = (style) => `(
+  async () => {
+    const waitForCommit = () =>
+      new Promise((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(resolve)
+        })
+      })
+
+    const themeButtons = Array.from(document.querySelectorAll('.sp-theme-chip'))
+    const glassButton = themeButtons.find((button) => button.textContent?.trim() === 'Glass')
+    if (!(glassButton instanceof HTMLButtonElement)) {
+      throw new Error('Glass theme button not found')
+    }
+
+    glassButton.click()
+    await waitForCommit()
+
+    const styleButton = document.querySelector('[data-glass-style-card="${style}"]')
+    if (!(styleButton instanceof HTMLButtonElement)) {
+      throw new Error('Glass style button not found: ${style}')
+    }
+
+    styleButton.click()
+    await waitForCommit()
+
+    return {
+      rootTheme: document.documentElement.getAttribute('data-theme'),
+      rootThemeMode: document.documentElement.getAttribute('data-theme-mode'),
+      rootGlassStyle: document.documentElement.getAttribute('data-glass-style'),
+    }
+  }
+)()`
+
+const buildLiveThemeSurfaceSnapshotExpression = () => `(
+  () => {
+    const root = document.documentElement
+    const readSurface = (selector) => {
+      const element = document.querySelector(selector)
+      if (!(element instanceof HTMLElement)) return null
+
+      const styles = getComputedStyle(element)
+      return {
+        backgroundColor: styles.backgroundColor,
+        backgroundImage: styles.backgroundImage,
+        borderColor: styles.borderColor,
+        color: styles.color,
+        boxShadow: styles.boxShadow,
+        backdropFilter: styles.backdropFilter,
+      }
+    }
+
+    return {
+      rootTheme: root.getAttribute('data-theme'),
+      rootThemeMode: root.getAttribute('data-theme-mode'),
+      rootGlassStyle: root.getAttribute('data-glass-style'),
+      bodyBackgroundImage: getComputedStyle(document.body).backgroundImage,
+      surfaces: {
+        topSites: readSurface('[data-live-surface="top-sites"]'),
+        saveMenu: readSurface('[data-live-surface="save-menu"]'),
+        addToRules: readSurface('[data-live-surface="add-to-rules"]'),
+        dragOverlay: readSurface('[data-live-surface="drag-overlay"]'),
+      },
+    }
+  }
+)()`
+
 const openHarnessSidepanel = async (extensionId) => {
   const sidepanelTarget = await createTarget(
     `${EXTENSION_URL_PREFIX}${extensionId}/sidepanel.html?codex-harness=live-add-to-rules`,
@@ -236,12 +318,28 @@ const openHarnessSidepanel = async (extensionId) => {
   await sidepanelClient.send('Runtime.enable')
   await sidepanelClient.send('Page.enable')
 
+  await waitForHarnessBridge(sidepanelClient)
+
+  return sidepanelClient
+}
+
+const waitForHarnessBridge = async (sidepanelClient) => {
   await waitFor('harness bridge to be ready', async () => {
     const ready = await sidepanelClient.evaluate(buildHarnessReadyExpression())
     return ready ? true : null
   })
+}
 
-  return sidepanelClient
+const waitForHarnessMethod = async (sidepanelClient, methodName) => {
+  await waitFor(`harness method ${methodName} to be ready`, async () => {
+    const ready = await sidepanelClient.evaluate(buildHarnessMethodReadyExpression(methodName))
+    return ready ? true : null
+  })
+}
+
+const evaluateHarnessMethod = async (sidepanelClient, methodName, expression) => {
+  await waitForHarnessMethod(sidepanelClient, methodName)
+  return sidepanelClient.evaluate(expression)
 }
 
 const main = async () => {
@@ -267,12 +365,18 @@ const main = async () => {
 
     sidepanelClient = await openHarnessSidepanel(extensionId)
 
-    const seededState = await sidepanelClient.evaluate(buildSeedExpression())
+    const seededState = await evaluateHarnessMethod(
+      sidepanelClient,
+      'seedAddToRulesScenario',
+      buildSeedExpression(),
+    )
+    await waitForHarnessBridge(sidepanelClient)
 
-    await sidepanelClient.close()
-    sidepanelClient = await openHarnessSidepanel(extensionId)
-
-    const draftOptions = await sidepanelClient.evaluate(buildDraftOptionsExpression())
+    const draftOptions = await evaluateHarnessMethod(
+      sidepanelClient,
+      'getExampleTabDraftOptions',
+      buildDraftOptionsExpression(),
+    )
     const optionLabels = draftOptions.map((option) => option.label)
     assert(
       optionLabels.some((label) => label.includes('Active Rule')),
@@ -283,11 +387,19 @@ const main = async () => {
       `Inactive rule leaked into destination options: ${JSON.stringify(draftOptions)}`,
     )
 
-    const applyResult = await sidepanelClient.evaluate(buildApplyToRuleExpression())
+    const applyResult = await evaluateHarnessMethod(
+      sidepanelClient,
+      'applyExampleTabToRule',
+      buildApplyToRuleExpression(),
+    )
 
     let harnessState = null
     await waitFor('example.com tab to be grouped by the active rule', async () => {
-      harnessState = await sidepanelClient.evaluate(buildHarnessStateExpression())
+      harnessState = await evaluateHarnessMethod(
+        sidepanelClient,
+        'getAddToRulesState',
+        buildHarnessStateExpression(),
+      )
       if (!harnessState?.group) return null
       const hasPattern = harnessState.activeRulePatterns.includes('example.com')
       return hasPattern ? harnessState : null
@@ -306,6 +418,62 @@ const main = async () => {
       `Dormant rule was modified: ${JSON.stringify(harnessState.dormantRulePatterns)}`,
     )
 
+    const themeSmokeState = await evaluateHarnessMethod(
+      sidepanelClient,
+      'showThemeSmokeState',
+      buildShowThemeSmokeStateExpression(),
+    )
+    assert(
+      themeSmokeState.saveMenuOpen &&
+        themeSmokeState.addToRulesOpen &&
+        themeSmokeState.dragOverlayOpen,
+      `Live theme smoke state failed to open: ${JSON.stringify(themeSmokeState)}`,
+    )
+
+    const liveThemeStyles = ['aurora-dark', 'warm-glass', 'monochrome-glass']
+    const themeSmokeSnapshots = []
+
+    for (const style of liveThemeStyles) {
+      const themeSwitchState = await sidepanelClient.evaluate(buildSetGlassThemeExpression(style))
+      assert(
+        themeSwitchState.rootTheme === 'glass' &&
+          themeSwitchState.rootThemeMode === 'glass' &&
+          themeSwitchState.rootGlassStyle === style,
+        `Glass theme switch failed for ${style}: ${JSON.stringify(themeSwitchState)}`,
+      )
+
+      const snapshot = await sidepanelClient.evaluate(buildLiveThemeSurfaceSnapshotExpression())
+      assert(
+        snapshot.rootTheme === 'glass' &&
+          snapshot.rootThemeMode === 'glass' &&
+          snapshot.rootGlassStyle === style &&
+          snapshot.surfaces.topSites &&
+          snapshot.surfaces.saveMenu &&
+          snapshot.surfaces.addToRules &&
+          snapshot.surfaces.dragOverlay,
+        `Live theme surface snapshot missing required surfaces for ${style}: ${JSON.stringify(snapshot)}`,
+      )
+
+      themeSmokeSnapshots.push({
+        style,
+        snapshot,
+      })
+    }
+
+    const serializedSurfaceSignatures = themeSmokeSnapshots.map(({ snapshot }) =>
+      JSON.stringify({
+        bodyBackgroundImage: snapshot.bodyBackgroundImage,
+        topSites: snapshot.surfaces.topSites,
+        saveMenu: snapshot.surfaces.saveMenu,
+        addToRules: snapshot.surfaces.addToRules,
+        dragOverlay: snapshot.surfaces.dragOverlay,
+      }),
+    )
+    assert(
+      new Set(serializedSurfaceSignatures).size === themeSmokeSnapshots.length,
+      `Live theme smoke snapshots did not diverge across styles: ${JSON.stringify(themeSmokeSnapshots)}`,
+    )
+
     const result = {
       scope: 'SCR.SP.LIVE + FN.LIVE.ADD_TAB_PATTERN_TO_RULE',
       evidenceTier: 'runtime-verified',
@@ -318,6 +486,8 @@ const main = async () => {
       destinationOptions: draftOptions,
       applyResult,
       groupedResult: harnessState,
+      themeSmokeState,
+      themeSmokeSnapshots,
     }
 
     console.log(JSON.stringify(result, null, 2))

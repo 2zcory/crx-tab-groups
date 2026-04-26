@@ -108,6 +108,14 @@ interface LiveAddToRulesHarnessState {
   dormantRulePatterns: string[]
 }
 
+interface LiveThemeSmokeHarnessState {
+  tabId: number | null
+  groupId: number | null
+  saveMenuOpen: boolean
+  addToRulesOpen: boolean
+  dragOverlayOpen: boolean
+}
+
 interface LiveAddToRulesHarnessDraftOption {
   value: string
   label: string
@@ -126,6 +134,7 @@ declare global {
         pattern: string
       }>
       getAddToRulesState: () => Promise<LiveAddToRulesHarnessState>
+      showThemeSmokeState: () => Promise<LiveThemeSmokeHarnessState>
     }
   }
 }
@@ -325,6 +334,13 @@ function LiveManagement() {
   // DND State
   const [activeTabId, setActiveTabId] = useState<number | null>(null)
   const isDraggingLocal = useRef(false)
+
+  const waitForLiveHarnessCommit = () =>
+    new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve())
+      })
+    })
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -612,6 +628,40 @@ function LiveManagement() {
           dormantRulePatterns: getAutoGroupRulePatterns(
             dormantRule || { urlPattern: '', urlPatterns: [] },
           ),
+        }
+      },
+      showThemeSmokeState: async () => {
+        await getActiveGroups()
+
+        const tabs = await chrome.tabs.query({})
+        const exampleTab = tabs.find((tab) => (tab.url || '').startsWith('https://example.com/'))
+        const groupedWindows = windowsRef.current
+        const firstGroup = groupedWindows.flatMap((win) => win.groups).find((group) => group.tabs.length > 0)
+
+        if (!exampleTab?.id) {
+          throw new Error('Example tab not found for theme smoke harness')
+        }
+
+        if (!firstGroup) {
+          throw new Error('No grouped tab card available for theme smoke harness')
+        }
+
+        openSaveMenu(firstGroup)
+        setIsNamingNewSnapshot(true)
+        setNewSnapshotTitle(firstGroup.title || 'Untitled Group')
+        openAddToRulesDraft(exampleTab, {
+          title: firstGroup.title || undefined,
+          color: firstGroup.color,
+        })
+        setActiveTabId(exampleTab.id)
+        await waitForLiveHarnessCommit()
+
+        return {
+          tabId: exampleTab.id,
+          groupId: firstGroup.id,
+          saveMenuOpen: true,
+          addToRulesOpen: true,
+          dragOverlayOpen: true,
         }
       },
     }
@@ -1404,6 +1454,7 @@ function LiveManagement() {
 
                         {showSaveMenu === group.id && (
                           <div
+                            data-live-surface="save-menu"
                             className="sp-overlay-panel absolute right-0 top-9 z-50 flex w-64 flex-col gap-1 rounded-xl p-2 text-left"
                             onClick={(event) => event.stopPropagation()}
                           >
@@ -1495,7 +1546,7 @@ function LiveManagement() {
         ))}
 
         {addToRulesDraft && (
-          <section className="sp-card rounded-2xl p-3">
+          <section className="sp-card rounded-2xl p-3" data-live-surface="add-to-rules">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="sp-label text-[10px] font-bold uppercase tracking-[0.18em]">

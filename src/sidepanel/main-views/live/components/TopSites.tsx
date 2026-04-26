@@ -66,7 +66,10 @@ function TopSites() {
   }
 
   return (
-    <section className="sp-card relative w-full overflow-hidden rounded-2xl group/topsites">
+    <section
+      className="sp-card relative w-full overflow-hidden rounded-2xl group/topsites"
+      data-live-surface="top-sites"
+    >
       <div className="flex items-center justify-between px-4 pt-3">
         <div>
           <p className="sp-label text-[11px] font-semibold uppercase tracking-[0.18em]">
