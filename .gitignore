@@ -9,6 +9,7 @@
 # production
 /build
 /package
+/.tmp-runtime-profile
 
 # misc
 .DS_Store

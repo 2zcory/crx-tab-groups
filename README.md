@@ -87,6 +87,20 @@ pnpm dev
 pnpm build
 ```
 
+## Runtime Verification
+
+Use the lightweight Chrome runtime harness for the `LIVE.TAB_ACTIONS` add-to-rules flow:
+
+```shell
+npm run verify:live-add-to-rules
+```
+
+Notes:
+
+- the harness builds the extension, launches an isolated Chromium profile, loads the unpacked `build/` output, and runs a repeatable CDP-based verification pass
+- on Windows it currently falls back through local Edge and Chrome installs; set `CHROME_PATH` to force a specific browser binary
+- the harness is currently scoped to the `Live` lane add-to-rules smoke path, not to full extension QA
+
 ## Load In Chrome
 
 1. Open `chrome://extensions/`

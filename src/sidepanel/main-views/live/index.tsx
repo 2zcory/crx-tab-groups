@@ -84,6 +84,52 @@ interface QuickRuleSourceGroup {
   color?: NStorage.Sync.GroupColor
 }
 
+interface LiveAddToRulesHarnessSeedResult {
+  autoGroups: NStorage.Sync.Schema.AutoGroupRule[]
+  createdTab: {
+    id?: number
+    url?: string
+    windowId: number
+  }
+}
+
+interface LiveAddToRulesHarnessState {
+  exampleTab: {
+    id?: number
+    groupId?: number
+    url?: string
+  } | null
+  group: {
+    id: number
+    title?: string
+    color: string
+  } | null
+  activeRulePatterns: string[]
+  dormantRulePatterns: string[]
+}
+
+interface LiveAddToRulesHarnessDraftOption {
+  value: string
+  label: string
+}
+
+declare global {
+  interface Window {
+    __CRX_TAB_GROUPS_HARNESS__?: {
+      seedAddToRulesScenario: () => Promise<LiveAddToRulesHarnessSeedResult>
+      getExampleTabDraftOptions: () => Promise<LiveAddToRulesHarnessDraftOption[]>
+      applyExampleTabToRule: (
+        destinationRuleId: string,
+      ) => Promise<{
+        success: boolean
+        scanResponse: AutoGroupScanResponse
+        pattern: string
+      }>
+      getAddToRulesState: () => Promise<LiveAddToRulesHarnessState>
+    }
+  }
+}
+
 interface AddToRulesDraft {
   tabId: number
   tabTitle?: string
@@ -246,6 +292,12 @@ const getQuickRuleTitle = (tab: chrome.tabs.Tab, sourceGroup?: QuickRuleSourceGr
   return getHostnamePatternFromTab(tab) || tab.title?.trim() || 'Quick Rule'
 }
 
+const getSelectableAutoGroupRules = (rules: NStorage.Sync.Schema.AutoGroupRule[]) =>
+  sortAutoGroupRules(rules.filter((rule) => rule.isActive))
+
+const LIVE_HARNESS_QUERY_KEY = 'codex-harness'
+const LIVE_ADD_TO_RULES_HARNESS_MODE = 'live-add-to-rules'
+
 function LiveManagement() {
   const [windows, setWindows] = useState<WindowData[]>([])
   const windowsRef = useRef<WindowData[]>([])
@@ -265,6 +317,10 @@ function LiveManagement() {
   const [autoGroupToastPhase, setAutoGroupToastPhase] = useState<AutoGroupToastPhase>('visible')
   const autoGroupStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const autoGroupStatusExitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const harnessMode = useMemo(() => {
+    if (typeof window === 'undefined') return null
+    return new URLSearchParams(window.location.search).get(LIVE_HARNESS_QUERY_KEY)
+  }, [])
 
   // DND State
   const [activeTabId, setActiveTabId] = useState<number | null>(null)
@@ -393,15 +449,179 @@ function LiveManagement() {
     }
   }, [autoGroupScanStatus, renderedAutoGroupScanStatus?.message])
 
-  const fetchSavedSnapshots = async () => {
+  const fetchSavedSnapshots = useCallback(async () => {
     const res = await StorageSyncGroup.getListWithTabs()
     setSavedSnapshots(res || [])
-  }
+  }, [])
 
-  const fetchAutoGroupRules = async () => {
+  const fetchAutoGroupRules = useCallback(async () => {
     const rules = await StorageSyncAutoGroup.getList()
-    setAutoGroupRules(sortAutoGroupRules(rules))
-  }
+    setAutoGroupRules(getSelectableAutoGroupRules(rules))
+  }, [])
+
+  useEffect(() => {
+    if (harnessMode !== LIVE_ADD_TO_RULES_HARNESS_MODE) return
+
+    window.__CRX_TAB_GROUPS_HARNESS__ = {
+      seedAddToRulesScenario: async () => {
+        const now = new Date().toISOString()
+        const autoGroups: NStorage.Sync.Schema.AutoGroupRule[] = [
+          {
+            id: 'rule-active',
+            title: 'Active Rule',
+            color: 'blue',
+            order: 1,
+            urlPatterns: [],
+            isActive: true,
+            createdAt: now,
+          },
+          {
+            id: 'rule-dormant',
+            title: 'Dormant Rule',
+            color: 'red',
+            order: 2,
+            urlPatterns: [],
+            isActive: false,
+            createdAt: now,
+          },
+        ]
+
+        const existingTabs = await chrome.tabs.query({})
+        const tabsToClose = existingTabs
+          .filter((tab) => tab.id && !tab.url?.startsWith('chrome-extension://'))
+          .map((tab) => tab.id as number)
+
+        if (tabsToClose.length > 0) {
+          await chrome.tabs.remove(tabsToClose)
+        }
+
+        await chrome.storage.sync.clear()
+        await chrome.storage.local.clear()
+        await chrome.storage.sync.set({ autoGroups, groups: [], tabs: [] })
+
+        const createdTab = await chrome.tabs.create({
+          url: 'https://example.com/',
+          active: false,
+        })
+
+        await fetchAutoGroupRules()
+        await fetchSavedSnapshots()
+        await getActiveGroups()
+
+        return {
+          autoGroups,
+          createdTab: {
+            id: createdTab.id,
+            url: createdTab.url,
+            windowId: createdTab.windowId,
+          },
+        }
+      },
+      getExampleTabDraftOptions: async () => {
+        const rules = getSelectableAutoGroupRules(await StorageSyncAutoGroup.getList())
+
+        return [
+          { value: NEW_RULE_DESTINATION_ID, label: 'Create new rule' },
+          ...rules.map((rule) => ({
+            value: rule.id,
+            label: `${rule.title} - priority ${rule.order}`,
+          })),
+        ]
+      },
+      applyExampleTabToRule: async (destinationRuleId: string) => {
+        const exampleTab = (await chrome.tabs.query({})).find((tab) =>
+          (tab.url || '').startsWith('https://example.com/'),
+        )
+
+        if (!exampleTab) {
+          throw new Error('Example tab not found for harness scenario')
+        }
+
+        const hostname = getHostnamePatternFromTab(exampleTab)
+        if (!hostname) {
+          throw new Error('Example tab hostname could not be derived')
+        }
+
+        const validation = validateAutoGroupRulePattern(hostname)
+        if (!validation.isValid) {
+          throw new Error(validation.error || 'Harness pattern validation failed')
+        }
+
+        const currentRules = sortAutoGroupRules(await StorageSyncAutoGroup.getList())
+        const selectedRule = getSelectableAutoGroupRules(currentRules).find(
+          (rule) => rule.id === destinationRuleId,
+        )
+
+        if (!selectedRule) {
+          throw new Error('Selected active rule is no longer available')
+        }
+
+        const duplicatePattern = getAutoGroupRulePatterns(selectedRule).some(
+          (pattern) => pattern.toLowerCase() === validation.normalizedPattern.toLowerCase(),
+        )
+
+        if (duplicatePattern) {
+          throw new Error(`Pattern already exists in ${selectedRule.title}`)
+        }
+
+        await StorageSyncAutoGroup.update({
+          ...selectedRule,
+          urlPatterns: [...getAutoGroupRulePatterns(selectedRule), validation.normalizedPattern],
+        })
+
+        const scanResponse = await triggerAutoGroupScan()
+        await fetchAutoGroupRules()
+        await getActiveGroups()
+
+        return {
+          success: scanResponse.success,
+          scanResponse,
+          pattern: validation.normalizedPattern,
+        }
+      },
+      getAddToRulesState: async () => {
+        const tabs = await chrome.tabs.query({})
+        const exampleTab = tabs.find((tab) => (tab.url || '').startsWith('https://example.com/'))
+        const rules = await StorageSyncAutoGroup.getList()
+        const activeRule = rules.find((rule) => rule.id === 'rule-active')
+        const dormantRule = rules.find((rule) => rule.id === 'rule-dormant')
+
+        let group: LiveAddToRulesHarnessState['group'] = null
+
+        if (exampleTab && typeof exampleTab.groupId === 'number' && exampleTab.groupId >= 0) {
+          const liveGroup = await chrome.tabGroups.get(exampleTab.groupId)
+          group = {
+            id: liveGroup.id,
+            title: liveGroup.title,
+            color: liveGroup.color,
+          }
+        }
+
+        return {
+          exampleTab: exampleTab
+            ? {
+                id: exampleTab.id,
+                groupId: exampleTab.groupId,
+                url: exampleTab.url,
+              }
+            : null,
+          group,
+          activeRulePatterns: getAutoGroupRulePatterns(
+            activeRule || { urlPattern: '', urlPatterns: [] },
+          ),
+          dormantRulePatterns: getAutoGroupRulePatterns(
+            dormantRule || { urlPattern: '', urlPatterns: [] },
+          ),
+        }
+      },
+    }
+
+    return () => {
+      if (window.__CRX_TAB_GROUPS_HARNESS__) {
+        delete window.__CRX_TAB_GROUPS_HARNESS__
+      }
+    }
+  }, [fetchSavedSnapshots, fetchAutoGroupRules, getActiveGroups, harnessMode])
 
   const setSaveStatus = (groupId: number, status: SaveStatus) => {
     setSaveStatuses((current) => ({
@@ -637,15 +857,16 @@ function LiveManagement() {
 
     try {
       const currentRules = sortAutoGroupRules(await StorageSyncAutoGroup.getList())
+      const selectableRules = getSelectableAutoGroupRules(currentRules)
       const selectedRule =
         addToRulesDraft.destinationRuleId === NEW_RULE_DESTINATION_ID
           ? null
-          : currentRules.find((rule) => rule.id === addToRulesDraft.destinationRuleId)
+          : selectableRules.find((rule) => rule.id === addToRulesDraft.destinationRuleId)
 
       if (addToRulesDraft.destinationRuleId !== NEW_RULE_DESTINATION_ID && !selectedRule) {
         setAutoGroupScanStatus({
           tone: 'warning',
-          message: 'Selected rule no longer exists',
+          message: 'Selected active rule is no longer available',
         })
         await fetchAutoGroupRules()
         return
