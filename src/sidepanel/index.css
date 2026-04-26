@@ -84,6 +84,29 @@
   --glass-highlight: rgba(255, 255, 255, 0.5);
   --glass-backdrop-blur: blur(24px);
   --glass-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+  --glass-depth-shadow: var(--shadow-sm);
+  --glass-panel-sheen: transparent;
+  --glass-panel-sheen-opacity: 0;
+  --sp-shell-sheen: transparent;
+  --sp-shell-sheen-opacity: 0;
+  --sp-overlay-bg: var(--surface-elevated);
+  --sp-overlay-shadow: var(--shadow-md);
+  --sp-action-rail-bg: color-mix(in srgb, var(--surface-elevated) 96%, transparent);
+  --sp-action-rail-shadow: var(--shadow-sm);
+  --sp-tab-card-bg: color-mix(in srgb, var(--surface-elevated) 82%, transparent);
+  --sp-tab-card-hover-bg: color-mix(in srgb, var(--surface-elevated) 96%, transparent);
+  --sp-tab-card-active-bg: var(--surface-elevated);
+  --sp-tab-card-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  --sp-tab-card-hover-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --sp-tab-card-active-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+  --sp-chip-active-bg: var(--sp-tab-pill-active);
+  --sp-chip-active-border: var(--sp-tab-pill-active);
+  --sp-chip-active-color: var(--primary-foreground);
+  --sp-style-preview-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(226, 232, 240, 0.9));
+  --sp-style-preview-glow: transparent;
+  --sp-style-preview-surface: rgba(255, 255, 255, 0.36);
+  --sp-style-preview-border: rgba(255, 255, 255, 0.46);
+  --sp-style-preview-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 body {
@@ -241,6 +264,34 @@ html {
   --sp-tab-pill-text: #526277;
   --sp-statusbar-bg: rgba(255, 255, 255, 0.24);
   --sp-statusbar-border: rgba(255, 255, 255, 0.28);
+  --glass-depth-shadow: 0 16px 36px rgba(15, 23, 42, 0.12);
+  --glass-panel-sheen:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.02) 58%);
+  --glass-panel-sheen-opacity: 1;
+  --sp-shell-sheen:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.02) 52%);
+  --sp-shell-sheen-opacity: 1;
+  --sp-overlay-bg: color-mix(in srgb, var(--surface-elevated) 92%, rgba(255, 255, 255, 0.14));
+  --sp-overlay-shadow: 0 26px 54px rgba(15, 23, 42, 0.16);
+  --sp-action-rail-bg: color-mix(in srgb, var(--surface-elevated) 90%, rgba(255, 255, 255, 0.12));
+  --sp-action-rail-shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
+  --sp-tab-card-bg: color-mix(in srgb, var(--surface-elevated) 74%, rgba(255, 255, 255, 0.08));
+  --sp-tab-card-hover-bg: color-mix(in srgb, var(--surface-elevated) 88%, rgba(255, 255, 255, 0.14));
+  --sp-tab-card-active-bg: color-mix(in srgb, var(--surface-elevated) 94%, rgba(255, 255, 255, 0.18));
+  --sp-tab-card-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  --sp-tab-card-hover-shadow: 0 16px 36px rgba(15, 23, 42, 0.12);
+  --sp-tab-card-active-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+  --sp-chip-active-bg: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.88));
+  --sp-chip-active-border: rgba(255, 255, 255, 0.42);
+  --sp-chip-active-color: #f8fafc;
+  --sp-style-preview-bg:
+    radial-gradient(circle at top left, rgba(125, 211, 252, 0.42), transparent 34%),
+    linear-gradient(180deg, #dfe8f4 0%, #cfdeef 100%);
+  --sp-style-preview-glow:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.02) 62%);
+  --sp-style-preview-surface: rgba(255, 255, 255, 0.32);
+  --sp-style-preview-border: rgba(255, 255, 255, 0.42);
+  --sp-style-preview-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
 }
 
 [data-theme='glass'][data-glass-style='frosted-light'] {
@@ -319,6 +370,35 @@ html {
   --sp-tab-pill-text: #8ea3cc;
   --sp-statusbar-bg: rgba(10, 18, 34, 0.68);
   --sp-statusbar-border: rgba(125, 211, 252, 0.18);
+  --glass-depth-shadow: 0 18px 42px rgba(2, 6, 23, 0.4);
+  --glass-panel-sheen:
+    linear-gradient(180deg, rgba(196, 181, 253, 0.12), rgba(15, 23, 42, 0.02) 62%);
+  --glass-panel-sheen-opacity: 1;
+  --sp-shell-sheen:
+    linear-gradient(180deg, rgba(34, 211, 238, 0.14), rgba(2, 6, 23, 0.02) 54%);
+  --sp-shell-sheen-opacity: 1;
+  --sp-overlay-bg: color-mix(in srgb, var(--surface-elevated) 88%, rgba(15, 23, 42, 0.12));
+  --sp-overlay-shadow: 0 28px 66px rgba(2, 6, 23, 0.54);
+  --sp-action-rail-bg: color-mix(in srgb, var(--surface-elevated) 90%, rgba(34, 211, 238, 0.06));
+  --sp-action-rail-shadow: 0 16px 38px rgba(2, 6, 23, 0.42);
+  --sp-tab-card-bg: color-mix(in srgb, var(--surface-elevated) 74%, rgba(10, 18, 34, 0.08));
+  --sp-tab-card-hover-bg: color-mix(in srgb, var(--surface-elevated) 86%, rgba(34, 211, 238, 0.08));
+  --sp-tab-card-active-bg: color-mix(in srgb, var(--surface-elevated) 92%, rgba(34, 211, 238, 0.12));
+  --sp-tab-card-shadow: 0 14px 32px rgba(2, 6, 23, 0.34);
+  --sp-tab-card-hover-shadow: 0 18px 44px rgba(2, 6, 23, 0.42);
+  --sp-tab-card-active-shadow: 0 24px 52px rgba(2, 6, 23, 0.5);
+  --sp-chip-active-bg: linear-gradient(135deg, rgba(34, 211, 238, 0.28), rgba(168, 85, 247, 0.28));
+  --sp-chip-active-border: rgba(125, 211, 252, 0.42);
+  --sp-chip-active-color: #eff9ff;
+  --sp-style-preview-bg:
+    radial-gradient(circle at top left, rgba(34, 211, 238, 0.32), transparent 30%),
+    radial-gradient(circle at top right, rgba(168, 85, 247, 0.32), transparent 36%),
+    linear-gradient(180deg, #091223 0%, #060b16 100%);
+  --sp-style-preview-glow:
+    linear-gradient(180deg, rgba(196, 181, 253, 0.18), rgba(8, 17, 31, 0.02) 64%);
+  --sp-style-preview-surface: rgba(15, 27, 52, 0.66);
+  --sp-style-preview-border: rgba(125, 211, 252, 0.32);
+  --sp-style-preview-shadow: inset 0 1px 0 rgba(196, 181, 253, 0.14);
 }
 
 [data-theme='glass'][data-glass-style='minimal-clear'] {
@@ -349,6 +429,32 @@ html {
   --sp-tab-pill-text: #5b6b80;
   --sp-statusbar-bg: rgba(255, 255, 255, 0.7);
   --sp-statusbar-border: rgba(203, 213, 225, 0.74);
+  --glass-depth-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  --glass-panel-sheen:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.02) 58%);
+  --glass-panel-sheen-opacity: 1;
+  --sp-shell-sheen:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02) 52%);
+  --sp-shell-sheen-opacity: 1;
+  --sp-overlay-bg: color-mix(in srgb, var(--surface-elevated) 96%, rgba(255, 255, 255, 0.06));
+  --sp-overlay-shadow: 0 20px 42px rgba(15, 23, 42, 0.1);
+  --sp-action-rail-bg: color-mix(in srgb, var(--surface-elevated) 98%, transparent);
+  --sp-action-rail-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+  --sp-tab-card-bg: color-mix(in srgb, var(--surface-elevated) 94%, transparent);
+  --sp-tab-card-hover-bg: color-mix(in srgb, var(--surface-elevated) 100%, transparent);
+  --sp-tab-card-active-bg: rgba(255, 255, 255, 0.94);
+  --sp-tab-card-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
+  --sp-tab-card-hover-shadow: 0 10px 20px rgba(15, 23, 42, 0.07);
+  --sp-tab-card-active-shadow: 0 14px 28px rgba(15, 23, 42, 0.1);
+  --sp-chip-active-bg: linear-gradient(135deg, rgba(23, 32, 48, 0.92), rgba(51, 65, 85, 0.9));
+  --sp-chip-active-border: rgba(148, 163, 184, 0.44);
+  --sp-chip-active-color: #f8fafc;
+  --sp-style-preview-bg: linear-gradient(180deg, #edf2f7 0%, #dfe7ef 100%);
+  --sp-style-preview-glow:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02) 64%);
+  --sp-style-preview-surface: rgba(255, 255, 255, 0.8);
+  --sp-style-preview-border: rgba(203, 213, 225, 0.84);
+  --sp-style-preview-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 @layer base {

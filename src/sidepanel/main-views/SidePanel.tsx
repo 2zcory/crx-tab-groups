@@ -29,21 +29,33 @@ const THEME_OPTIONS: Array<{ value: ThemeMode; label: string }> = [
   { value: 'glass', label: 'Glass' },
 ]
 
-const GLASS_STYLE_OPTIONS: Array<{ value: GlassStyle; label: string; description: string }> = [
+const GLASS_STYLE_OPTIONS: Array<{
+  value: GlassStyle
+  label: string
+  shortLabel: string
+  description: string
+  accentLabel: string
+}> = [
   {
     value: 'frosted-light',
     label: 'Frosted Light',
+    shortLabel: 'Frosted',
     description: 'Bright, airy, and clean.',
+    accentLabel: 'Clean glow',
   },
   {
     value: 'aurora-dark',
     label: 'Aurora Dark',
+    shortLabel: 'Aurora',
     description: 'Dark aurora gradient with premium glow.',
+    accentLabel: 'Cyber premium',
   },
   {
     value: 'minimal-clear',
     label: 'Minimal Clear',
+    shortLabel: 'Minimal',
     description: 'Lower blur and easier readability.',
+    accentLabel: 'Low blur',
   },
 ]
 
@@ -220,7 +232,7 @@ export const SidePanel = () => {
               </footer>
             )}
 
-            <div className="flex items-center justify-between gap-3 border-t border-[var(--sp-footer-border)] px-3 py-2.5">
+            <div className="sp-theme-section">
               <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] sp-footer-label">
                   Theme
@@ -250,28 +262,47 @@ export const SidePanel = () => {
             </div>
 
             {themeMode === 'glass' && (
-              <div className="flex items-center justify-between gap-3 border-t border-[var(--sp-footer-border)] px-3 py-2.5">
+              <div className="sp-theme-section sp-glass-style-section">
                 <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] sp-footer-label">
-                    Glass Style
-                  </p>
-                  <p className="truncate text-[11px] text-[var(--text-secondary)]">
-                    {GLASS_STYLE_OPTIONS.find((option) => option.value === glassStyle)?.description}
-                  </p>
-                </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] sp-footer-label">
+                        Glass Style
+                      </p>
+                      <p className="truncate text-[11px] text-[var(--text-secondary)]">
+                        {GLASS_STYLE_OPTIONS.find((option) => option.value === glassStyle)?.description}
+                      </p>
+                    </div>
+                    <div className="rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-[0.16em] sp-chip sp-glass-style-accent">
+                      {GLASS_STYLE_OPTIONS.find((option) => option.value === glassStyle)?.accentLabel}
+                    </div>
+                  </div>
 
-                <div className="sp-theme-bar">
-                  {GLASS_STYLE_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      data-active={glassStyle === option.value}
-                      className="sp-theme-chip rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em]"
-                      onClick={() => void handleGlassStyleChange(option.value)}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
+                  <div className="sp-glass-style-grid">
+                    {GLASS_STYLE_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        data-active={glassStyle === option.value}
+                        data-glass-style-card={option.value}
+                        className="sp-glass-style-card"
+                        onClick={() => void handleGlassStyleChange(option.value)}
+                      >
+                        <span className="sp-glass-style-preview" aria-hidden="true">
+                          <span className="sp-glass-style-preview-shell" />
+                          <span className="sp-glass-style-preview-card" />
+                          <span className="sp-glass-style-preview-chip" />
+                        </span>
+                        <span className="sp-glass-style-copy">
+                          <span className="sp-glass-style-title-row">
+                            <span className="sp-glass-style-title">{option.label}</span>
+                            <span className="sp-glass-style-badge">{option.shortLabel}</span>
+                          </span>
+                          <span className="sp-glass-style-description">{option.description}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}

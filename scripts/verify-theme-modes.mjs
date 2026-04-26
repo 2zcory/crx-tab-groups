@@ -233,6 +233,24 @@ const buildClearThemeModeExpression = () => `(
   }
 )()`
 
+const buildGlassStyleUiSnapshotExpression = () => `(
+  () => {
+    const cards = Array.from(document.querySelectorAll('[data-glass-style-card]'))
+
+    return {
+      cardCount: cards.length,
+      activeCount: cards.filter((card) => card.getAttribute('data-active') === 'true').length,
+      labels: cards.map((card) => card.querySelector('.sp-glass-style-title')?.textContent?.trim() || null),
+      descriptions: cards.map(
+        (card) => card.querySelector('.sp-glass-style-description')?.textContent?.trim() || null,
+      ),
+      activeStyle:
+        cards.find((card) => card.getAttribute('data-active') === 'true')?.getAttribute('data-glass-style-card') ||
+        null,
+    }
+  }
+)()`
+
 const setPreferredScheme = async (client, value) => {
   await client.send('Emulation.setEmulatedMedia', {
     features: [{ name: 'prefers-color-scheme', value }],
@@ -364,6 +382,17 @@ const main = async () => {
       `Glass mode contract mismatch: ${JSON.stringify(glassState)}`,
     )
 
+    const glassPickerUi = await sidepanelClient.evaluate(buildGlassStyleUiSnapshotExpression())
+    assert(
+      glassPickerUi.cardCount === 3 &&
+        glassPickerUi.activeCount === 1 &&
+        glassPickerUi.activeStyle === DEFAULT_GLASS_STYLE &&
+        glassPickerUi.labels.includes('Frosted Light') &&
+        glassPickerUi.labels.includes('Aurora Dark') &&
+        glassPickerUi.labels.includes('Minimal Clear'),
+      `Glass picker UI mismatch: ${JSON.stringify(glassPickerUi)}`,
+    )
+
     const auroraGlassState = await sidepanelClient.evaluate(buildSetGlassStyleExpression('aurora-dark'))
     assert(
       auroraGlassState.themeMode === 'glass' &&
@@ -372,6 +401,12 @@ const main = async () => {
         auroraGlassState.rootGlassStyle === 'aurora-dark' &&
         auroraGlassState.storedGlassStyle === 'aurora-dark',
       `Aurora glass style contract mismatch: ${JSON.stringify(auroraGlassState)}`,
+    )
+
+    const auroraGlassPickerUi = await sidepanelClient.evaluate(buildGlassStyleUiSnapshotExpression())
+    assert(
+      auroraGlassPickerUi.activeCount === 1 && auroraGlassPickerUi.activeStyle === 'aurora-dark',
+      `Aurora glass picker active state mismatch: ${JSON.stringify(auroraGlassPickerUi)}`,
     )
 
     await sidepanelClient.close()
@@ -403,7 +438,9 @@ const main = async () => {
         systemDarkState,
         systemLightState,
         glassState,
+        glassPickerUi,
         auroraGlassState,
+        auroraGlassPickerUi,
         glassPersisted,
       },
     }
