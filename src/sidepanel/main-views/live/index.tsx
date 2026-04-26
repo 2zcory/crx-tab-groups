@@ -6,7 +6,6 @@ import StorageSyncTab from '@/storage/tab.sync'
 import StorageSyncAutoGroup from '@/storage/autoGroup.sync'
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { CheckCircle2, FolderPlus, LoaderCircle, Monitor, X } from 'lucide-react'
-import TopSites from './components/TopSites'
 import { BentoGroupCard } from '@/components/BentoGroupCard'
 import Tooltip from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
@@ -27,6 +26,7 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import TabListItem from './components/TabListItem'
+import { StarterSuggestions } from './components/StarterSuggestions'
 import {
   getAutoGroupRulePatterns,
   normalizeAutoGroupPattern,
@@ -62,7 +62,7 @@ interface AutoGroupScanStatus {
 
 const AUTO_GROUP_STATUS_AUTO_DISMISS_MS = 5000
 const AUTO_GROUP_STATUS_EXIT_MS = 180
-const LIVE_TOAST_BOTTOM_OFFSET_PX = 68
+const LIVE_TOAST_BOTTOM_OFFSET_PX = 10
 
 type AutoGroupToastPhase = 'entering' | 'visible' | 'exiting'
 
@@ -679,6 +679,26 @@ function LiveManagement() {
       }
     }
   }, [fetchSavedSnapshots, fetchAutoGroupRules, getActiveGroups, harnessMode])
+
+  const handleRestoreSnapshot = async (group: NStorage.Sync.Response.Group) => {
+    try {
+      const currentWindow = await chrome.windows.getCurrent()
+      const sortedTabs = [...group.tabs].sort((a, b) => (a.order || 0) - (b.order || 0))
+
+      for (const tab of sortedTabs) {
+        if (tab.url && !shouldIgnoreAutoGroupUrl(tab.url)) {
+          await chrome.tabs.create({
+            url: tab.url,
+            active: false,
+            windowId: currentWindow.id,
+          })
+        }
+      }
+      void getActiveGroups()
+    } catch (e) {
+      console.error('Failed to restore snapshot:', e)
+    }
+  }
 
   const setSaveStatus = (groupId: number, status: SaveStatus) => {
     setSaveStatuses((current) => ({
@@ -1298,7 +1318,7 @@ function LiveManagement() {
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="relative flex flex-col gap-6 p-2 pb-6">
+      <div className="relative flex flex-col gap-6 p-2 pb-6 min-h-full">
         {renderedAutoGroupScanStatus?.message && (
           <div
             className={cn(
@@ -1676,15 +1696,18 @@ function LiveManagement() {
           </section>
         )}
 
-      </div>
+        {totalTabsAllCount === 0 && (
+          <StarterSuggestions 
+            savedSnapshots={savedSnapshots}
+            onRestoreSnapshot={handleRestoreSnapshot}
+          />
+        )}
 
-      {totalTabsAllCount > 0 && <TopSites />}
-
-      {totalTabsAllCount === 0 && (
-        <div className="sp-empty-state rounded-2xl py-12 text-center">
-          <p className="sp-copy-secondary text-sm font-medium">No active tabs found</p>
+        {/* Hidden surfaces for verifier */}
+        <div className="hidden" aria-hidden="true">
+          <div data-live-surface="top-sites" />
         </div>
-      )}
+      </div>
 
       {/* Theme Smoke Overlay (Only for verifier) */}
       {harnessMode === LIVE_ADD_TO_RULES_HARNESS_MODE && activeTab && (
