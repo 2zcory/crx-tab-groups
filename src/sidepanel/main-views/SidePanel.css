@@ -2,3 +2,63 @@ main {
   padding: 0.5rem 0.25rem;
   height: 100svh;
 }
+
+.sp-shell {
+  position: relative;
+  background: var(--sp-shell-bg);
+  box-shadow: var(--shadow-md);
+}
+
+.sp-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--sp-shell-gradient);
+  pointer-events: none;
+}
+
+.sp-shell-content {
+  position: relative;
+  z-index: 1;
+}
+
+.sp-footer {
+  border-top: 1px solid var(--sp-footer-border);
+  background: var(--sp-footer-bg);
+  backdrop-filter: var(--glass-backdrop-blur);
+}
+
+.sp-footer-label {
+  color: var(--text-muted);
+}
+
+.sp-theme-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.375rem;
+}
+
+.sp-theme-chip {
+  border: 1px solid var(--sp-card-border);
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease,
+    border-color 180ms ease;
+}
+
+.sp-theme-chip:hover {
+  transform: translateY(-1px);
+  background: var(--sp-card-hover);
+}
+
+.sp-theme-chip[data-active='true'] {
+  border-color: var(--sp-tab-pill-active);
+  background: var(--sp-tab-pill-active);
+  color: var(--primary-foreground);
+  box-shadow: var(--shadow-md);
+}

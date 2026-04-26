@@ -10,15 +10,81 @@ import { ETabMenu } from '@/enums'
 import GroupManagement from './group-management'
 import AutomationManagement from './automation-management'
 import { LiveStatusBar } from './live/components/LiveStatusBar'
+import StorageLocal from '@/storage/local'
+
+type ThemeMode = 'light' | 'dark' | 'system' | 'glass'
+type ResolvedTheme = 'light' | 'dark' | 'glass'
+
+const THEME_STORAGE_KEY = 'themeMode'
+
+const THEME_OPTIONS: Array<{ value: ThemeMode; label: string }> = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'system', label: 'System' },
+  { value: 'glass', label: 'Glass' },
+]
 
 export const SidePanel = () => {
   const [isMigrating, setIsMigrating] = useState(false)
   const [activeTab, setActiveTab] = useState<ETabMenu>(ETabMenu.TAB_SYNC)
+  const [themeMode, setThemeMode] = useState<ThemeMode>('system')
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light')
 
   useEffect(() => {
     setIsMigrating(true)
     migrateScheme().then(() => setIsMigrating(false))
   }, [])
+
+  useEffect(() => {
+    let isMounted = true
+
+    StorageLocal.get<{ [THEME_STORAGE_KEY]?: ThemeMode }>(THEME_STORAGE_KEY).then((data) => {
+      const storedThemeMode = data?.[THEME_STORAGE_KEY]
+      if (!isMounted || !storedThemeMode) return
+      setThemeMode(storedThemeMode)
+    })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+
+    const applyResolvedTheme = () => {
+      if (themeMode === 'glass') {
+        setResolvedTheme('glass')
+        return
+      }
+
+      if (themeMode === 'system') {
+        setResolvedTheme(mediaQuery.matches ? 'dark' : 'light')
+        return
+      }
+
+      setResolvedTheme(themeMode)
+    }
+
+    applyResolvedTheme()
+    mediaQuery.addEventListener('change', applyResolvedTheme)
+
+    return () => {
+      mediaQuery.removeEventListener('change', applyResolvedTheme)
+    }
+  }, [themeMode])
+
+  useEffect(() => {
+    const root = document.documentElement
+    root.classList.toggle('dark', resolvedTheme === 'dark')
+    root.setAttribute('data-theme', resolvedTheme)
+    root.setAttribute('data-theme-mode', themeMode)
+  }, [resolvedTheme, themeMode])
+
+  const handleThemeModeChange = async (nextThemeMode: ThemeMode) => {
+    setThemeMode(nextThemeMode)
+    await StorageLocal.set({ [THEME_STORAGE_KEY]: nextThemeMode })
+  }
 
   if (isMigrating) {
     return <div>Migrating...</div>
@@ -26,37 +92,65 @@ export const SidePanel = () => {
 
   return (
     <Layout>
-      <div className="flex flex-col h-[100vh] w-full overflow-hidden bg-background">
-        <Tabs
-          tabs={TAB_MENU}
-          defaultValue={ETabMenu.TAB_SYNC}
-          onValueChange={(val) => setActiveTab(Number(val) as ETabMenu)}
-          className="flex-1 min-h-0"
-        >
-          <Tabs.Content value={ETabMenu.TAB_SYNC}>
-            <LiveManagement />
-          </Tabs.Content>
-          <Tabs.Content value={ETabMenu.AUTOMATION}>
-            <AutomationManagement />
-          </Tabs.Content>
-          <Tabs.Content value={ETabMenu.GROUP}>
-            <GroupManagement />
-          </Tabs.Content>
-        </Tabs>
+      <div className="sp-shell flex h-[100vh] w-full overflow-hidden rounded-[1.4rem] border border-[var(--sp-card-border)]">
+        <div className="sp-shell-content flex h-full w-full flex-col overflow-hidden">
+          <Tabs
+            tabs={TAB_MENU}
+            defaultValue={ETabMenu.TAB_SYNC}
+            onValueChange={(val) => setActiveTab(Number(val) as ETabMenu)}
+            className="flex-1 min-h-0"
+          >
+            <Tabs.Content value={ETabMenu.TAB_SYNC}>
+              <LiveManagement />
+            </Tabs.Content>
+            <Tabs.Content value={ETabMenu.AUTOMATION}>
+              <AutomationManagement />
+            </Tabs.Content>
+            <Tabs.Content value={ETabMenu.GROUP}>
+              <GroupManagement />
+            </Tabs.Content>
+          </Tabs>
 
-        {/* Fixed Footer Status Bar outside of scrollable area */}
-        <div className="shrink-0">
-          {activeTab === ETabMenu.TAB_SYNC && <LiveStatusBar />}
-          {activeTab === ETabMenu.GROUP && (
-            <footer className="border-t border-slate-100 bg-slate-50 p-3 text-center text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Saved Snapshots Management
-            </footer>
-          )}
-          {activeTab === ETabMenu.AUTOMATION && (
-            <footer className="border-t border-slate-100 bg-slate-50 p-3 text-center text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Automation Rules Management
-            </footer>
-          )}
+          <div className="sp-footer shrink-0">
+            {activeTab === ETabMenu.TAB_SYNC && <LiveStatusBar />}
+            {activeTab === ETabMenu.GROUP && (
+              <footer className="px-3 py-3 text-center text-[10px] font-bold uppercase tracking-wider sp-footer-label">
+                Saved Snapshots Management
+              </footer>
+            )}
+            {activeTab === ETabMenu.AUTOMATION && (
+              <footer className="px-3 py-3 text-center text-[10px] font-bold uppercase tracking-wider sp-footer-label">
+                Automation Rules Management
+              </footer>
+            )}
+
+            <div className="flex items-center justify-between gap-3 border-t border-[var(--sp-footer-border)] px-3 py-2.5">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] sp-footer-label">
+                  Theme
+                </p>
+                <p className="truncate text-[11px] text-[var(--text-secondary)]">
+                  {themeMode === 'system'
+                    ? `Following ${resolvedTheme}`
+                    : `${themeMode[0].toUpperCase()}${themeMode.slice(1)} active`}
+                </p>
+              </div>
+
+              <div className="sp-theme-bar">
+                {THEME_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    data-active={themeMode === option.value}
+                    className="sp-theme-chip rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em]"
+                    onClick={() => void handleThemeModeChange(option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </Layout>

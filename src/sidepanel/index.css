@@ -17,8 +17,10 @@
     'Helvetica Neue',
     sans-serif;
 
-  color-scheme: light dark;
-  background-color: #242424;
+  color-scheme: light;
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.94), rgba(246, 248, 252, 0.98) 42%),
+    linear-gradient(180deg, #f8fafc 0%, #f3f5f8 100%);
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -51,12 +53,37 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    background-color: #fafafa;
-  }
+  --surface: rgba(255, 255, 255, 0.9);
+  --surface-elevated: rgba(255, 255, 255, 0.98);
+  --surface-muted: rgba(248, 250, 252, 0.94);
+  --border-strong: rgba(15, 23, 42, 0.1);
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --success: #059669;
+  --warning: #d97706;
+  --danger: #e11d48;
+  --info: #2563eb;
+  --shadow-sm: 0 8px 18px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 18px 40px rgba(15, 23, 42, 0.08);
+  --sp-shell-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 249, 252, 0.97));
+  --sp-shell-gradient: radial-gradient(circle at top, rgba(226, 232, 240, 0.28), transparent 48%);
+  --sp-card-bg: rgba(255, 255, 255, 0.92);
+  --sp-card-border: rgba(148, 163, 184, 0.18);
+  --sp-card-hover: rgba(255, 255, 255, 0.98);
+  --sp-footer-bg: rgba(248, 250, 252, 0.86);
+  --sp-footer-border: rgba(148, 163, 184, 0.16);
+  --sp-tab-pill-bg: rgba(255, 255, 255, 0.74);
+  --sp-tab-pill-active: #0f172a;
+  --sp-tab-pill-text: #64748b;
+  --sp-statusbar-bg: rgba(248, 250, 252, 0.82);
+  --sp-statusbar-border: rgba(148, 163, 184, 0.14);
+  --glass-surface: rgba(255, 255, 255, 0.2);
+  --glass-surface-elevated: rgba(255, 255, 255, 0.3);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --glass-highlight: rgba(255, 255, 255, 0.5);
+  --glass-backdrop-blur: blur(24px);
+  --glass-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
 }
 
 body {
@@ -110,6 +137,10 @@ html {
 }
 
 .dark {
+  color-scheme: dark;
+  background:
+    radial-gradient(circle at top, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.96) 42%),
+    linear-gradient(180deg, #0f172a 0%, #020617 100%);
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -141,6 +172,75 @@ html {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --surface: rgba(15, 23, 42, 0.78);
+  --surface-elevated: rgba(15, 23, 42, 0.92);
+  --surface-muted: rgba(30, 41, 59, 0.72);
+  --border-strong: rgba(226, 232, 240, 0.12);
+  --text-primary: #e2e8f0;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --success: #34d399;
+  --warning: #f59e0b;
+  --danger: #fb7185;
+  --info: #60a5fa;
+  --shadow-sm: 0 12px 28px rgba(2, 6, 23, 0.32);
+  --shadow-md: 0 24px 50px rgba(2, 6, 23, 0.38);
+  --sp-shell-bg: linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(2, 6, 23, 0.97));
+  --sp-shell-gradient: radial-gradient(circle at top, rgba(96, 165, 250, 0.16), transparent 45%);
+  --sp-card-bg: rgba(15, 23, 42, 0.82);
+  --sp-card-border: rgba(148, 163, 184, 0.16);
+  --sp-card-hover: rgba(30, 41, 59, 0.9);
+  --sp-footer-bg: rgba(15, 23, 42, 0.86);
+  --sp-footer-border: rgba(148, 163, 184, 0.14);
+  --sp-tab-pill-bg: rgba(15, 23, 42, 0.68);
+  --sp-tab-pill-active: #f8fafc;
+  --sp-tab-pill-text: #94a3b8;
+  --sp-statusbar-bg: rgba(15, 23, 42, 0.78);
+  --sp-statusbar-border: rgba(148, 163, 184, 0.14);
+}
+
+[data-theme='glass'] {
+  color-scheme: light;
+  background:
+    radial-gradient(circle at top left, rgba(125, 211, 252, 0.38), transparent 34%),
+    radial-gradient(circle at top right, rgba(192, 132, 252, 0.18), transparent 28%),
+    linear-gradient(180deg, #dfe8f4 0%, #cfdceb 52%, #c7d5e8 100%);
+  --background: oklch(0.98 0.01 240);
+  --foreground: oklch(0.205 0.02 252);
+  --card: oklch(1 0 0 / 0.38);
+  --card-foreground: oklch(0.205 0.02 252);
+  --popover: oklch(1 0 0 / 0.42);
+  --popover-foreground: oklch(0.205 0.02 252);
+  --primary: oklch(0.29 0.05 250);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.95 0.02 240 / 0.72);
+  --secondary-foreground: oklch(0.26 0.03 252);
+  --muted: oklch(0.96 0.02 240 / 0.7);
+  --muted-foreground: oklch(0.44 0.03 252);
+  --accent: oklch(0.95 0.03 220 / 0.78);
+  --accent-foreground: oklch(0.26 0.03 252);
+  --border: oklch(1 0 0 / 0.32);
+  --input: oklch(1 0 0 / 0.3);
+  --ring: oklch(0.68 0.07 240);
+  --surface: rgba(255, 255, 255, 0.22);
+  --surface-elevated: rgba(255, 255, 255, 0.34);
+  --surface-muted: rgba(241, 245, 249, 0.3);
+  --border-strong: rgba(255, 255, 255, 0.32);
+  --text-primary: #162033;
+  --text-secondary: #334155;
+  --text-muted: #526277;
+  --sp-shell-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.2));
+  --sp-shell-gradient: radial-gradient(circle at top, rgba(255, 255, 255, 0.42), transparent 52%);
+  --sp-card-bg: var(--glass-surface);
+  --sp-card-border: var(--glass-border);
+  --sp-card-hover: var(--glass-surface-elevated);
+  --sp-footer-bg: rgba(255, 255, 255, 0.26);
+  --sp-footer-border: rgba(255, 255, 255, 0.3);
+  --sp-tab-pill-bg: rgba(255, 255, 255, 0.18);
+  --sp-tab-pill-active: #162033;
+  --sp-tab-pill-text: #526277;
+  --sp-statusbar-bg: rgba(255, 255, 255, 0.24);
+  --sp-statusbar-border: rgba(255, 255, 255, 0.28);
 }
 
 @layer base {
@@ -150,6 +250,10 @@ html {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+[data-theme='glass'] body {
+  backdrop-filter: var(--glass-backdrop-blur);
 }
 
 @keyframes marquee {

@@ -19,7 +19,8 @@ function TabsList({ className, ...props }: React.ComponentProps<typeof TabsPrimi
     <TabsPrimitive.List
       data-slot="tabs-list"
       className={cn(
-        'relative inline-flex h-9 w-full shrink-0 items-center justify-start border-b border-black/[0.03] px-2 gap-4 bg-background z-50',
+        'relative inline-flex h-10 w-full shrink-0 items-center justify-start gap-4 border-b px-2 z-50 backdrop-blur',
+        'border-[var(--sp-footer-border)] bg-[var(--sp-tab-pill-bg)]',
         className,
       )}
       {...props}
@@ -35,7 +36,8 @@ const TabsTrigger = React.forwardRef<
     ref={ref}
     data-slot="tabs-trigger"
     className={cn(
-      'relative text-slate-400 data-[state=active]:text-slate-900 transition-all text-xs font-bold uppercase tracking-widest py-2 cursor-pointer outline-none',
+      'relative cursor-pointer py-2 text-xs font-bold uppercase tracking-widest outline-none transition-all',
+      'text-[var(--sp-tab-pill-text)] data-[state=active]:text-[var(--sp-tab-pill-active)]',
       className,
     )}
     {...props}
@@ -128,7 +130,7 @@ function Tabs(props: IProps) {
           </TabsTrigger>
         ))}
         <div
-          className="absolute bottom-0 h-[2px] bg-slate-800 transition-all duration-300 ease-in-out z-10"
+          className="absolute bottom-0 z-10 h-[2px] bg-[var(--sp-tab-pill-active)] transition-all duration-300 ease-in-out"
           style={{
             left: `${indicatorStyle.left}px`,
             width: `${indicatorStyle.width}px`,
