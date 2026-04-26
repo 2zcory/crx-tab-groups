@@ -631,18 +631,18 @@ function AutomationManagement() {
               rule.isActive ? 'sp-card sp-card-hover' : 'sp-subtle-surface opacity-70',
             )}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className={cn('size-2.5 rounded-full shadow-sm', COLOR_MAP[rule.color])} />
-                <h3 className="sp-copy-primary text-[13px] font-bold">{rule.title}</h3>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className={cn('size-2.5 shrink-0 rounded-full shadow-sm', COLOR_MAP[rule.color])} />
+                <h3 className="sp-copy-primary truncate text-[13px] font-bold" title={rule.title}>{rule.title}</h3>
                 {!rule.isActive && (
-                  <span className="sp-chip-muted rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase">
+                  <span className="sp-chip-muted shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase">
                     Paused
                   </span>
                 )}
               </div>
 
-              <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+              <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                 <Tooltip>
                   <Tooltip.Trigger asChild>
                     <button
@@ -748,16 +748,16 @@ function AutomationManagement() {
             </div>
 
             <div className="sp-subtle-surface flex flex-wrap items-center gap-2 rounded-lg px-2.5 py-2">
-              <span className="sp-chip-muted rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wider">
+              <span className="sp-chip-muted shrink-0 rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wider">
                 {rule.order === 1 ? 'Highest Priority' : `Priority ${rule.order}`}
               </span>
               {getAutoGroupRulePatterns(rule).map((pattern) => (
                 <div
                   key={pattern}
-                  className="sp-chip inline-flex items-center gap-1 rounded-full px-2 py-1"
+                  className="sp-chip inline-flex max-w-full items-center gap-1 rounded-full px-2 py-1"
                 >
-                  <Globe size={10} className="sp-copy-muted" />
-                  <code className="sp-copy-secondary text-[10px] font-medium">{pattern}</code>
+                  <Globe size={10} className="sp-copy-muted shrink-0" />
+                  <code className="sp-copy-secondary truncate text-[10px] font-medium" title={pattern}>{pattern}</code>
                   <span className="sp-chip-muted shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
                     {describeRulePattern(pattern)}
                   </span>
