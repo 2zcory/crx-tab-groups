@@ -33,7 +33,8 @@ const STATUS_STYLES: Record<Exclude<RestoreState, 'idle' | 'pending'>, string> =
   partial: 'border-amber-200 bg-amber-50 text-amber-700',
   failed: 'border-rose-200 bg-rose-50 text-rose-700',
   updated: 'border-sky-200 bg-sky-50 text-sky-700',
-  deleted: 'border-slate-200 bg-slate-50 text-slate-600',
+  deleted:
+    'border-[color:color-mix(in_srgb,var(--sp-card-border)_88%,transparent)] bg-[color:color-mix(in_srgb,var(--surface-muted)_94%,transparent)] text-[var(--text-secondary)]',
 }
 
 const getStatusDetail = (status: RestoreStatus) => {
@@ -511,7 +512,7 @@ function GroupManagement() {
                           <Button
                             type="button"
                             variant="ghost"
-                            className="size-7 rounded-full p-0 text-rose-300 hover:bg-rose-50 hover:text-rose-500"
+                            className="size-7 rounded-full p-0 text-rose-400 hover:bg-rose-50 hover:text-rose-500"
                             onClick={() => deleteSnapshot(group.id)}
                           >
                             <Trash2 size={12} />

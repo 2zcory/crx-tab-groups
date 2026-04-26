@@ -66,15 +66,15 @@ function TopSites() {
   }
 
   return (
-    <section className="relative w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/80 group/topsites">
+    <section className="sp-card relative w-full overflow-hidden rounded-2xl group/topsites">
       <div className="flex items-center justify-between px-4 pt-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+          <p className="sp-label text-[11px] font-semibold uppercase tracking-[0.18em]">
             Top Sites
           </p>
-          <p className="text-[11px] text-slate-400">Quick launch utility</p>
+          <p className="sp-copy-muted text-[11px]">Quick launch utility</p>
         </div>
-        <span className="rounded-full border border-black/5 bg-white/70 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+        <span className="sp-chip rounded-full px-2 py-0.5 text-[10px] font-medium">
           {Math.min(list.length, 12)}
         </span>
       </div>
@@ -87,7 +87,7 @@ function TopSites() {
           <Tooltip key={item.url}>
             <Tooltip.Trigger asChild>
               <button
-                className="group flex-shrink-0 size-7 flex items-center justify-center rounded-full hover:bg-black/5 transition-colors cursor-pointer"
+                className="group flex-shrink-0 size-7 flex items-center justify-center rounded-full transition-colors cursor-pointer hover:bg-[var(--surface-muted)]"
                 onClick={() => chrome.tabs.create({ url: item.url })}
               >
                 <div className="grayscale-[0.4] group-hover:grayscale-0 transition-all scale-95 group-hover:scale-110">

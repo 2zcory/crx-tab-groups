@@ -37,20 +37,23 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
     id: id,
   })
 
-  // Map Chrome colors to Tailwind colors
   const colorMap: Record<string, string> = {
-    grey: 'bg-gray-100/50 border-gray-200',
-    blue: 'bg-blue-50/50 border-blue-200',
-    red: 'bg-red-50/50 border-red-200',
-    yellow: 'bg-yellow-50/50 border-yellow-200',
-    green: 'bg-green-50/50 border-green-200',
-    pink: 'bg-pink-50/50 border-pink-200',
-    purple: 'bg-purple-50/50 border-purple-200',
-    cyan: 'bg-cyan-50/50 border-cyan-200',
-    orange: 'bg-orange-50/50 border-orange-200',
+    grey: 'bg-slate-100/55 border-slate-200/70 dark:bg-slate-800/55 dark:border-slate-700/80',
+    blue: 'bg-blue-50/55 border-blue-200/80 dark:bg-blue-950/25 dark:border-blue-900/60',
+    red: 'bg-red-50/55 border-red-200/80 dark:bg-red-950/20 dark:border-red-900/55',
+    yellow:
+      'bg-amber-50/60 border-amber-200/80 dark:bg-amber-950/20 dark:border-amber-900/55',
+    green:
+      'bg-emerald-50/55 border-emerald-200/80 dark:bg-emerald-950/20 dark:border-emerald-900/55',
+    pink: 'bg-pink-50/55 border-pink-200/80 dark:bg-pink-950/20 dark:border-pink-900/55',
+    purple:
+      'bg-violet-50/55 border-violet-200/80 dark:bg-violet-950/20 dark:border-violet-900/55',
+    cyan: 'bg-cyan-50/55 border-cyan-200/80 dark:bg-cyan-950/20 dark:border-cyan-900/55',
+    orange:
+      'bg-orange-50/55 border-orange-200/80 dark:bg-orange-950/20 dark:border-orange-900/55',
   }
 
-  const cardStyle = color ? colorMap[color] : 'bg-white border-slate-200'
+  const cardStyle = color ? colorMap[color] : 'sp-card'
 
   return (
     <div
@@ -58,7 +61,9 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
       className={cn(
         'p-2.5 rounded-2xl border transition-all duration-300',
         cardStyle,
-        isOver && 'ring-2 ring-slate-400 ring-offset-2 scale-[1.01] bg-white shadow-md',
+        !color && 'sp-card-hover',
+        isOver &&
+          'ring-2 ring-[var(--sp-tab-pill-active)] ring-offset-2 scale-[1.01] bg-[var(--surface-elevated)] shadow-md',
         className,
       )}
     >
@@ -67,7 +72,7 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
           className={cn(
             'flex min-w-0 flex-1 items-center gap-2',
             onToggleCollapsed &&
-              'cursor-pointer rounded-xl py-1 transition-colors hover:bg-white/40',
+              'cursor-pointer rounded-xl py-1 transition-colors hover:bg-[var(--surface-elevated)]',
           )}
           role={onToggleCollapsed ? 'button' : undefined}
           tabIndex={onToggleCollapsed ? 0 : undefined}
@@ -84,15 +89,15 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
           }}
         >
           {onToggleCollapsed && (
-            <span className="flex size-4 shrink-0 items-center justify-center rounded-lg text-slate-500">
+            <span className="sp-copy-muted flex size-4 shrink-0 items-center justify-center rounded-lg">
               {collapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
             </span>
           )}
           <div className={cn('w-2 h-2 rounded-full', color ? `bg-${color}-500` : 'bg-slate-400')} />
-          <h3 className="font-bold text-[12px] truncate max-w-[180px] text-slate-800 uppercase tracking-tight">
+          <h3 className="sp-copy-primary font-bold text-[12px] truncate max-w-[180px] uppercase tracking-tight">
             {title}
           </h3>
-          <span className="text-[9px] bg-white/60 px-1.5 py-0.5 rounded-full border border-black/5 font-bold text-slate-500">
+          <span className="sp-chip text-[9px] px-1.5 py-0.5 rounded-full font-bold">
             {tabs.length}
           </span>
         </div>
@@ -104,7 +109,7 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
               <button
                 type="button"
                 aria-label={`Close all tabs in ${title}`}
-                className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full border border-rose-100 bg-white/70 text-rose-500 transition-colors hover:bg-rose-500 hover:text-white"
+                className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full border border-rose-200/70 bg-[var(--surface-elevated)] text-rose-500 transition-colors hover:bg-rose-500 hover:text-white"
                 onClick={(event) => {
                   event.stopPropagation()
                   onCloseTabs()
@@ -121,7 +126,8 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
         <div
           className={cn(
             'flex flex-col gap-1 min-h-[40px] transition-all rounded-xl p-1',
-            isOver && 'bg-slate-100/50 outline-2 outline-dashed outline-slate-300',
+            isOver &&
+              'bg-[var(--surface-muted)] outline-2 outline-dashed outline-[color:var(--sp-card-border)]',
           )}
         >
           {tabs.map((tab) => (
@@ -140,8 +146,8 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
             />
           ))}
           {tabs.length === 0 && (
-            <div className="flex-1 flex items-center justify-center py-4 border border-dashed border-slate-200 rounded-lg bg-slate-50/50">
-              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">
+            <div className="sp-empty-state flex-1 flex items-center justify-center py-4 rounded-lg">
+              <p className="text-[10px] font-medium uppercase tracking-widest">
                 Drop tabs here
               </p>
             </div>

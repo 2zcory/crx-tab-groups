@@ -371,7 +371,7 @@ function AutomationManagement() {
               </button>
               <button
                 type="button"
-                className="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1.5 text-[10px] font-bold text-rose-600 ring-1 ring-rose-200"
+                className="sp-danger-action inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-bold"
                 onClick={() => void clearAuditEntries()}
               >
                 <Eraser size={10} />
@@ -476,7 +476,7 @@ function AutomationManagement() {
                 setIsAdding(false)
                 setFormError(null)
               }}
-              className="text-slate-400 hover:text-slate-600"
+              className="sp-icon-button"
             >
               <X size={14} />
             </button>
@@ -580,7 +580,7 @@ function AutomationManagement() {
                       <span>{pattern}</span>
                       <button
                         type="button"
-                        className="text-slate-400 hover:text-rose-500"
+                        className="sp-copy-muted hover:text-rose-500"
                         onClick={() =>
                           setNewRule((current) => ({
                             ...current,
@@ -773,7 +773,7 @@ function AutomationManagement() {
                   </p>
                   <button
                     type="button"
-                    className="text-slate-400 hover:text-slate-600"
+                    className="sp-icon-button"
                     onClick={cancelPatternEditing}
                   >
                     <X size={12} />
@@ -814,7 +814,7 @@ function AutomationManagement() {
                       <span>{pattern}</span>
                       <button
                         type="button"
-                        className="text-slate-400 hover:text-rose-500"
+                        className="sp-copy-muted hover:text-rose-500"
                         onClick={() => removePatternFromDraftList(pattern)}
                       >
                         <Trash2 size={10} />

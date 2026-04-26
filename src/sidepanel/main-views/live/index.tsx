@@ -1264,7 +1264,7 @@ function LiveManagement() {
                 renderedAutoGroupScanStatus.tone === 'error' &&
                   'border-rose-200 bg-rose-50/95 text-rose-700',
                 renderedAutoGroupScanStatus.tone === 'idle' &&
-                  'border-slate-200 bg-slate-50/95 text-slate-600',
+                  'border-[var(--sp-card-border)] bg-[color:color-mix(in_srgb,var(--surface-muted)_94%,transparent)] text-[var(--text-secondary)]',
               )}
             >
               <div className="live-toast-content flex items-start gap-2.5">
@@ -1296,19 +1296,19 @@ function LiveManagement() {
               <div className="flex items-center gap-2">
                 <Monitor
                   size={12}
-                  className={win.isCurrent ? 'text-slate-900' : 'text-slate-400'}
+                  className={win.isCurrent ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}
                 />
                 <p
                   className={cn(
                     'text-[10px] font-bold uppercase tracking-wider',
-                    win.isCurrent ? 'text-slate-900' : 'text-slate-500',
+                    win.isCurrent ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]',
                   )}
                 >
                   Window {windows.length > 1 ? windows.findIndex((w) => w.id === win.id) + 1 : ''}{' '}
                   {win.isCurrent && '• Current'}
                 </p>
               </div>
-              <span className="text-[9px] font-bold text-slate-400 uppercase">
+              <span className="sp-copy-muted text-[9px] font-bold uppercase">
                 {win.totalTabs} tabs
               </span>
             </div>
@@ -1323,7 +1323,7 @@ function LiveManagement() {
                     id={`ungroup-pinned-${win.id}`}
                     title={MOCK_GROUP[EMockGroup.PINNED]}
                     tabs={win.tabsPinned}
-                    className="bg-slate-50 border-slate-200"
+                    className="sp-subtle-surface"
                     onAddTabToRules={(tab) => openAddToRulesDraft(tab)}
                   />
                 </SortableContext>
@@ -1361,7 +1361,7 @@ function LiveManagement() {
                                 saveStatuses[group.id].state === 'failed' &&
                                   'bg-rose-100 text-rose-700',
                                 saveStatuses[group.id].state === 'pending' &&
-                                  'bg-slate-200 text-slate-600',
+                                  'bg-[var(--surface-muted)] text-[var(--text-secondary)]',
                               )}
                             >
                               {saveStatuses[group.id].state}
@@ -1372,8 +1372,8 @@ function LiveManagement() {
                           variant="outline"
                           size="sm"
                           className={cn(
-                            'h-7 rounded-full border-black/10 bg-white/80 px-2.5 text-[11px] font-bold text-slate-700 shadow-none hover:bg-white',
-                            showSaveMenu === group.id && 'bg-slate-100',
+                            'sp-secondary-action h-7 rounded-full px-2.5 text-[11px] font-bold shadow-none',
+                            showSaveMenu === group.id && 'bg-[var(--surface-muted)]',
                           )}
                           disabled={saveStatuses[group.id]?.state === 'pending'}
                           onClick={(event) => {
@@ -1404,23 +1404,23 @@ function LiveManagement() {
 
                         {showSaveMenu === group.id && (
                           <div
-                            className="absolute right-0 top-9 z-50 flex w-64 flex-col gap-1 rounded-xl border border-slate-200 bg-white p-2 text-left shadow-xl"
+                            className="sp-overlay-panel absolute right-0 top-9 z-50 flex w-64 flex-col gap-1 rounded-xl p-2 text-left"
                             onClick={(event) => event.stopPropagation()}
                           >
                             <button
                               type="button"
-                              className="flex items-center justify-between rounded-lg px-2 py-1.5 text-[11px] font-bold text-slate-700 transition-colors hover:bg-slate-50"
+                              className="sp-overlay-item flex items-center justify-between rounded-lg px-2 py-1.5 text-[11px] font-bold"
                               onClick={() => setIsNamingNewSnapshot((current) => !current)}
                             >
                               <span>Save as new snapshot</span>
-                              <FolderPlus size={12} className="text-slate-400" />
+                              <FolderPlus size={12} className="sp-copy-muted" />
                             </button>
 
                             {isNamingNewSnapshot && (
-                              <div className="flex items-center gap-1.5 rounded-lg bg-slate-50 p-1.5">
+                              <div className="sp-subtle-surface flex items-center gap-1.5 rounded-lg p-1.5">
                                 <input
                                   autoFocus
-                                  className="min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 outline-none focus:border-slate-400"
+                                  className="sp-input-shell sp-input min-w-0 flex-1 rounded-md border-none px-2 py-1 text-[11px] font-medium outline-none"
                                   value={newSnapshotTitle}
                                   onChange={(event) => setNewSnapshotTitle(event.target.value)}
                                   onKeyDown={(event) => {
@@ -1439,9 +1439,9 @@ function LiveManagement() {
                               </div>
                             )}
 
-                            <div className="my-1 h-px bg-slate-100" />
+                            <div className="sp-divider my-1" />
 
-                            <p className="px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                            <p className="sp-label px-2 py-1 text-[9px] font-bold uppercase tracking-wider">
                               Overwrite existing
                             </p>
 
@@ -1451,20 +1451,20 @@ function LiveManagement() {
                                   <button
                                     key={snapshot.id}
                                     type="button"
-                                    className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-[11px] transition-colors hover:bg-slate-50"
+                                    className="sp-overlay-item flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-[11px]"
                                     onClick={() => void updateExistingSnapshot(group, snapshot)}
                                   >
-                                    <span className="min-w-0 truncate font-medium text-slate-600">
+                                    <span className="sp-copy-secondary min-w-0 truncate font-medium">
                                       {snapshot.title || 'Untitled Snapshot'}
                                     </span>
-                                    <span className="shrink-0 text-[9px] font-bold text-slate-400">
+                                    <span className="sp-copy-muted shrink-0 text-[9px] font-bold">
                                       {snapshot.tabs.length}
                                     </span>
                                   </button>
                                 ))}
                               </div>
                             ) : (
-                              <p className="px-2 py-1.5 text-[10px] italic text-slate-400">
+                              <p className="sp-copy-muted px-2 py-1.5 text-[10px] italic">
                                 No saved snapshots yet
                               </p>
                             )}
@@ -1485,7 +1485,7 @@ function LiveManagement() {
                     id={`ungroup-${win.id}`}
                     title={MOCK_GROUP[EMockGroup.UNGROUP]}
                     tabs={win.tabsUngroup}
-                    className="bg-white border-dashed border-slate-300"
+                    className="sp-empty-state"
                     onAddTabToRules={(tab) => openAddToRulesDraft(tab)}
                   />
                 </SortableContext>
@@ -1495,19 +1495,19 @@ function LiveManagement() {
         ))}
 
         {addToRulesDraft && (
-          <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+          <section className="sp-card rounded-2xl p-3">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                <p className="sp-label text-[10px] font-bold uppercase tracking-[0.18em]">
                   Add To Rules
                 </p>
-                <p className="mt-0.5 truncate text-[12px] font-bold text-slate-700">
+                <p className="sp-copy-primary mt-0.5 truncate text-[12px] font-bold">
                   {addToRulesDraft.tabTitle || addToRulesDraft.hostname}
                 </p>
               </div>
               <button
                 type="button"
-                className="flex size-7 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                className="sp-icon-button flex size-7 shrink-0 items-center justify-center rounded-full"
                 onClick={() => setAddToRulesDraft(null)}
               >
                 <X size={13} />
@@ -1516,11 +1516,11 @@ function LiveManagement() {
 
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
-                <label className="ml-1 text-[10px] font-bold uppercase text-slate-500">
+                <label className="sp-label ml-1 text-[10px] font-bold uppercase">
                   Pattern
                 </label>
                 <input
-                  className="w-full rounded-xl border-none bg-slate-50 px-3 py-2 text-[12px] font-medium text-slate-700 outline-none ring-1 ring-slate-200 focus:ring-slate-900"
+                  className="sp-input-shell sp-input w-full rounded-xl border-none px-3 py-2 text-[12px] font-medium outline-none"
                   value={addToRulesDraft.patternDraft}
                   onChange={(event) =>
                     setAddToRulesDraft((current) =>
@@ -1536,8 +1536,8 @@ function LiveManagement() {
                       className={cn(
                         'rounded-full px-2 py-1 text-[10px] font-bold ring-1 transition-colors',
                         addToRulesDraft.patternDraft === suggestion.value
-                          ? 'bg-slate-900 text-white ring-slate-900'
-                          : 'bg-white text-slate-500 ring-slate-200 hover:bg-slate-50',
+                          ? 'bg-[var(--sp-tab-pill-active)] text-[var(--primary-foreground)] ring-[var(--sp-tab-pill-active)]'
+                          : 'sp-chip hover:bg-[var(--surface-muted)]',
                       )}
                       onClick={() =>
                         setAddToRulesDraft((current) =>
@@ -1552,11 +1552,11 @@ function LiveManagement() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="ml-1 text-[10px] font-bold uppercase text-slate-500">
+                <label className="sp-label ml-1 text-[10px] font-bold uppercase">
                   Destination
                 </label>
                 <select
-                  className="w-full rounded-xl border-none bg-slate-50 px-3 py-2 text-[12px] font-bold text-slate-700 outline-none ring-1 ring-slate-200 focus:ring-slate-900"
+                  className="sp-input-shell sp-input w-full rounded-xl border-none px-3 py-2 text-[12px] font-bold outline-none"
                   value={addToRulesDraft.destinationRuleId}
                   onChange={(event) =>
                     setAddToRulesDraft((current) =>
@@ -1574,9 +1574,9 @@ function LiveManagement() {
               </div>
 
               {addToRulesDraft.destinationRuleId === NEW_RULE_DESTINATION_ID && (
-                <div className="flex flex-col gap-2 rounded-xl bg-slate-50 p-2 ring-1 ring-slate-100">
+                <div className="sp-subtle-surface flex flex-col gap-2 rounded-xl p-2">
                   <input
-                    className="w-full rounded-lg border-none bg-white px-2.5 py-2 text-[12px] font-bold text-slate-700 outline-none ring-1 ring-slate-200 focus:ring-slate-900"
+                    className="sp-input-shell sp-input w-full rounded-lg border-none px-2.5 py-2 text-[12px] font-bold outline-none"
                     value={addToRulesDraft.newRuleTitle}
                     onChange={(event) =>
                       setAddToRulesDraft((current) =>
@@ -1594,7 +1594,7 @@ function LiveManagement() {
                           'size-4 rounded-full transition-transform hover:scale-110',
                           COLOR_MAP[color],
                           addToRulesDraft.newRuleColor === color &&
-                            'scale-110 ring-2 ring-slate-900 ring-offset-1',
+                            'scale-110 ring-2 ring-[var(--sp-tab-pill-active)] ring-offset-1',
                         )}
                         onClick={() =>
                           setAddToRulesDraft((current) =>
@@ -1609,7 +1609,7 @@ function LiveManagement() {
 
               <Button
                 type="button"
-                className="h-8 rounded-xl bg-slate-900 text-[11px] font-bold text-white hover:bg-slate-800"
+                className="sp-primary-action h-8 rounded-xl text-[11px] font-bold"
                 onClick={() => void applyAddToRulesDraft()}
               >
                 Add Pattern
@@ -1623,8 +1623,8 @@ function LiveManagement() {
       {totalTabsAllCount > 0 && <TopSites />}
 
       {totalTabsAllCount === 0 && (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-12 text-center text-slate-400">
-          <p className="text-sm font-medium text-slate-600">No active tabs found</p>
+        <div className="sp-empty-state rounded-2xl py-12 text-center">
+          <p className="sp-copy-secondary text-sm font-medium">No active tabs found</p>
         </div>
       )}
 

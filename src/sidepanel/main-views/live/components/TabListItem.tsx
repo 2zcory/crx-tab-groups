@@ -14,7 +14,10 @@ function ButtonIcon({ children, className, onClick, ...props }: IButtonIconProps
     <Button
       variant="ghost"
       size="icon"
-      className={cn('cursor-pointer hover:bg-black/5 size-5 shrink-0 rounded-md', className)}
+      className={cn(
+        'sp-icon-button cursor-pointer size-5 shrink-0 rounded-md hover:bg-[var(--surface-muted)]',
+        className,
+      )}
       onClick={onClick}
       {...props}
     >
@@ -109,17 +112,10 @@ function TabListItem({ tab, isOverlay, onAddTabToRules }: IProps) {
         'group relative select-none overflow-hidden',
         'grid grid-cols-[auto_1fr_auto] items-center',
         'py-2 pl-3 pr-2 rounded-xl transition-all duration-300 outline-none border',
-        // Normal: Clean, semi-transparent white that blends with the tinted group background
-        !isOverlay &&
-          'bg-white/50 border-white/60 shadow-[0_1px_2px_rgba(0,0,0,0.02)] hover:bg-white/80 hover:border-white hover:shadow-[0_2px_6px_-1px_rgba(0,0,0,0.04)] cursor-default',
-        // Active: Pure white, elevated with a crisp, soft shadow
-        tab.active &&
-          !isOverlay &&
-          'bg-white border-white shadow-[0_4px_12px_-3px_rgba(0,0,0,0.08),0_2px_4px_-2px_rgba(0,0,0,0.04)] ring-1 ring-slate-200/50',
+        !isOverlay && 'sp-tab-card cursor-default',
+        tab.active && !isOverlay && 'sp-tab-card-active ring-1 ring-[color:var(--sp-card-border)]',
         isDragging && !isOverlay && 'opacity-30',
-        // Dragging (Overlay): Highest elevation
-        isOverlay &&
-          'bg-white border-slate-200 shadow-2xl scale-[1.03] cursor-grabbing z-[1000]',
+        isOverlay && 'sp-tab-card-overlay scale-[1.03] cursor-grabbing z-[1000]',
       )}
       role="button"
       tabIndex={isOverlay ? -1 : 0}
@@ -138,7 +134,7 @@ function TabListItem({ tab, isOverlay, onAddTabToRules }: IProps) {
 
       {/* Active Marker */}
       {tab.active && !isOverlay && (
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-slate-900 rounded-full" />
+        <div className="sp-active-marker absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full" />
       )}
 
       <div className="relative">
@@ -152,8 +148,8 @@ function TabListItem({ tab, isOverlay, onAddTabToRules }: IProps) {
           )}
         />
         {isDiscarded && !isOverlay && (
-          <div className="absolute -bottom-0.5 -right-0.5 bg-white rounded-full p-0.5 shadow-sm">
-            <ZapOff size={7} className="text-slate-400" />
+          <div className="sp-discarded-badge absolute -bottom-0.5 -right-0.5 rounded-full p-0.5">
+            <ZapOff size={7} className="sp-copy-muted" />
           </div>
         )}
       </div>
@@ -164,9 +160,9 @@ function TabListItem({ tab, isOverlay, onAddTabToRules }: IProps) {
             className={cn(
               'text-[11px] leading-tight transition-colors whitespace-nowrap marquee-target',
               {
-                'font-bold text-slate-900 active-marquee':
+                'sp-copy-primary font-bold active-marquee':
                   tab.active && isOverflowing && !isOverlay,
-                'text-slate-700': !tab.active || isOverlay,
+                'sp-copy-secondary': !tab.active || isOverlay,
                 'hidden-marquee': !isOverflowing || isOverlay,
               },
             )}
@@ -180,12 +176,12 @@ function TabListItem({ tab, isOverlay, onAddTabToRules }: IProps) {
         </div>
         <div className="flex items-center gap-1.5">
           {domain && (
-            <span className="text-[9px] font-medium text-slate-400 truncate max-w-[100px]">
+            <span className="sp-copy-muted text-[9px] font-medium truncate max-w-[100px]">
               {domain}
             </span>
           )}
-          {domain && <span className="size-0.5 rounded-full bg-slate-300" />}
-          <span className="text-[9px] text-slate-300 font-medium">
+          {domain && <span className="sp-domain-dot size-0.5 rounded-full" />}
+          <span className="text-[9px] font-medium text-[color:color-mix(in_srgb,var(--text-muted)_72%,transparent)]">
             {formatTimeAgo((tab as any).lastAccessed || (tab as any).lastOpened)}
           </span>
         </div>
@@ -193,32 +189,32 @@ function TabListItem({ tab, isOverlay, onAddTabToRules }: IProps) {
 
       {!isOverlay && (
         <div className="flex items-center gap-0.5 ml-1">
-          <div className="hidden group-hover:flex group-focus-within:flex items-center gap-0.5 bg-white/95 backdrop-blur-sm border border-black/5 shadow-sm rounded-lg p-0.5 animate-in fade-in zoom-in-95 duration-150">
+          <div className="sp-action-rail hidden group-hover:flex group-focus-within:flex items-center gap-0.5 rounded-lg p-0.5 animate-in fade-in zoom-in-95 duration-150">
             {onAddTabToRules && (
               <>
                 <ButtonIcon onClick={handleCreateQuickRule} title="Add to Rules">
-                  <ListPlus size={11} className="text-slate-600" />
+                  <ListPlus size={11} className="sp-copy-secondary" />
                 </ButtonIcon>
-                <div className="w-px h-2.5 bg-black/5 mx-0.5" />
+                <div className="sp-action-divider mx-0.5" />
               </>
             )}
             <ButtonIcon onClick={togglePin} title={tab.pinned ? 'Unpin tab' : 'Pin tab'}>
               {tab.pinned ? (
-                <PinOff size={11} className="text-slate-600" />
+                <PinOff size={11} className="sp-copy-secondary" />
               ) : (
-                <Pin size={11} className="text-slate-600" />
+                <Pin size={11} className="sp-copy-secondary" />
               )}
             </ButtonIcon>
             <ButtonIcon onClick={handleReloadTab} title="Reload tab">
-              <RefreshCw size={11} className="text-slate-600" />
+              <RefreshCw size={11} className="sp-copy-secondary" />
             </ButtonIcon>
-            <div className="w-px h-2.5 bg-black/5 mx-0.5" />
+            <div className="sp-action-divider mx-0.5" />
             <ButtonIcon
               onClick={handleCloseTab}
               title="Close tab"
               className="hover:bg-red-50 hover:text-red-600"
             >
-              <X size={11} className="text-slate-600 group-hover:text-red-600" />
+              <X size={11} className="sp-copy-secondary group-hover:text-red-600" />
             </ButtonIcon>
           </div>
         </div>

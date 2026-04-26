@@ -162,6 +162,16 @@ main {
   color: var(--text-primary);
 }
 
+.sp-danger-action {
+  border: 1px solid color-mix(in srgb, var(--danger) 22%, transparent);
+  background: color-mix(in srgb, var(--surface-elevated) 92%, transparent);
+  color: var(--danger);
+}
+
+.sp-danger-action:hover {
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface-elevated));
+}
+
 .sp-input-shell {
   border: 1px solid var(--sp-card-border);
   background: var(--surface-muted);
@@ -189,4 +199,91 @@ main {
   background: var(--sp-tab-pill-active);
   color: var(--primary-foreground);
   box-shadow: var(--shadow-sm);
+}
+
+.sp-overlay-panel {
+  border: 1px solid var(--sp-card-border);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: var(--glass-backdrop-blur);
+}
+
+.sp-overlay-item {
+  color: var(--text-secondary);
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.sp-overlay-item:hover {
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.sp-divider {
+  height: 1px;
+  background: color-mix(in srgb, var(--sp-card-border) 88%, transparent);
+}
+
+.sp-empty-state {
+  border: 1px dashed color-mix(in srgb, var(--sp-card-border) 94%, transparent);
+  background: color-mix(in srgb, var(--surface-muted) 90%, transparent);
+  color: var(--text-muted);
+}
+
+.sp-tab-card {
+  border: 1px solid color-mix(in srgb, var(--sp-card-border) 74%, transparent);
+  background: color-mix(in srgb, var(--surface-elevated) 82%, transparent);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease,
+    opacity 180ms ease;
+}
+
+.sp-tab-card:hover {
+  background: color-mix(in srgb, var(--surface-elevated) 96%, transparent);
+  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+.sp-tab-card-active {
+  background: var(--surface-elevated);
+  border-color: color-mix(in srgb, var(--border-strong) 78%, transparent);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+}
+
+.sp-tab-card-overlay {
+  background: var(--surface-elevated);
+  border-color: color-mix(in srgb, var(--border-strong) 80%, transparent);
+  box-shadow: var(--shadow-md);
+}
+
+.sp-action-rail {
+  border: 1px solid color-mix(in srgb, var(--sp-card-border) 80%, transparent);
+  background: color-mix(in srgb, var(--surface-elevated) 96%, transparent);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: var(--glass-backdrop-blur);
+}
+
+.sp-action-divider {
+  width: 1px;
+  height: 0.625rem;
+  background: color-mix(in srgb, var(--sp-card-border) 78%, transparent);
+}
+
+.sp-active-marker {
+  background: var(--sp-tab-pill-active);
+}
+
+.sp-discarded-badge {
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-sm);
+}
+
+.sp-domain-dot {
+  background: color-mix(in srgb, var(--text-muted) 42%, transparent);
 }

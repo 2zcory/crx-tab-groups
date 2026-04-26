@@ -88,6 +88,13 @@ export const SidePanel = () => {
     await StorageLocal.set({ [THEME_STORAGE_KEY]: nextThemeMode })
   }
 
+  const waitForThemeCommit = () =>
+    new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve())
+      })
+    })
+
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search)
     if (searchParams.get(THEME_HARNESS_QUERY_KEY) !== THEME_HARNESS_MODE) return
@@ -96,9 +103,11 @@ export const SidePanel = () => {
       async clearThemeMode() {
         await StorageLocal.set({ [THEME_STORAGE_KEY]: 'system' })
         setThemeMode('system')
+        await waitForThemeCommit()
       },
       async setThemeMode(nextThemeMode) {
         await handleThemeModeChange(nextThemeMode)
+        await waitForThemeCommit()
       },
       async getThemeState() {
         const storedThemeMode = await StorageLocal.get<{ [THEME_STORAGE_KEY]?: ThemeMode }>(
