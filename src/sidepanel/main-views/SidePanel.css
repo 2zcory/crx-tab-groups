@@ -62,3 +62,131 @@ main {
   color: var(--primary-foreground);
   box-shadow: var(--shadow-md);
 }
+
+.sp-card {
+  border: 1px solid var(--sp-card-border);
+  background: var(--sp-card-bg);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: var(--glass-backdrop-blur);
+}
+
+.sp-card-hover {
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.sp-card-hover:hover {
+  border-color: var(--border-strong);
+  background: var(--sp-card-hover);
+}
+
+.sp-subtle-surface {
+  border: 1px solid color-mix(in srgb, var(--sp-card-border) 80%, transparent);
+  background: var(--surface-muted);
+}
+
+.sp-soft-surface {
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--sp-card-border) 72%, transparent);
+}
+
+.sp-outline-dashed {
+  border: 1px dashed color-mix(in srgb, var(--sp-card-border) 90%, transparent);
+  background: color-mix(in srgb, var(--surface-muted) 88%, transparent);
+}
+
+.sp-label {
+  color: var(--text-muted);
+}
+
+.sp-copy-primary {
+  color: var(--text-primary);
+}
+
+.sp-copy-secondary {
+  color: var(--text-secondary);
+}
+
+.sp-copy-muted {
+  color: var(--text-muted);
+}
+
+.sp-chip {
+  border: 1px solid color-mix(in srgb, var(--sp-card-border) 88%, transparent);
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+}
+
+.sp-chip-muted {
+  background: color-mix(in srgb, var(--surface-muted) 94%, transparent);
+  color: var(--text-muted);
+}
+
+.sp-icon-button {
+  color: var(--text-muted);
+  transition:
+    color 160ms ease,
+    background-color 160ms ease;
+}
+
+.sp-icon-button:hover {
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.sp-primary-action {
+  background: var(--sp-tab-pill-active);
+  color: var(--primary-foreground);
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease,
+    background-color 180ms ease;
+}
+
+.sp-primary-action:hover {
+  transform: translateY(-1px);
+  opacity: 0.95;
+}
+
+.sp-secondary-action {
+  border: 1px solid var(--sp-card-border);
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+}
+
+.sp-secondary-action:hover {
+  background: var(--sp-card-hover);
+  color: var(--text-primary);
+}
+
+.sp-input-shell {
+  border: 1px solid var(--sp-card-border);
+  background: var(--surface-muted);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.sp-input-shell:focus-within {
+  border-color: var(--sp-tab-pill-active);
+  background: var(--surface-elevated);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--sp-tab-pill-active) 24%, transparent);
+}
+
+.sp-input {
+  color: var(--text-primary);
+}
+
+.sp-input::placeholder {
+  color: var(--text-muted);
+}
+
+.sp-tooltip {
+  background: var(--sp-tab-pill-active);
+  color: var(--primary-foreground);
+  box-shadow: var(--shadow-sm);
+}

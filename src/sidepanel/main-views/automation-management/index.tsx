@@ -316,15 +316,15 @@ function AutomationManagement() {
 
   return (
     <div className="flex flex-col gap-4 p-2 pb-6">
-      <section className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
+      <section className="sp-card flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+          <p className="sp-label text-[11px] font-bold uppercase tracking-[0.18em]">
             Auto-Grouping Rules
           </p>
         </div>
         <Button
           size="sm"
-          className="h-7 rounded-full bg-slate-900 px-3 text-[10px] font-bold text-white hover:bg-slate-800"
+          className="sp-primary-action h-7 rounded-full px-3 text-[10px] font-bold"
           onClick={() => {
             setFormError(null)
             setIsAdding(true)
@@ -334,36 +334,36 @@ function AutomationManagement() {
         </Button>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <section className="sp-card rounded-2xl">
         <button
           type="button"
           onClick={() => setShowDebugState((current) => !current)}
           className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left"
         >
           <div className="flex items-center gap-2">
-            <span className="inline-flex size-6 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+            <span className="sp-chip-muted inline-flex size-6 items-center justify-center rounded-full">
               <Bug size={12} />
             </span>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+              <p className="sp-label text-[11px] font-bold uppercase tracking-[0.18em]">
                 Rules Debug State
               </p>
-              <p className="text-[11px] text-slate-400">
+              <p className="sp-copy-muted text-[11px]">
                 {ownershipEntries.length} ownership hints, {auditEntries.length} recent audit events
               </p>
             </div>
           </div>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          <span className="sp-copy-muted text-[10px] font-bold uppercase tracking-wider">
             {showDebugState ? 'Hide' : 'Show'}
           </span>
         </button>
 
         {showDebugState && (
-          <div className="flex flex-col gap-3 border-t border-slate-100 px-3 py-3">
+          <div className="flex flex-col gap-3 border-t border-[var(--sp-footer-border)] px-3 py-3">
             <div className="flex items-center justify-end gap-2">
               <button
                 type="button"
-                className="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-600 ring-1 ring-slate-200"
+                className="sp-secondary-action inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-bold"
                 onClick={() => void fetchDebugState()}
               >
                 <RefreshCw size={10} />
@@ -380,11 +380,11 @@ function AutomationManagement() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+              <p className="sp-label text-[10px] font-bold uppercase tracking-wider">
                 Ownership
               </p>
               {ownershipEntries.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-[11px] text-slate-400">
+                <div className="sp-outline-dashed sp-copy-muted rounded-xl px-3 py-3 text-[11px]">
                   No persisted ownership hints yet.
                 </div>
               ) : (
@@ -392,19 +392,19 @@ function AutomationManagement() {
                   {ownershipEntries.map((entry) => (
                     <div
                       key={`${entry.windowId}-${entry.ruleId}`}
-                      className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
+                      className="sp-subtle-surface rounded-xl px-3 py-2"
                     >
                       <div className="flex items-center gap-2">
                         <span className={cn('size-2 rounded-full', COLOR_MAP[entry.color])} />
-                        <span className="text-[11px] font-bold text-slate-700">{entry.title}</span>
-                        <span className="rounded-full bg-white px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 ring-1 ring-slate-200">
+                        <span className="sp-copy-primary text-[11px] font-bold">{entry.title}</span>
+                        <span className="sp-chip rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">
                           window {entry.windowId}
                         </span>
-                        <span className="rounded-full bg-white px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 ring-1 ring-slate-200">
+                        <span className="sp-chip rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">
                           group {entry.groupId}
                         </span>
                       </div>
-                      <p className="mt-1 text-[10px] text-slate-400">
+                      <p className="sp-copy-muted mt-1 text-[10px]">
                         rule {entry.ruleId} • updated {new Date(entry.updatedAt).toLocaleString()}
                       </p>
                     </div>
@@ -414,11 +414,11 @@ function AutomationManagement() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+              <p className="sp-label text-[10px] font-bold uppercase tracking-wider">
                 Recent Audit
               </p>
               {auditEntries.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-[11px] text-slate-400">
+                <div className="sp-outline-dashed sp-copy-muted rounded-xl px-3 py-3 text-[11px]">
                   No audit events yet.
                 </div>
               ) : (
@@ -426,23 +426,23 @@ function AutomationManagement() {
                   {auditEntries.map((entry) => (
                     <div
                       key={entry.id}
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2"
+                      className="sp-soft-surface rounded-xl px-3 py-2"
                     >
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-600">
+                        <span className="sp-chip-muted rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">
                           {entry.outcome}
                         </span>
                         {entry.ruleTitle && (
-                          <span className="text-[11px] font-bold text-slate-700">
+                          <span className="sp-copy-primary text-[11px] font-bold">
                             {entry.ruleTitle}
                           </span>
                         )}
-                        <span className="text-[10px] text-slate-400">
+                        <span className="sp-copy-muted text-[10px]">
                           {new Date(entry.createdAt).toLocaleString()}
                         </span>
                       </div>
-                      <p className="mt-1 text-[11px] text-slate-600">{entry.reason}</p>
-                      <div className="mt-1 flex flex-wrap gap-1.5 text-[10px] text-slate-400">
+                      <p className="sp-copy-secondary mt-1 text-[11px]">{entry.reason}</p>
+                      <div className="sp-copy-muted mt-1 flex flex-wrap gap-1.5 text-[10px]">
                         {entry.matchedPattern && <span>pattern: {entry.matchedPattern}</span>}
                         {typeof entry.windowId === 'number' && (
                           <span>window: {entry.windowId}</span>
@@ -451,7 +451,7 @@ function AutomationManagement() {
                         {typeof entry.tabId === 'number' && <span>tab: {entry.tabId}</span>}
                       </div>
                       {entry.url && (
-                        <p className="mt-1 truncate text-[10px] text-slate-400">{entry.url}</p>
+                        <p className="sp-copy-muted mt-1 truncate text-[10px]">{entry.url}</p>
                       )}
                       {entry.message && (
                         <p className="mt-1 text-[10px] text-rose-500">{entry.message}</p>
@@ -466,9 +466,9 @@ function AutomationManagement() {
       </section>
 
       {isAdding && (
-        <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-md ring-1 ring-black/5">
+        <div className="sp-card flex flex-col gap-3 rounded-2xl p-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            <h3 className="sp-label text-xs font-bold uppercase tracking-wider">
               Create New Rule
             </h3>
             <button
@@ -484,14 +484,14 @@ function AutomationManagement() {
 
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+              <label className="sp-label ml-1 text-[10px] font-bold uppercase">
                 Group Identity
               </label>
               <div className="flex items-center gap-2">
                 <input
                   autoFocus
                   placeholder="Group Title (e.g. Work)"
-                  className="flex-1 rounded-xl border-none bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 outline-none ring-1 ring-slate-200 focus:ring-slate-900"
+                  className="sp-input-shell sp-input flex-1 rounded-xl border-none px-3 py-2 text-xs font-medium outline-none"
                   value={newRule.title}
                   onChange={(e) => setNewRule({ ...newRule, title: e.target.value })}
                 />
@@ -502,7 +502,8 @@ function AutomationManagement() {
                       className={cn(
                         'size-4 rounded-full transition-transform hover:scale-110',
                         COLOR_MAP[c],
-                        newRule.color === c && 'ring-2 ring-slate-900 ring-offset-1 scale-110',
+                        newRule.color === c &&
+                          'ring-2 ring-[var(--sp-tab-pill-active)] ring-offset-1 scale-110',
                       )}
                       onClick={() => setNewRule({ ...newRule, color: c })}
                     />
@@ -512,21 +513,21 @@ function AutomationManagement() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+              <label className="sp-label ml-1 text-[10px] font-bold uppercase">
                 URL Pattern
               </label>
               <div className="flex items-center gap-2">
-                <div className="flex flex-1 items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-slate-200 focus-within:ring-slate-900">
-                  <Globe size={12} className="text-slate-400" />
+                <div className="sp-input-shell flex flex-1 items-center gap-2 rounded-xl px-3 py-2">
+                  <Globe size={12} className="sp-copy-muted" />
                   <input
                     placeholder="e.g. youtube.com"
-                    className="w-full border-none bg-transparent text-xs font-medium text-slate-700 outline-none"
+                    className="sp-input w-full border-none bg-transparent text-xs font-medium outline-none"
                     value={newRule.patternDraft}
                     onChange={(e) => setNewRule({ ...newRule, patternDraft: e.target.value })}
                   />
                   <button
                     type="button"
-                    className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] font-bold text-white"
+                    className="sp-primary-action rounded-lg px-2 py-1 text-[10px] font-bold"
                     onClick={() => {
                       const validation = validateAutoGroupRulePattern(newRule.patternDraft)
                       if (!validation.isValid) {
@@ -555,12 +556,12 @@ function AutomationManagement() {
                   </button>
                 </div>
               </div>
-              <p className="ml-1 text-[10px] text-slate-400">
+              <p className="sp-copy-muted ml-1 text-[10px]">
                 Plain host matches subdomains. Use <code className="font-mono">*</code> for glob or{' '}
                 <code className="font-mono">re:</code> for explicit regex.
               </p>
               <div className="ml-1 flex items-center gap-2">
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                <span className="sp-chip-muted rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
                   {patternKind}
                 </span>
                 {!patternDraftValidation.isValid && newRule.patternDraft.trim() && (
@@ -574,7 +575,7 @@ function AutomationManagement() {
                   {newRule.urlPatterns.map((pattern) => (
                     <span
                       key={pattern}
-                      className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-600"
+                      className="sp-chip inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium"
                     >
                       <span>{pattern}</span>
                       <button
@@ -593,7 +594,7 @@ function AutomationManagement() {
                   ))}
                 </div>
               )}
-              <p className="ml-1 text-[10px] text-slate-400">
+              <p className="sp-copy-muted ml-1 text-[10px]">
                 New rules start at the lowest priority. Higher priority rules win first when
                 patterns overlap.
               </p>
@@ -617,8 +618,8 @@ function AutomationManagement() {
 
       <div className="flex flex-col gap-2.5">
         {rules.length === 0 && !isAdding && (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center">
-            <p className="text-xs font-medium text-slate-400">No automation rules yet.</p>
+          <div className="sp-outline-dashed rounded-2xl py-12 text-center">
+            <p className="sp-copy-muted text-xs font-medium">No automation rules yet.</p>
           </div>
         )}
 
@@ -626,18 +627,16 @@ function AutomationManagement() {
           <div
             key={rule.id}
             className={cn(
-              'group relative flex flex-col gap-3 rounded-2xl border p-3 transition-all hover:shadow-sm',
-              rule.isActive
-                ? 'bg-white border-slate-200'
-                : 'bg-slate-50 border-slate-100 opacity-70',
+              'group relative flex flex-col gap-3 rounded-2xl border p-3 transition-all',
+              rule.isActive ? 'sp-card sp-card-hover' : 'sp-subtle-surface opacity-70',
             )}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className={cn('size-2.5 rounded-full shadow-sm', COLOR_MAP[rule.color])} />
-                <h3 className="text-[13px] font-bold text-slate-800">{rule.title}</h3>
+                <h3 className="sp-copy-primary text-[13px] font-bold">{rule.title}</h3>
                 {!rule.isActive && (
-                  <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[9px] font-bold uppercase text-slate-500">
+                  <span className="sp-chip-muted rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase">
                     Paused
                   </span>
                 )}
@@ -649,12 +648,12 @@ function AutomationManagement() {
                     <button
                       onClick={() => void moveRuleToEdge(rule.id, 'top')}
                       disabled={rule.order <= 1}
-                      className="flex size-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="sp-icon-button flex size-7 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <ChevronsUp size={12} />
                     </button>
                   </Tooltip.Trigger>
-                  <Tooltip.Content className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] text-white">
+                  <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
                     Move To Top
                   </Tooltip.Content>
                 </Tooltip>
@@ -663,12 +662,12 @@ function AutomationManagement() {
                     <button
                       onClick={() => void moveRule(rule.id, 'up')}
                       disabled={rule.order <= 1}
-                      className="flex size-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="sp-icon-button flex size-7 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <ArrowUp size={12} />
                     </button>
                   </Tooltip.Trigger>
-                  <Tooltip.Content className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] text-white">
+                  <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
                     Move Up
                   </Tooltip.Content>
                 </Tooltip>
@@ -677,12 +676,12 @@ function AutomationManagement() {
                     <button
                       onClick={() => void moveRule(rule.id, 'down')}
                       disabled={rule.order >= rules.length}
-                      className="flex size-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="sp-icon-button flex size-7 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <ArrowDown size={12} />
                     </button>
                   </Tooltip.Trigger>
-                  <Tooltip.Content className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] text-white">
+                  <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
                     Move Down
                   </Tooltip.Content>
                 </Tooltip>
@@ -691,12 +690,12 @@ function AutomationManagement() {
                     <button
                       onClick={() => void moveRuleToEdge(rule.id, 'bottom')}
                       disabled={rule.order >= rules.length}
-                      className="flex size-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="sp-icon-button flex size-7 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <ChevronsDown size={12} />
                     </button>
                   </Tooltip.Trigger>
-                  <Tooltip.Content className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] text-white">
+                  <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
                     Move To Bottom
                   </Tooltip.Content>
                 </Tooltip>
@@ -704,12 +703,12 @@ function AutomationManagement() {
                   <Tooltip.Trigger asChild>
                     <button
                       onClick={() => startPatternEditing(rule)}
-                      className="flex size-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                      className="sp-icon-button flex size-7 items-center justify-center rounded-full"
                     >
                       <Pencil size={12} />
                     </button>
                   </Tooltip.Trigger>
-                  <Tooltip.Content className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] text-white">
+                  <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
                     Edit Patterns
                   </Tooltip.Content>
                 </Tooltip>
@@ -727,7 +726,7 @@ function AutomationManagement() {
                       {rule.isActive ? <Pause size={12} /> : <Play size={12} />}
                     </button>
                   </Tooltip.Trigger>
-                  <Tooltip.Content className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] text-white">
+                  <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
                     {rule.isActive ? 'Pause Rule' : 'Resume Rule'}
                   </Tooltip.Content>
                 </Tooltip>
@@ -741,25 +740,25 @@ function AutomationManagement() {
                       <Trash2 size={12} />
                     </button>
                   </Tooltip.Trigger>
-                  <Tooltip.Content className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] text-white">
+                  <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
                     Delete
                   </Tooltip.Content>
                 </Tooltip>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-2 ring-1 ring-slate-100 ring-inset">
-              <span className="rounded-full bg-slate-200 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-500">
+            <div className="sp-subtle-surface flex flex-wrap items-center gap-2 rounded-lg px-2.5 py-2">
+              <span className="sp-chip-muted rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wider">
                 {rule.order === 1 ? 'Highest Priority' : `Priority ${rule.order}`}
               </span>
               {getAutoGroupRulePatterns(rule).map((pattern) => (
                 <div
                   key={pattern}
-                  className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 ring-1 ring-slate-200"
+                  className="sp-chip inline-flex items-center gap-1 rounded-full px-2 py-1"
                 >
-                  <Globe size={10} className="text-slate-400" />
-                  <code className="text-[10px] font-medium text-slate-500">{pattern}</code>
-                  <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                  <Globe size={10} className="sp-copy-muted" />
+                  <code className="sp-copy-secondary text-[10px] font-medium">{pattern}</code>
+                  <span className="sp-chip-muted shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
                     {describeRulePattern(pattern)}
                   </span>
                 </div>
@@ -767,9 +766,9 @@ function AutomationManagement() {
             </div>
 
             {editingRuleId === rule.id && (
-              <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="sp-subtle-surface flex flex-col gap-2 rounded-xl p-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  <p className="sp-label text-[10px] font-bold uppercase tracking-wider">
                     Manage Patterns
                   </p>
                   <button
@@ -782,11 +781,11 @@ function AutomationManagement() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <div className="flex flex-1 items-center gap-2 rounded-xl bg-white px-3 py-2 ring-1 ring-slate-200">
-                    <Globe size={12} className="text-slate-400" />
+                  <div className="sp-input-shell flex flex-1 items-center gap-2 rounded-xl px-3 py-2">
+                    <Globe size={12} className="sp-copy-muted" />
                     <input
                       placeholder="Add another pattern"
-                      className="w-full border-none bg-transparent text-xs font-medium text-slate-700 outline-none"
+                      className="sp-input w-full border-none bg-transparent text-xs font-medium outline-none"
                       value={editingPatternDraft}
                       onChange={(e) => setEditingPatternDraft(e.target.value)}
                       onKeyDown={(e) => {
@@ -799,7 +798,7 @@ function AutomationManagement() {
                   </div>
                   <button
                     type="button"
-                    className="rounded-lg bg-slate-900 px-2 py-2 text-[10px] font-bold text-white"
+                    className="sp-primary-action rounded-lg px-2 py-2 text-[10px] font-bold"
                     onClick={addPatternToDraftList}
                   >
                     Add
@@ -810,7 +809,7 @@ function AutomationManagement() {
                   {editingPatterns.map((pattern) => (
                     <span
                       key={pattern}
-                      className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-[10px] font-medium text-slate-600 ring-1 ring-slate-200"
+                      className="sp-chip inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium"
                     >
                       <span>{pattern}</span>
                       <button
@@ -827,7 +826,7 @@ function AutomationManagement() {
                 <div className="flex items-center justify-end gap-2">
                   <button
                     type="button"
-                    className="rounded-lg bg-white px-3 py-1.5 text-[10px] font-bold text-slate-600 ring-1 ring-slate-200"
+                    className="sp-secondary-action rounded-lg px-3 py-1.5 text-[10px] font-bold"
                     onClick={cancelPatternEditing}
                   >
                     Cancel

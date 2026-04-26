@@ -387,17 +387,17 @@ function GroupManagement() {
     <div className="flex flex-col gap-3 p-2">
       <header className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+          <p className="sp-label text-[10px] font-bold uppercase tracking-[0.2em]">
             Saved Snapshots
           </p>
-          <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
+          <span className="sp-chip-muted rounded-full px-1.5 py-0.5 text-[10px] font-bold">
             {groups.length}
           </span>
         </div>
       </header>
 
       {groups.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-10 text-center text-slate-400">
+        <div className="sp-outline-dashed sp-copy-muted rounded-2xl py-10 text-center">
           <p className="text-[11px] font-medium">No snapshots saved yet</p>
         </div>
       ) : (
@@ -410,10 +410,10 @@ function GroupManagement() {
             return (
               <div
                 key={group.id}
-                className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:border-slate-300"
+                className="sp-card sp-card-hover flex flex-col overflow-hidden rounded-2xl transition-all"
               >
                 <div
-                  className="flex cursor-pointer items-center justify-between gap-2 p-2.5 transition-colors hover:bg-slate-50/50"
+                  className="flex cursor-pointer items-center justify-between gap-2 p-2.5 transition-colors hover:bg-[var(--surface-muted)]"
                   onClick={() => toggleExpand(group.id)}
                 >
                   <div className="flex min-w-0 items-center gap-2">
@@ -431,7 +431,7 @@ function GroupManagement() {
                       >
                         <input
                           autoFocus
-                          className="w-full min-w-24 rounded border-none bg-slate-100 px-1.5 py-0.5 text-[13px] font-bold text-slate-700 outline-none ring-1 ring-slate-200 focus:ring-slate-400"
+                          className="sp-input-shell sp-input w-full min-w-24 rounded border-none px-1.5 py-0.5 text-[13px] font-bold outline-none"
                           value={editingTitle}
                           onChange={(e) => setEditingTitle(e.target.value)}
                           onKeyDown={(e) => {
@@ -447,18 +447,18 @@ function GroupManagement() {
                         </button>
                         <button
                           onClick={cancelEditing}
-                          className="flex size-6 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100"
+                          className="sp-icon-button flex size-6 shrink-0 items-center justify-center rounded-full"
                         >
                           <X size={14} />
                         </button>
                       </div>
                     ) : (
                       <div className="group/title flex items-center gap-1.5 truncate">
-                        <h3 className="truncate text-[13px] font-bold text-slate-700">
+                        <h3 className="sp-copy-primary truncate text-[13px] font-bold">
                           {group.title || 'Untitled'}
                         </h3>
                         <button
-                          className="opacity-0 transition-opacity group-hover/title:opacity-100 text-slate-300 hover:text-slate-500"
+                          className="sp-copy-muted opacity-0 transition-opacity group-hover/title:opacity-100 hover:text-[var(--text-primary)]"
                           onClick={(e) => {
                             e.stopPropagation()
                             startEditing(group)
@@ -466,7 +466,7 @@ function GroupManagement() {
                         >
                           <Pencil size={11} />
                         </button>
-                        <span className="text-[10px] font-bold text-slate-400">
+                        <span className="sp-copy-muted text-[10px] font-bold">
                           {group.tabs.length}
                         </span>
                       </div>
@@ -492,7 +492,7 @@ function GroupManagement() {
                           <Button
                             type="button"
                             variant="ghost"
-                            className="size-7 rounded-full p-0 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                            className="sp-icon-button size-7 rounded-full p-0"
                             onClick={() => setShowUpdateMenu(isMenuOpen ? null : group.id)}
                           >
                             <RefreshCw
@@ -501,7 +501,7 @@ function GroupManagement() {
                             />
                           </Button>
                         </Tooltip.Trigger>
-                        <Tooltip.Content className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] text-white">
+                        <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
                           Update from Live
                         </Tooltip.Content>
                       </Tooltip>
@@ -517,7 +517,7 @@ function GroupManagement() {
                             <Trash2 size={12} />
                           </Button>
                         </Tooltip.Trigger>
-                        <Tooltip.Content className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] text-white">
+                        <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
                           Delete
                         </Tooltip.Content>
                       </Tooltip>
@@ -526,7 +526,7 @@ function GroupManagement() {
                     <Button
                       type="button"
                       size="sm"
-                      className="h-7 rounded-full bg-slate-900 px-3 text-[11px] font-bold text-white shadow-sm hover:bg-slate-800"
+                      className="sp-primary-action h-7 rounded-full px-3 text-[11px] font-bold shadow-sm"
                       disabled={status?.state === 'pending'}
                       onClick={() => restoreGroup(group)}
                     >
@@ -541,10 +541,10 @@ function GroupManagement() {
 
                 {isMenuOpen && (
                   <div
-                    className="mx-2 mb-2 flex flex-col gap-1 rounded-xl bg-slate-50 p-1.5 ring-1 ring-slate-200 ring-inset"
+                    className="sp-subtle-surface mx-2 mb-2 flex flex-col gap-1 rounded-xl p-1.5"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <p className="px-1.5 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                    <p className="sp-label px-1.5 py-1 text-[9px] font-bold uppercase tracking-wider">
                       Update from:
                     </p>
                     {liveGroups.length > 0 ? (
@@ -552,7 +552,7 @@ function GroupManagement() {
                         {liveGroups.map((lg) => (
                           <button
                             key={lg.id}
-                            className="flex items-center justify-between rounded-lg px-2 py-1.5 text-left text-[11px] transition-colors hover:bg-white hover:shadow-sm"
+                            className="flex items-center justify-between rounded-lg px-2 py-1.5 text-left text-[11px] transition-colors hover:bg-[var(--surface-elevated)] hover:shadow-sm"
                             onClick={() => updateGroupSnapshot(group, lg)}
                           >
                             <div className="flex items-center gap-2 truncate">
@@ -562,16 +562,16 @@ function GroupManagement() {
                                   lg.color ? `bg-${lg.color}-500` : 'bg-slate-300',
                                 )}
                               />
-                              <span className="truncate font-medium text-slate-600">
+                              <span className="sp-copy-secondary truncate font-medium">
                                 {lg.title || 'Untitled Group'}
                               </span>
                             </div>
-                            <span className="text-[9px] text-slate-400">{lg.tabs.length} tabs</span>
+                            <span className="sp-copy-muted text-[9px]">{lg.tabs.length} tabs</span>
                           </button>
                         ))}
                       </div>
                     ) : (
-                      <p className="px-1.5 py-2 text-[10px] italic text-slate-400">
+                      <p className="sp-copy-muted px-1.5 py-2 text-[10px] italic">
                         No live groups
                       </p>
                     )}
@@ -579,21 +579,21 @@ function GroupManagement() {
                 )}
 
                 {isExpanded && (
-                  <div className="border-t border-slate-50 bg-slate-50/30 px-2.5 py-2">
+                  <div className="border-t border-[var(--sp-footer-border)] bg-[var(--surface-muted)] px-2.5 py-2">
                     <ul className="flex flex-col gap-1">
                       {[...group.tabs]
                         .sort((a, b) => a.order - b.order)
                         .map((tab) => (
                           <li
                             key={tab.id}
-                            className="flex items-center gap-2 rounded-lg bg-white/50 px-2 py-1 ring-1 ring-slate-100 ring-inset"
+                            className="sp-soft-surface flex items-center gap-2 rounded-lg px-2 py-1"
                           >
                             {tab.favIconUrl ? (
                               <img src={tab.favIconUrl} className="size-3.5 shrink-0" alt="" />
                             ) : (
-                              <div className="size-3.5 shrink-0 rounded-sm bg-slate-100" />
+                              <div className="size-3.5 shrink-0 rounded-sm bg-[var(--surface-elevated)]" />
                             )}
-                            <span className="truncate text-[11px] text-slate-600">
+                            <span className="sp-copy-secondary truncate text-[11px]">
                               {tab.title || 'Untitled Tab'}
                             </span>
                             {tab.isRepaired && (
@@ -601,7 +601,7 @@ function GroupManagement() {
                                 <Tooltip.Trigger asChild>
                                   <AlertCircle size={10} className="shrink-0 text-amber-500" />
                                 </Tooltip.Trigger>
-                                <Tooltip.Content className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] text-white">
+                                <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
                                   Repaired: original URL was missing
                                 </Tooltip.Content>
                               </Tooltip>

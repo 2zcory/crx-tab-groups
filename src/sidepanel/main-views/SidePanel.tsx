@@ -16,6 +16,8 @@ type ThemeMode = 'light' | 'dark' | 'system' | 'glass'
 type ResolvedTheme = 'light' | 'dark' | 'glass'
 
 const THEME_STORAGE_KEY = 'themeMode'
+const THEME_HARNESS_QUERY_KEY = 'codex-harness'
+const THEME_HARNESS_MODE = 'theme-modes'
 
 const THEME_OPTIONS: Array<{ value: ThemeMode; label: string }> = [
   { value: 'light', label: 'Light' },
@@ -85,6 +87,39 @@ export const SidePanel = () => {
     setThemeMode(nextThemeMode)
     await StorageLocal.set({ [THEME_STORAGE_KEY]: nextThemeMode })
   }
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search)
+    if (searchParams.get(THEME_HARNESS_QUERY_KEY) !== THEME_HARNESS_MODE) return
+
+    window.__CRX_TAB_GROUPS_THEME_HARNESS__ = {
+      async clearThemeMode() {
+        await StorageLocal.set({ [THEME_STORAGE_KEY]: 'system' })
+        setThemeMode('system')
+      },
+      async setThemeMode(nextThemeMode) {
+        await handleThemeModeChange(nextThemeMode)
+      },
+      async getThemeState() {
+        const storedThemeMode = await StorageLocal.get<{ [THEME_STORAGE_KEY]?: ThemeMode }>(
+          THEME_STORAGE_KEY,
+        )
+
+        return {
+          themeMode,
+          resolvedTheme,
+          rootTheme: document.documentElement.getAttribute('data-theme'),
+          rootThemeMode: document.documentElement.getAttribute('data-theme-mode'),
+          isDarkClassApplied: document.documentElement.classList.contains('dark'),
+          storedThemeMode: storedThemeMode?.[THEME_STORAGE_KEY] ?? null,
+        }
+      },
+    }
+
+    return () => {
+      delete window.__CRX_TAB_GROUPS_THEME_HARNESS__
+    }
+  }, [resolvedTheme, themeMode])
 
   if (isMigrating) {
     return <div>Migrating...</div>
@@ -158,3 +193,20 @@ export const SidePanel = () => {
 }
 
 export default SidePanel
+
+declare global {
+  interface Window {
+    __CRX_TAB_GROUPS_THEME_HARNESS__?: {
+      clearThemeMode: () => Promise<void>
+      setThemeMode: (nextThemeMode: ThemeMode) => Promise<void>
+      getThemeState: () => Promise<{
+        themeMode: ThemeMode
+        resolvedTheme: ResolvedTheme
+        rootTheme: string | null
+        rootThemeMode: string | null
+        isDarkClassApplied: boolean
+        storedThemeMode: ThemeMode | null
+      }>
+    }
+  }
+}
