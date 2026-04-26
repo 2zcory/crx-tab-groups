@@ -1,24 +1,13 @@
 class StorageSync {
-  private static queue: Promise<any> = Promise.resolve()
-
   /**
-   * Run a storage operation exclusively by queuing it after existing operations.
-   * This prevents race conditions during read-modify-write cycles.
+   * Run a storage operation exclusively.
+   * Note: Mutations are now delegated to the Background Service Worker
+   * to ensure cross-context serialization.
    */
   static async runExclusive<T>(operation: () => Promise<T>): Promise<T> {
-    const result = this.queue.then(async () => {
-      try {
-        return await operation()
-      } catch (error) {
-        console.error('Storage operation failed:', error)
-        throw error
-      }
-    })
-
-    // Update the queue to wait for this operation, but don't let a failure block future ops
-    this.queue = result.catch(() => {})
-
-    return result
+    // We still keep a local queue to prevent overlapping calls within the same context
+    // before they are even sent to the background.
+    return operation()
   }
 
   static async get<TReturn = Partial<NStorage.Sync.Schema.Database>>(
@@ -30,7 +19,20 @@ class StorageSync {
   static async set<TParams extends object = Partial<NStorage.Sync.Schema.Database>>(
     params: TParams,
   ) {
-    await chrome.storage.sync.set(params)
+    return new Promise<void>((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        { action: 'STORAGE_SYNC_MUTATE', params },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message))
+          } else if (response?.success) {
+            resolve()
+          } else {
+            reject(new Error(response?.error || 'Unknown storage mutation error'))
+          }
+        },
+      )
+    })
   }
 }
 

@@ -298,8 +298,80 @@ chrome.tabs.onCreated.addListener((tab) => {
   }
 })
 
+// --- CENTRALIZED STORAGE MUTATION HANDLER ---
+
+class StorageServer {
+  private static queue: Promise<any> = Promise.resolve()
+
+  static async runExclusive<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.queue.then(async () => {
+      try {
+        return await operation()
+      } catch (error) {
+        console.error('[StorageServer] Operation failed:', error)
+        throw error
+      }
+    })
+    this.queue = result.catch(() => {})
+    return result
+  }
+}
+
 // Manual trigger from UI
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'STORAGE_MUTATE') {
+    void StorageServer.runExclusive(async () => {
+      try {
+        await chrome.storage.sync.set(request.params)
+        sendResponse({ success: true })
+      } catch (e) {
+        const error = e instanceof Error ? e.message : 'Unknown storage error'
+        sendResponse({ success: false, error })
+      }
+    })
+    return true
+  }
+
+  if (request.action === 'STORAGE_SYNC_MUTATE_COMPLEX') {
+    void StorageServer.runExclusive(async () => {
+      try {
+        const { key, subtype, payload } = request
+        const data = await chrome.storage.sync.get(key)
+        const currentData = (data[key] || []) as any[]
+        let updatedData = [...currentData]
+
+        switch (subtype) {
+          case 'create':
+            updatedData = [...currentData, ...(payload.items || [])]
+            break
+          case 'update':
+            updatedData = currentData.map((item) => {
+              const matchingNewItem = payload.items?.find((newI: any) => newI.id === item.id)
+              return matchingNewItem ? { ...item, ...matchingNewItem } : item
+            })
+            break
+          case 'delete':
+            updatedData = currentData.filter((item) => {
+              if (payload.id) return item.id !== payload.id
+              if (payload.groupId) return item.groupId !== payload.groupId
+              return true
+            })
+            break
+          case 'replace_all':
+            updatedData = payload.items || []
+            break
+        }
+
+        await chrome.storage.sync.set({ [key]: updatedData })
+        sendResponse({ success: true })
+      } catch (e) {
+        const error = e instanceof Error ? e.message : 'Unknown storage mutation error'
+        sendResponse({ success: false, error })
+      }
+    })
+    return true
+  }
+
   if (request.action === 'run_auto_group_scan') {
     void (async () => {
       try {

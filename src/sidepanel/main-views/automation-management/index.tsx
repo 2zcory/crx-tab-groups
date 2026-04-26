@@ -17,16 +17,30 @@ import {
   Globe,
   Pencil,
   Check,
-  ArrowUp,
-  ArrowDown,
-  ChevronsUp,
-  ChevronsDown,
   Bug,
   RefreshCw,
   Eraser,
+  GripVertical,
+  ChevronRight,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Tooltip from '@/components/ui/tooltip'
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 const COLORS: NStorage.Sync.GroupColor[] = [
   'grey',
@@ -52,552 +66,563 @@ const COLOR_MAP: Record<string, string> = {
   orange: 'bg-orange-500',
 }
 
+interface AddToRulesDraft {
+  tabId: number
+  tabTitle?: string
+  url: string
+  hostname: string
+  patternDraft: string
+  destinationRuleId: string
+  newRuleTitle: string
+  newRuleColor: NStorage.Sync.GroupColor
+}
+
+interface DebugState {
+  ownership: {
+    ruleId: string
+    windowId: number
+    groupId: number
+    title: string
+    color: string
+    updatedAt: string
+  }[]
+  audit: {
+    id: string
+    createdAt: string
+    ruleId?: string
+    ruleTitle?: string
+    tabId: number
+    windowId: number
+    url?: string
+    outcome: 'grouped' | 'already_grouped' | 'no_match' | 'ignored' | 'error'
+    reason: string
+    groupId?: number
+    matchedPattern?: string
+    message?: string
+  }[]
+}
+
+// --- Sortable Item Component ---
+interface SortableRuleCardProps {
+  rule: NStorage.Sync.Schema.AutoGroupRule
+  onEdit: (rule: NStorage.Sync.Schema.AutoGroupRule) => void
+  onToggle: (rule: NStorage.Sync.Schema.AutoGroupRule) => void
+  onDelete: (id: string) => void
+  editingRuleId: string | null
+  editingPatternDraft: string
+  setEditingPatternDraft: (val: string) => void
+  addPattern: () => void
+  removePattern: (pattern: string) => void
+  savePatterns: (rule: NStorage.Sync.Schema.AutoGroupRule) => void
+  cancelEdit: () => void
+  editingPatterns: string[]
+}
+
+function SortableRuleCard({
+  rule,
+  onEdit,
+  onToggle,
+  onDelete,
+  editingRuleId,
+  editingPatternDraft,
+  setEditingPatternDraft,
+  addPattern,
+  removePattern,
+  savePatterns,
+  cancelEdit,
+  editingPatterns,
+}: SortableRuleCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const isEditing = editingRuleId === rule.id
+  const effectiveExpanded = isExpanded || isEditing
+
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: rule.id,
+  })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={cn(
+        'group relative flex flex-col gap-3 rounded-2xl border p-3 transition-all cursor-grab active:cursor-grabbing',
+        rule.isActive ? 'sp-card sp-card-hover' : 'sp-subtle-surface opacity-70',
+        isDragging && 'opacity-50 ring-2 ring-[var(--sp-tab-pill-active)] border-transparent shadow-xl scale-[1.02]',
+      )}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div 
+          className="flex min-w-0 flex-1 items-center gap-1.5 cursor-pointer"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+            setIsExpanded(!isExpanded)
+          }}
+        >
+          <div className="flex size-7 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--sp-card-hover)] transition-transform duration-200"
+               style={{ transform: effectiveExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>
+            <ChevronRight size={14} />
+          </div>
+          <div className={cn('size-2.5 shrink-0 rounded-full shadow-sm', COLOR_MAP[rule.color])} />
+          <h3 className="sp-copy-primary truncate text-[13px] font-bold" title={rule.title}>
+            {rule.title}
+          </h3>
+          {!rule.isActive && (
+            <span className="sp-chip-muted shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase">
+              Paused
+            </span>
+          )}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          <Tooltip>
+            <Tooltip.Trigger asChild>
+              <button
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEdit(rule)
+                }}
+                className="sp-icon-button flex size-7 cursor-pointer items-center justify-center rounded-full"
+              >
+                <Pencil size={12} />
+              </button>
+            </Tooltip.Trigger>
+            <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
+              Edit Patterns
+            </Tooltip.Content>
+          </Tooltip>
+          <Tooltip>
+            <Tooltip.Trigger asChild>
+              <button
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onToggle(rule)
+                }}
+                className={cn(
+                  'flex size-7 cursor-pointer items-center justify-center rounded-full transition-colors',
+                  rule.isActive
+                    ? 'text-amber-500 hover:bg-amber-50'
+                    : 'text-emerald-500 hover:bg-emerald-50',
+                )}
+              >
+                {rule.isActive ? <Pause size={12} /> : <Play size={12} />}
+              </button>
+            </Tooltip.Trigger>
+            <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
+              {rule.isActive ? 'Pause Rule' : 'Resume Rule'}
+            </Tooltip.Content>
+          </Tooltip>
+
+          <Tooltip>
+            <Tooltip.Trigger asChild>
+              <button
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDelete(rule.id)
+                }}
+                className="flex size-7 cursor-pointer items-center justify-center rounded-full text-rose-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+              >
+                <Trash2 size={12} />
+              </button>
+            </Tooltip.Trigger>
+            <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
+              Delete
+            </Tooltip.Content>
+          </Tooltip>
+        </div>
+      </div>
+
+      {effectiveExpanded && (
+        <div className="animate-in fade-in slide-in-from-top-1 flex flex-col gap-3 duration-200">
+          <div className="sp-subtle-surface flex flex-wrap items-center gap-2 rounded-lg px-2.5 py-2">
+            <span className="sp-chip-muted shrink-0 rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wider">
+              {rule.order === 1 ? 'Highest Priority' : `Priority ${rule.order}`}
+            </span>
+            {getAutoGroupRulePatterns(rule).map((pattern) => (
+              <div
+                key={pattern}
+                className="sp-chip inline-flex max-w-full items-center gap-1 rounded-full px-2 py-1"
+              >
+                <Globe size={10} className="sp-copy-muted shrink-0" />
+                <code className="sp-copy-secondary truncate text-[10px] font-medium" title={pattern}>
+                  {pattern}
+                </code>
+                <span className="sp-chip-muted shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
+                  {describeRulePattern(pattern)}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {isEditing && (
+            <div className="sp-subtle-surface flex flex-col gap-2 rounded-xl p-3">
+              <div className="flex items-center justify-between">
+                <p className="sp-label text-[10px] font-bold uppercase tracking-wider">
+                  Manage Patterns
+                </p>
+                <button type="button" className="sp-icon-button cursor-pointer" onClick={cancelEdit}>
+                  <X size={12} />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="sp-input-shell flex flex-1 items-center gap-2 rounded-xl px-3 py-2">
+                  <Globe size={12} className="sp-copy-muted" />
+                  <input
+                    placeholder="Add another pattern"
+                    className="sp-input w-full border-none bg-transparent text-xs font-medium outline-none"
+                    value={editingPatternDraft}
+                    onChange={(e) => setEditingPatternDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        addPattern()
+                      }
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="sp-primary-action cursor-pointer rounded-lg px-2 py-2 text-[10px] font-bold"
+                  onClick={addPattern}
+                >
+                  Add
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                {editingPatterns.map((pattern) => (
+                  <span
+                    key={pattern}
+                    className="sp-chip inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium"
+                  >
+                    <span>{pattern}</span>
+                    <button
+                      type="button"
+                      className="sp-copy-muted cursor-pointer hover:text-rose-500"
+                      onClick={() => removePattern(pattern)}
+                    >
+                      <Trash2 size={10} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  className="sp-secondary-action cursor-pointer rounded-lg px-3 py-1.5 text-[10px] font-bold"
+                  onClick={cancelEdit}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-bold text-white"
+                  onClick={() => void savePatterns(rule)}
+                >
+                  <Check size={10} />
+                  Save Patterns
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function AutomationManagement() {
   const [rules, setRules] = useState<NStorage.Sync.Schema.AutoGroupRule[]>([])
-  const [ownershipEntries, setOwnershipEntries] = useState<
-    NStorage.Local.AutoGroupOwnershipEntry[]
-  >([])
-  const [auditEntries, setAuditEntries] = useState<NStorage.Local.AutoGroupAuditEntry[]>([])
-  const [showDebugState, setShowDebugState] = useState(false)
   const [isAdding, setIsAdding] = useState(false)
-  const [newRule, setNewRule] = useState({
-    title: '',
-    color: 'blue' as NStorage.Sync.GroupColor,
-    patternDraft: '',
-    urlPatterns: [] as string[],
-  })
+  const [newRuleTitle, setNewRuleTitle] = useState('')
+  const [newRuleColor, setNewRuleColor] = useState<NStorage.Sync.GroupColor>('blue')
+  const [newRulePattern, setNewRulePattern] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null)
-  const [editingPatternDraft, setEditingPatternDraft] = useState('')
   const [editingPatterns, setEditingPatterns] = useState<string[]>([])
+  const [editingPatternDraft, setEditingPatternDraft] = useState('')
+  const [showDebug, setShowDebug] = useState(false)
+  const [debugState, setDebugState] = useState<DebugState | null>(null)
 
-  const triggerAutoGroupScan = () => {
-    chrome.runtime.sendMessage({ action: 'run_auto_group_scan' })
-  }
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+  )
+
+  const fetchRules = useCallback(async () => {
+    const data = await StorageSyncAutoGroup.getList()
+    setRules(sortAutoGroupRules(data))
+  }, [])
 
   useEffect(() => {
     fetchRules()
-    void fetchDebugState()
-
-    const handleStorageChange = (
-      changes: Record<string, chrome.storage.StorageChange>,
-      areaName: chrome.storage.AreaName,
-    ) => {
-      if (areaName === 'local' && (changes.autoGroupOwnership || changes.autoGroupAudit)) {
-        void fetchDebugState()
-      }
-    }
-
-    chrome.storage.onChanged.addListener(handleStorageChange)
-
-    return () => {
-      chrome.storage.onChanged.removeListener(handleStorageChange)
-    }
-  }, [])
-
-  const fetchRules = async () => {
-    const data = await StorageSyncAutoGroup.getList()
-    setRules(sortAutoGroupRules(data))
-  }
-
-  const fetchDebugState = async () => {
-    return await new Promise<void>((resolve) => {
-      chrome.runtime.sendMessage({ action: 'get_auto_group_debug_state' }, (response) => {
-        if (chrome.runtime.lastError || !response?.success) {
-          resolve()
-          return
-        }
-
-        setOwnershipEntries((response.ownership || []) as NStorage.Local.AutoGroupOwnershipEntry[])
-        setAuditEntries((response.audit || []) as NStorage.Local.AutoGroupAuditEntry[])
-        resolve()
-      })
-    })
-  }
-
-  const clearAuditEntries = async () => {
-    await new Promise<void>((resolve) => {
-      chrome.runtime.sendMessage({ action: 'clear_auto_group_audit' }, () => resolve())
-    })
-
-    await fetchDebugState()
-  }
+  }, [fetchRules])
 
   const handleAddRule = async () => {
-    const title = newRule.title.trim()
-    const normalizedPatterns = Array.from(
-      new Set(
-        newRule.urlPatterns.map((pattern) => normalizeAutoGroupPattern(pattern)).filter(Boolean),
-      ),
-    )
+    setFormError(null)
+
+    const title = newRuleTitle.trim()
+    const pattern = normalizeAutoGroupPattern(newRulePattern.trim())
 
     if (!title) {
-      setFormError('Group title is required.')
+      setFormError('Title is required')
       return
     }
 
-    if (normalizedPatterns.length === 0) {
-      setFormError('At least one pattern is required.')
+    const validation = validateAutoGroupRulePattern(pattern)
+    if (!validation.isValid) {
+      setFormError(validation.error || 'Pattern is invalid')
       return
     }
 
-    for (const pattern of normalizedPatterns) {
-      const validation = validateAutoGroupRulePattern(pattern)
-      if (!validation.isValid) {
-        setFormError(validation.error || 'Pattern is invalid.')
-        return
+    try {
+      const now = new Date().toISOString()
+      const rule: NStorage.Sync.Schema.AutoGroupRule = {
+        id: crypto.randomUUID(),
+        title,
+        color: newRuleColor,
+        order: rules.length + 1,
+        urlPatterns: [validation.normalizedPattern],
+        isActive: true,
+        createdAt: now,
       }
+
+      await StorageSyncAutoGroup.create(rule)
+      await fetchRules()
+      setIsAdding(false)
+      setNewRuleTitle('')
+      setNewRulePattern('')
+
+      chrome.runtime.sendMessage({ action: 'run_auto_group_scan' })
+    } catch (e) {
+      console.error(e)
+      setFormError('Failed to save rule')
     }
-
-    const duplicateExactRule = rules.some((rule) => {
-      const existingPatterns = getAutoGroupRulePatterns(rule).map((pattern) =>
-        pattern.toLowerCase(),
-      )
-      return (
-        rule.title.trim().toLowerCase() === title.toLowerCase() &&
-        existingPatterns.length === normalizedPatterns.length &&
-        existingPatterns.every(
-          (pattern, index) =>
-            pattern === normalizedPatterns.map((item) => item.toLowerCase())[index],
-        )
-      )
-    })
-
-    if (duplicateExactRule) {
-      setFormError('An identical rule already exists.')
-      return
-    }
-
-    const conflictingGroupIdentity = rules.some(
-      (rule) =>
-        rule.title.trim().toLowerCase() === title.toLowerCase() && rule.color !== newRule.color,
-    )
-
-    if (conflictingGroupIdentity) {
-      setFormError('Rules with the same title should use the same color.')
-      return
-    }
-
-    const rule: NStorage.Sync.Schema.AutoGroupRule = {
-      id: crypto.randomUUID(),
-      title,
-      color: newRule.color,
-      order: rules.length + 1,
-      urlPatterns: normalizedPatterns,
-      isActive: true,
-      createdAt: new Date().toISOString(),
-    }
-
-    await StorageSyncAutoGroup.create(rule)
-    triggerAutoGroupScan()
-    setIsAdding(false)
-    setNewRule({ title: '', color: 'blue', patternDraft: '', urlPatterns: [] })
-    setFormError(null)
-    void fetchRules()
-  }
-
-  const toggleRule = async (rule: NStorage.Sync.Schema.AutoGroupRule) => {
-    await StorageSyncAutoGroup.update({ ...rule, isActive: !rule.isActive })
-    void fetchRules()
   }
 
   const deleteRule = async (id: string) => {
-    await StorageSyncAutoGroup.deleteById(id)
-    void fetchRules()
-  }
-
-  const moveRule = async (ruleId: string, direction: 'up' | 'down') => {
-    const currentIndex = rules.findIndex((rule) => rule.id === ruleId)
-
-    if (currentIndex === -1) return
-
-    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
-
-    if (targetIndex < 0 || targetIndex >= rules.length) return
-
-    const nextRules = [...rules]
-    const [movedRule] = nextRules.splice(currentIndex, 1)
-    nextRules.splice(targetIndex, 0, movedRule)
-
-    const orderedRules = nextRules.map((rule, index) => ({
-      ...rule,
-      order: index + 1,
-    }))
-
-    await StorageSyncAutoGroup.replaceAll(orderedRules)
-    setRules(orderedRules)
-    triggerAutoGroupScan()
-  }
-
-  const moveRuleToEdge = async (ruleId: string, edge: 'top' | 'bottom') => {
-    const currentIndex = rules.findIndex((rule) => rule.id === ruleId)
-
-    if (currentIndex === -1) return
-
-    const nextRules = [...rules]
-    const [movedRule] = nextRules.splice(currentIndex, 1)
-
-    if (edge === 'top') {
-      nextRules.unshift(movedRule)
-    } else {
-      nextRules.push(movedRule)
+    try {
+      await StorageSyncAutoGroup.deleteById(id)
+      await fetchRules()
+    } catch (e) {
+      console.error(e)
     }
+  }
 
-    const orderedRules = nextRules.map((rule, index) => ({
-      ...rule,
-      order: index + 1,
-    }))
-
-    await StorageSyncAutoGroup.replaceAll(orderedRules)
-    setRules(orderedRules)
-    triggerAutoGroupScan()
+  const toggleRule = async (rule: NStorage.Sync.Schema.AutoGroupRule) => {
+    try {
+      await StorageSyncAutoGroup.update({
+        ...rule,
+        isActive: !rule.isActive,
+      })
+      await fetchRules()
+    } catch (e) {
+      console.error(e)
+    }
   }
 
   const startPatternEditing = (rule: NStorage.Sync.Schema.AutoGroupRule) => {
     setEditingRuleId(rule.id)
+    setEditingPatterns([...getAutoGroupRulePatterns(rule)])
     setEditingPatternDraft('')
-    setEditingPatterns(getAutoGroupRulePatterns(rule))
   }
 
   const cancelPatternEditing = () => {
     setEditingRuleId(null)
-    setEditingPatternDraft('')
     setEditingPatterns([])
+    setEditingPatternDraft('')
   }
 
   const addPatternToDraftList = () => {
-    const validation = validateAutoGroupRulePattern(editingPatternDraft)
+    const pattern = normalizeAutoGroupPattern(editingPatternDraft.trim())
+    if (!pattern) return
+
+    const validation = validateAutoGroupRulePattern(pattern)
     if (!validation.isValid) {
-      setFormError(validation.error || 'Pattern is invalid.')
+      alert(validation.error || 'Invalid pattern')
       return
     }
 
-    const duplicate = editingPatterns.some(
-      (pattern) => pattern.toLowerCase() === validation.normalizedPattern.toLowerCase(),
-    )
-    if (duplicate) {
-      setFormError('Pattern already exists in this rule.')
+    if (editingPatterns.map((p) => p.toLowerCase()).includes(validation.normalizedPattern.toLowerCase())) {
+      setEditingPatternDraft('')
       return
     }
 
     setEditingPatterns((current) => [...current, validation.normalizedPattern])
     setEditingPatternDraft('')
-    setFormError(null)
   }
 
-  const removePatternFromDraftList = (patternToRemove: string) => {
-    setEditingPatterns((current) => current.filter((pattern) => pattern !== patternToRemove))
+  const removePatternFromDraftList = (pattern: string) => {
+    setEditingPatterns((current) => current.filter((p) => p !== pattern))
   }
 
   const saveEditedPatterns = async (rule: NStorage.Sync.Schema.AutoGroupRule) => {
-    const normalizedPatterns = Array.from(
-      new Set(editingPatterns.map((pattern) => normalizeAutoGroupPattern(pattern)).filter(Boolean)),
-    )
-
-    if (normalizedPatterns.length === 0) {
-      setFormError('At least one pattern is required.')
+    if (editingPatterns.length === 0) {
+      alert('A rule must have at least one pattern')
       return
     }
 
-    await StorageSyncAutoGroup.update({
-      ...rule,
-      urlPatterns: normalizedPatterns,
-    })
-
-    triggerAutoGroupScan()
-
-    cancelPatternEditing()
-    setFormError(null)
-    void fetchRules()
+    try {
+      await StorageSyncAutoGroup.update({
+        ...rule,
+        urlPatterns: editingPatterns,
+      })
+      await fetchRules()
+      cancelPatternEditing()
+      chrome.runtime.sendMessage({ action: 'run_auto_group_scan' })
+    } catch (e) {
+      console.error(e)
+      alert('Failed to save patterns')
+    }
   }
 
-  const patternDraftValidation = validateAutoGroupRulePattern(newRule.patternDraft)
-  const patternKind = describeRulePattern(newRule.patternDraft)
+  const fetchDebugState = async () => {
+    chrome.runtime.sendMessage({ action: 'get_auto_group_debug_state' }, (response) => {
+      if (response?.success) {
+        setDebugState({
+          ownership: response.ownership,
+          audit: response.audit.reverse(),
+        })
+      }
+    })
+  }
+
+  const clearAuditLog = async () => {
+    chrome.runtime.sendMessage({ action: 'clear_auto_group_audit' }, (response) => {
+      if (response?.success) {
+        setDebugState((prev) => (prev ? { ...prev, audit: [] } : null))
+      }
+    })
+  }
+
+  useEffect(() => {
+    if (showDebug) {
+      fetchDebugState()
+      const interval = setInterval(fetchDebugState, 3000)
+      return () => clearInterval(interval)
+    }
+  }, [showDebug])
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = rules.findIndex((r) => r.id === active.id)
+    const newIndex = rules.findIndex((r) => r.id === over.id)
+
+    const newOrderedRules = arrayMove(rules, oldIndex, newIndex).map((rule, index) => ({
+      ...rule,
+      order: index + 1,
+    }))
+
+    setRules(newOrderedRules)
+    await StorageSyncAutoGroup.replaceAll(newOrderedRules)
+    chrome.runtime.sendMessage({ action: 'run_auto_group_scan' })
+  }
 
   return (
-    <div className="flex flex-col gap-4 p-2 pb-6">
-      <section className="sp-card flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5">
-        <div>
-          <p className="sp-label text-[11px] font-bold uppercase tracking-[0.18em]">
-            Auto-Grouping Rules
-          </p>
+    <div className="flex flex-col gap-6 p-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-[var(--text-primary)]">
+            Rules
+          </h2>
+          <Tooltip>
+            <Tooltip.Trigger asChild>
+              <button
+                onClick={() => setShowDebug(!showDebug)}
+                className={cn(
+                  'sp-icon-button flex size-6 items-center justify-center rounded-full cursor-pointer',
+                  showDebug && 'bg-amber-100 text-amber-600',
+                )}
+              >
+                <Bug size={12} />
+              </button>
+            </Tooltip.Trigger>
+            <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
+              {showDebug ? 'Hide Automation Debugger' : 'Show Automation Debugger'}
+            </Tooltip.Content>
+          </Tooltip>
         </div>
-        <Button
-          size="sm"
-          className="sp-primary-action h-7 rounded-full px-3 text-[10px] font-bold"
-          onClick={() => {
-            setFormError(null)
-            setIsAdding(true)
-          }}
-        >
-          <Plus size={12} className="mr-1" /> New Rule
-        </Button>
-      </section>
-
-      <section className="sp-card rounded-2xl">
         <button
-          type="button"
-          onClick={() => setShowDebugState((current) => !current)}
-          className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left"
+          onClick={() => setIsAdding(!isAdding)}
+          className={cn(
+            'flex size-7 items-center justify-center rounded-full transition-all cursor-pointer',
+            isAdding
+              ? 'sp-secondary-action rotate-45'
+              : 'bg-[var(--sp-tab-pill-active)] text-[var(--primary-foreground)] shadow-lg shadow-indigo-500/20 hover:scale-110',
+          )}
         >
-          <div className="flex items-center gap-2">
-            <span className="sp-chip-muted inline-flex size-6 items-center justify-center rounded-full">
-              <Bug size={12} />
-            </span>
-            <div>
-              <p className="sp-label text-[11px] font-bold uppercase tracking-[0.18em]">
-                Rules Debug State
-              </p>
-              <p className="sp-copy-muted text-[11px]">
-                {ownershipEntries.length} ownership hints, {auditEntries.length} recent audit events
-              </p>
-            </div>
-          </div>
-          <span className="sp-copy-muted text-[10px] font-bold uppercase tracking-wider">
-            {showDebugState ? 'Hide' : 'Show'}
-          </span>
+          <Plus size={16} />
         </button>
-
-        {showDebugState && (
-          <div className="flex flex-col gap-3 border-t border-[var(--sp-footer-border)] px-3 py-3">
-            <div className="flex items-center justify-end gap-2">
-              <button
-                type="button"
-                className="sp-secondary-action inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-bold"
-                onClick={() => void fetchDebugState()}
-              >
-                <RefreshCw size={10} />
-                Refresh
-              </button>
-              <button
-                type="button"
-                className="sp-danger-action inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-bold"
-                onClick={() => void clearAuditEntries()}
-              >
-                <Eraser size={10} />
-                Clear Audit
-              </button>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <p className="sp-label text-[10px] font-bold uppercase tracking-wider">
-                Ownership
-              </p>
-              {ownershipEntries.length === 0 ? (
-                <div className="sp-outline-dashed sp-copy-muted rounded-xl px-3 py-3 text-[11px]">
-                  No persisted ownership hints yet.
-                </div>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {ownershipEntries.map((entry) => (
-                    <div
-                      key={`${entry.windowId}-${entry.ruleId}`}
-                      className="sp-subtle-surface rounded-xl px-3 py-2"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className={cn('size-2 rounded-full', COLOR_MAP[entry.color])} />
-                        <span className="sp-copy-primary text-[11px] font-bold">{entry.title}</span>
-                        <span className="sp-chip rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">
-                          window {entry.windowId}
-                        </span>
-                        <span className="sp-chip rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">
-                          group {entry.groupId}
-                        </span>
-                      </div>
-                      <p className="sp-copy-muted mt-1 text-[10px]">
-                        rule {entry.ruleId} • updated {new Date(entry.updatedAt).toLocaleString()}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <p className="sp-label text-[10px] font-bold uppercase tracking-wider">
-                Recent Audit
-              </p>
-              {auditEntries.length === 0 ? (
-                <div className="sp-outline-dashed sp-copy-muted rounded-xl px-3 py-3 text-[11px]">
-                  No audit events yet.
-                </div>
-              ) : (
-                <div className="flex max-h-80 flex-col gap-2 overflow-y-auto pr-1">
-                  {auditEntries.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="sp-soft-surface rounded-xl px-3 py-2"
-                    >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="sp-chip-muted rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">
-                          {entry.outcome}
-                        </span>
-                        {entry.ruleTitle && (
-                          <span className="sp-copy-primary text-[11px] font-bold">
-                            {entry.ruleTitle}
-                          </span>
-                        )}
-                        <span className="sp-copy-muted text-[10px]">
-                          {new Date(entry.createdAt).toLocaleString()}
-                        </span>
-                      </div>
-                      <p className="sp-copy-secondary mt-1 text-[11px]">{entry.reason}</p>
-                      <div className="sp-copy-muted mt-1 flex flex-wrap gap-1.5 text-[10px]">
-                        {entry.matchedPattern && <span>pattern: {entry.matchedPattern}</span>}
-                        {typeof entry.windowId === 'number' && (
-                          <span>window: {entry.windowId}</span>
-                        )}
-                        {typeof entry.groupId === 'number' && <span>group: {entry.groupId}</span>}
-                        {typeof entry.tabId === 'number' && <span>tab: {entry.tabId}</span>}
-                      </div>
-                      {entry.url && (
-                        <p className="sp-copy-muted mt-1 truncate text-[10px]">{entry.url}</p>
-                      )}
-                      {entry.message && (
-                        <p className="mt-1 text-[10px] text-rose-500">{entry.message}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </section>
+      </div>
 
       {isAdding && (
-        <div className="sp-card flex flex-col gap-3 rounded-2xl p-4">
-          <div className="flex items-center justify-between">
-            <h3 className="sp-label text-xs font-bold uppercase tracking-wider">
-              Create New Rule
-            </h3>
-            <button
-              onClick={() => {
-                setIsAdding(false)
-                setFormError(null)
-              }}
-              className="sp-icon-button"
-            >
-              <X size={14} />
-            </button>
-          </div>
-
-          <div className="flex flex-col gap-3">
+        <div className="sp-card animate-in fade-in slide-in-from-top-2 rounded-2xl border p-4 duration-300">
+          <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="sp-label ml-1 text-[10px] font-bold uppercase">
-                Group Identity
+              <label className="sp-label ml-1 text-[10px] font-bold uppercase tracking-wider">
+                Rule Title
               </label>
-              <div className="flex items-center gap-2">
-                <input
-                  autoFocus
-                  placeholder="Group Title (e.g. Work)"
-                  className="sp-input-shell sp-input flex-1 rounded-xl border-none px-3 py-2 text-xs font-medium outline-none"
-                  value={newRule.title}
-                  onChange={(e) => setNewRule({ ...newRule, title: e.target.value })}
-                />
-                <div className="flex flex-wrap gap-1 max-w-[120px]">
-                  {COLORS.map((c) => (
-                    <button
-                      key={c}
-                      className={cn(
-                        'size-4 rounded-full transition-transform hover:scale-110',
-                        COLOR_MAP[c],
-                        newRule.color === c &&
-                          'ring-2 ring-[var(--sp-tab-pill-active)] ring-offset-1 scale-110',
-                      )}
-                      onClick={() => setNewRule({ ...newRule, color: c })}
-                    />
-                  ))}
-                </div>
-              </div>
+              <input
+                autoFocus
+                placeholder="Work, Social, Shopping..."
+                className="sp-input-shell sp-input w-full rounded-xl border-none px-3 py-2.5 text-xs font-bold outline-none"
+                value={newRuleTitle}
+                onChange={(e) => setNewRuleTitle(e.target.value)}
+              />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="sp-label ml-1 text-[10px] font-bold uppercase">
-                URL Pattern
+              <label className="sp-label ml-1 text-[10px] font-bold uppercase tracking-wider">
+                Initial Pattern
               </label>
-              <div className="flex items-center gap-2">
-                <div className="sp-input-shell flex flex-1 items-center gap-2 rounded-xl px-3 py-2">
-                  <Globe size={12} className="sp-copy-muted" />
-                  <input
-                    placeholder="e.g. youtube.com"
-                    className="sp-input w-full border-none bg-transparent text-xs font-medium outline-none"
-                    value={newRule.patternDraft}
-                    onChange={(e) => setNewRule({ ...newRule, patternDraft: e.target.value })}
-                  />
+              <div className="sp-input-shell flex items-center gap-2 rounded-xl px-3 py-2.5">
+                <Globe size={14} className="sp-copy-muted" />
+                <input
+                  placeholder="github.com, *.google.com..."
+                  className="sp-input w-full border-none bg-transparent text-xs font-bold outline-none"
+                  value={newRulePattern}
+                  onChange={(e) => setNewRulePattern(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="sp-label ml-1 text-[10px] font-bold uppercase tracking-wider">
+                Group Color
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {COLORS.map((color) => (
                   <button
+                    key={color}
                     type="button"
-                    className="sp-primary-action rounded-lg px-2 py-1 text-[10px] font-bold"
-                    onClick={() => {
-                      const validation = validateAutoGroupRulePattern(newRule.patternDraft)
-                      if (!validation.isValid) {
-                        setFormError(validation.error || 'Pattern is invalid.')
-                        return
-                      }
-
-                      const duplicate = newRule.urlPatterns.some(
-                        (pattern) =>
-                          pattern.toLowerCase() === validation.normalizedPattern.toLowerCase(),
-                      )
-                      if (duplicate) {
-                        setFormError('Pattern already exists in this rule.')
-                        return
-                      }
-
-                      setNewRule((current) => ({
-                        ...current,
-                        patternDraft: '',
-                        urlPatterns: [...current.urlPatterns, validation.normalizedPattern],
-                      }))
-                      setFormError(null)
-                    }}
-                  >
-                    Add
-                  </button>
-                </div>
+                    className={cn(
+                      'size-5 rounded-full transition-transform hover:scale-125 cursor-pointer',
+                      COLOR_MAP[color],
+                      newRuleColor === color &&
+                        'scale-125 ring-2 ring-[var(--sp-tab-pill-active)] ring-offset-2',
+                    )}
+                    onClick={() => setNewRuleColor(color)}
+                  />
+                ))}
               </div>
-              <p className="sp-copy-muted ml-1 text-[10px]">
-                Plain host matches subdomains. Use <code className="font-mono">*</code> for glob or{' '}
-                <code className="font-mono">re:</code> for explicit regex.
-              </p>
-              <div className="ml-1 flex items-center gap-2">
-                <span className="sp-chip-muted rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
-                  {patternKind}
-                </span>
-                {!patternDraftValidation.isValid && newRule.patternDraft.trim() && (
-                  <span className="text-[10px] font-medium text-rose-500">
-                    {patternDraftValidation.error}
-                  </span>
-                )}
-              </div>
-              {newRule.urlPatterns.length > 0 && (
-                <div className="ml-1 flex flex-wrap gap-1.5">
-                  {newRule.urlPatterns.map((pattern) => (
-                    <span
-                      key={pattern}
-                      className="sp-chip inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium"
-                    >
-                      <span>{pattern}</span>
-                      <button
-                        type="button"
-                        className="sp-copy-muted hover:text-rose-500"
-                        onClick={() =>
-                          setNewRule((current) => ({
-                            ...current,
-                            urlPatterns: current.urlPatterns.filter((item) => item !== pattern),
-                          }))
-                        }
-                      >
-                        <X size={10} />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-              <p className="sp-copy-muted ml-1 text-[10px]">
-                New rules start at the lowest priority. Higher priority rules win first when
-                patterns overlap.
-              </p>
             </div>
 
             {formError && (
@@ -607,7 +632,7 @@ function AutomationManagement() {
             )}
 
             <Button
-              className="mt-1 w-full rounded-xl bg-emerald-600 py-2 text-xs font-bold text-white hover:bg-emerald-700"
+              className="mt-1 w-full rounded-xl bg-emerald-600 py-2 text-xs font-bold text-white hover:bg-emerald-700 cursor-pointer"
               onClick={handleAddRule}
             >
               Add Rule
@@ -616,235 +641,129 @@ function AutomationManagement() {
         </div>
       )}
 
-      <div className="flex flex-col gap-2.5">
-        {rules.length === 0 && !isAdding && (
-          <div className="sp-outline-dashed rounded-2xl py-12 text-center">
-            <p className="sp-copy-muted text-xs font-medium">No automation rules yet.</p>
-          </div>
-        )}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="flex flex-col gap-2.5">
+          {rules.length === 0 && !isAdding && (
+            <div className="sp-outline-dashed rounded-2xl py-12 text-center">
+              <p className="sp-copy-muted text-xs font-medium">No automation rules yet.</p>
+            </div>
+          )}
 
-        {rules.map((rule) => (
-          <div
-            key={rule.id}
-            className={cn(
-              'group relative flex flex-col gap-3 rounded-2xl border p-3 transition-all',
-              rule.isActive ? 'sp-card sp-card-hover' : 'sp-subtle-surface opacity-70',
-            )}
+          <SortableContext
+            items={rules.map((r) => r.id)}
+            strategy={verticalListSortingStrategy}
           >
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <div className={cn('size-2.5 shrink-0 rounded-full shadow-sm', COLOR_MAP[rule.color])} />
-                <h3 className="sp-copy-primary truncate text-[13px] font-bold" title={rule.title}>{rule.title}</h3>
-                {!rule.isActive && (
-                  <span className="sp-chip-muted shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase">
-                    Paused
-                  </span>
-                )}
-              </div>
+            {rules.map((rule) => (
+              <SortableRuleCard
+                key={rule.id}
+                rule={rule}
+                onEdit={startPatternEditing}
+                onToggle={toggleRule}
+                onDelete={deleteRule}
+                editingRuleId={editingRuleId}
+                editingPatternDraft={editingPatternDraft}
+                setEditingPatternDraft={setEditingPatternDraft}
+                addPattern={addPatternToDraftList}
+                removePattern={removePatternFromDraftList}
+                savePatterns={saveEditedPatterns}
+                cancelEdit={cancelPatternEditing}
+                editingPatterns={editingPatterns}
+              />
+            ))}
+          </SortableContext>
+        </div>
+      </DndContext>
 
-              <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                <Tooltip>
-                  <Tooltip.Trigger asChild>
-                    <button
-                      onClick={() => void moveRuleToEdge(rule.id, 'top')}
-                      disabled={rule.order <= 1}
-                      className="sp-icon-button flex size-7 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <ChevronsUp size={12} />
-                    </button>
-                  </Tooltip.Trigger>
-                  <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
-                    Move To Top
-                  </Tooltip.Content>
-                </Tooltip>
-                <Tooltip>
-                  <Tooltip.Trigger asChild>
-                    <button
-                      onClick={() => void moveRule(rule.id, 'up')}
-                      disabled={rule.order <= 1}
-                      className="sp-icon-button flex size-7 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <ArrowUp size={12} />
-                    </button>
-                  </Tooltip.Trigger>
-                  <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
-                    Move Up
-                  </Tooltip.Content>
-                </Tooltip>
-                <Tooltip>
-                  <Tooltip.Trigger asChild>
-                    <button
-                      onClick={() => void moveRule(rule.id, 'down')}
-                      disabled={rule.order >= rules.length}
-                      className="sp-icon-button flex size-7 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <ArrowDown size={12} />
-                    </button>
-                  </Tooltip.Trigger>
-                  <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
-                    Move Down
-                  </Tooltip.Content>
-                </Tooltip>
-                <Tooltip>
-                  <Tooltip.Trigger asChild>
-                    <button
-                      onClick={() => void moveRuleToEdge(rule.id, 'bottom')}
-                      disabled={rule.order >= rules.length}
-                      className="sp-icon-button flex size-7 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <ChevronsDown size={12} />
-                    </button>
-                  </Tooltip.Trigger>
-                  <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
-                    Move To Bottom
-                  </Tooltip.Content>
-                </Tooltip>
-                <Tooltip>
-                  <Tooltip.Trigger asChild>
-                    <button
-                      onClick={() => startPatternEditing(rule)}
-                      className="sp-icon-button flex size-7 items-center justify-center rounded-full"
-                    >
-                      <Pencil size={12} />
-                    </button>
-                  </Tooltip.Trigger>
-                  <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
-                    Edit Patterns
-                  </Tooltip.Content>
-                </Tooltip>
-                <Tooltip>
-                  <Tooltip.Trigger asChild>
-                    <button
-                      onClick={() => toggleRule(rule)}
+      {showDebug && debugState && (
+        <div className="animate-in fade-in slide-in-from-bottom-2 flex flex-col gap-4 duration-300">
+          <div className="flex items-center justify-between">
+            <h3 className="sp-copy-primary text-[11px] font-bold uppercase tracking-widest">
+              Live Registry
+            </h3>
+            <span className="sp-chip-muted rounded-full px-2 py-0.5 text-[9px] font-bold">
+              {debugState.ownership.length} active groups
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            {debugState.ownership.length === 0 ? (
+              <p className="sp-copy-muted text-[10px] italic">No active auto-groups tracked.</p>
+            ) : (
+              debugState.ownership.map((entry, idx) => (
+                <div
+                  key={`${entry.ruleId}-${entry.windowId}-${idx}`}
+                  className="sp-subtle-surface flex flex-col gap-1 rounded-lg p-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <div className={cn('size-2 rounded-full', COLOR_MAP[entry.color])} />
+                      <span className="sp-copy-primary text-[11px] font-bold">{entry.title}</span>
+                    </div>
+                    <span className="sp-copy-muted text-[9px]">Window {entry.windowId}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="flex items-center justify-between mt-2">
+            <h3 className="sp-copy-primary text-[11px] font-bold uppercase tracking-widest">
+              Recent Audit
+            </h3>
+            <button
+              onClick={clearAuditLog}
+              className="sp-copy-muted hover:text-rose-500 transition-colors cursor-pointer"
+            >
+              <Eraser size={12} />
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-1.5 max-h-[300px] overflow-y-auto pr-1">
+            {debugState.audit.length === 0 ? (
+              <p className="sp-copy-muted text-[10px] italic">Audit log is empty.</p>
+            ) : (
+              debugState.audit.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="sp-subtle-surface flex flex-col gap-1 rounded-lg p-2 border-l-2"
+                  style={{
+                    borderLeftColor:
+                      entry.outcome === 'grouped'
+                        ? 'var(--success)'
+                        : entry.outcome === 'error'
+                          ? 'var(--error)'
+                          : 'var(--sp-card-border)',
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span
                       className={cn(
-                        'flex size-7 items-center justify-center rounded-full transition-colors',
-                        rule.isActive
-                          ? 'text-amber-500 hover:bg-amber-50'
-                          : 'text-emerald-500 hover:bg-emerald-50',
+                        'text-[9px] font-bold uppercase tracking-tighter',
+                        entry.outcome === 'grouped' ? 'text-emerald-600' : 'text-[var(--text-muted)]',
                       )}
                     >
-                      {rule.isActive ? <Pause size={12} /> : <Play size={12} />}
-                    </button>
-                  </Tooltip.Trigger>
-                  <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
-                    {rule.isActive ? 'Pause Rule' : 'Resume Rule'}
-                  </Tooltip.Content>
-                </Tooltip>
-
-                <Tooltip>
-                  <Tooltip.Trigger asChild>
-                    <button
-                      onClick={() => deleteRule(rule.id)}
-                      className="flex size-7 items-center justify-center rounded-full text-rose-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </Tooltip.Trigger>
-                  <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
-                    Delete
-                  </Tooltip.Content>
-                </Tooltip>
-              </div>
-            </div>
-
-            <div className="sp-subtle-surface flex flex-wrap items-center gap-2 rounded-lg px-2.5 py-2">
-              <span className="sp-chip-muted shrink-0 rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wider">
-                {rule.order === 1 ? 'Highest Priority' : `Priority ${rule.order}`}
-              </span>
-              {getAutoGroupRulePatterns(rule).map((pattern) => (
-                <div
-                  key={pattern}
-                  className="sp-chip inline-flex max-w-full items-center gap-1 rounded-full px-2 py-1"
-                >
-                  <Globe size={10} className="sp-copy-muted shrink-0" />
-                  <code className="sp-copy-secondary truncate text-[10px] font-medium" title={pattern}>{pattern}</code>
-                  <span className="sp-chip-muted shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
-                    {describeRulePattern(pattern)}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {editingRuleId === rule.id && (
-              <div className="sp-subtle-surface flex flex-col gap-2 rounded-xl p-3">
-                <div className="flex items-center justify-between">
-                  <p className="sp-label text-[10px] font-bold uppercase tracking-wider">
-                    Manage Patterns
-                  </p>
-                  <button
-                    type="button"
-                    className="sp-icon-button"
-                    onClick={cancelPatternEditing}
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="sp-input-shell flex flex-1 items-center gap-2 rounded-xl px-3 py-2">
-                    <Globe size={12} className="sp-copy-muted" />
-                    <input
-                      placeholder="Add another pattern"
-                      className="sp-input w-full border-none bg-transparent text-xs font-medium outline-none"
-                      value={editingPatternDraft}
-                      onChange={(e) => setEditingPatternDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault()
-                          addPatternToDraftList()
-                        }
-                      }}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    className="sp-primary-action rounded-lg px-2 py-2 text-[10px] font-bold"
-                    onClick={addPatternToDraftList}
-                  >
-                    Add
-                  </button>
-                </div>
-
-                <div className="flex flex-wrap gap-1.5">
-                  {editingPatterns.map((pattern) => (
-                    <span
-                      key={pattern}
-                      className="sp-chip inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium"
-                    >
-                      <span>{pattern}</span>
-                      <button
-                        type="button"
-                        className="sp-copy-muted hover:text-rose-500"
-                        onClick={() => removePatternFromDraftList(pattern)}
-                      >
-                        <Trash2 size={10} />
-                      </button>
+                      {entry.outcome.replace('_', ' ')}
                     </span>
-                  ))}
+                    <span className="sp-copy-muted text-[8px]">
+                      {new Date(entry.createdAt).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <p className="sp-copy-primary text-[10px] font-medium leading-tight truncate">
+                    {entry.ruleTitle || 'Scan'} - {entry.reason}
+                  </p>
+                  {entry.url && (
+                    <p className="sp-copy-muted text-[9px] truncate italic">{entry.url}</p>
+                  )}
                 </div>
-
-                <div className="flex items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    className="sp-secondary-action rounded-lg px-3 py-1.5 text-[10px] font-bold"
-                    onClick={cancelPatternEditing}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-bold text-white"
-                    onClick={() => void saveEditedPatterns(rule)}
-                  >
-                    <Check size={10} />
-                    Save Patterns
-                  </button>
-                </div>
-              </div>
+              ))
             )}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

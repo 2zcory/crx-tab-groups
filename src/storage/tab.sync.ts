@@ -1,48 +1,43 @@
-import StorageSync from './core'
-
 class StorageSyncTab {
   static name: keyof NStorage.Sync.Schema.Database = 'tabs'
 
   static async getList() {
-    const data = await StorageSync.get<Pick<NStorage.Sync.Schema.Database, 'tabs'>>(
-      StorageSyncTab.name,
-    )
-    return data.tabs || []
+    const data = await chrome.storage.sync.get(StorageSyncTab.name)
+    return (data.tabs || []) as NStorage.Sync.Schema.Tab[]
+  }
+
+  private static async mutate(subtype: string, payload: object) {
+    return new Promise<void>((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        {
+          action: 'STORAGE_SYNC_MUTATE_COMPLEX',
+          key: StorageSyncTab.name,
+          subtype,
+          payload,
+        },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message))
+          } else if (response?.success) {
+            resolve()
+          } else {
+            reject(new Error(response?.error || 'Unknown tab mutation error'))
+          }
+        },
+      )
+    })
   }
 
   static async create(...tabs: NStorage.Sync.Schema.Tab[]) {
-    return StorageSync.runExclusive(async () => {
-      const currentTabs = await StorageSyncTab.getList()
-      const params: Pick<NStorage.Sync.Schema.Database, 'tabs'> = {
-        tabs: [...currentTabs, ...tabs],
-      }
-      await StorageSync.set(params)
-    })
+    return StorageSyncTab.mutate('create', { items: tabs })
   }
 
   static async update(...tabs: NStorage.Sync.Schema.Tab[]) {
-    return StorageSync.runExclusive(async () => {
-      const currentTabs = await StorageSyncTab.getList()
-      const updatedTabs = currentTabs.map((tab) => {
-        const matchingNewTab = tabs.find((newT) => newT.id === tab.id)
-        return matchingNewTab ? { ...tab, ...matchingNewTab } : tab
-      })
-
-      const params: Pick<NStorage.Sync.Schema.Database, 'tabs'> = {
-        tabs: updatedTabs,
-      }
-      await StorageSync.set(params)
-    })
+    return StorageSyncTab.mutate('update', { items: tabs })
   }
 
   static async deleteTabsByGroupId(groupId: string) {
-    return StorageSync.runExclusive(async () => {
-      const currentTabs = await StorageSyncTab.getList()
-      const params: Pick<NStorage.Sync.Schema.Database, 'tabs'> = {
-        tabs: currentTabs.filter((tab) => tab.groupId !== groupId),
-      }
-      await StorageSync.set(params)
-    })
+    return StorageSyncTab.mutate('delete', { groupId })
   }
 }
 

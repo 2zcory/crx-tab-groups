@@ -12,6 +12,7 @@ import GroupManagement from './group-management'
 import AutomationManagement from './automation-management'
 import { LiveStatusBar } from './live/components/LiveStatusBar'
 import StorageLocal from '@/storage/local'
+import { BottomSheet } from '@/components/ui/bottom-sheet'
 
 type ThemeMode = 'light' | 'dark' | 'system' | 'glass'
 type ResolvedTheme = 'light' | 'dark' | 'glass'
@@ -86,33 +87,6 @@ export const SidePanel = () => {
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light')
   const [glassStyle, setGlassStyle] = useState<GlassStyle>(DEFAULT_GLASS_STYLE)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [dragY, setDragY] = useState(0)
-  const [isDragging, setIsDragging] = useState(false)
-  const dragStartY = useRef(0)
-
-  const handlePointerDown = (e: React.PointerEvent) => {
-    setIsDragging(true)
-    dragStartY.current = e.clientY
-    setDragY(0)
-    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-  }
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDragging) return
-    const deltaY = e.clientY - dragStartY.current
-    if (deltaY > 0) {
-      setDragY(deltaY)
-    }
-  }
-
-  const handlePointerUp = () => {
-    if (!isDragging) return
-    setIsDragging(false)
-    if (dragY > 100) {
-      setIsSettingsOpen(false)
-    }
-    setDragY(0)
-  }
 
   useEffect(() => {
     setIsMigrating(true)
@@ -291,120 +265,85 @@ export const SidePanel = () => {
           </div>
         </div>
 
-        {/* Settings Bottom Sheet */}
-        <div 
-          className={`sp-sheet-backdrop ${isSettingsOpen ? 'sp-sheet-backdrop-open' : ''}`}
-          onClick={() => setIsSettingsOpen(false)}
-        />
-        <div 
-          className={`sp-sheet ${isSettingsOpen ? 'sp-sheet-open' : ''}`}
-          style={{ 
-            transform: isSettingsOpen 
-              ? `translateY(${dragY}px)` 
-              : 'translateY(100%)',
-            transition: isDragging ? 'none' : undefined
-          }}
+        <BottomSheet 
+          isOpen={isSettingsOpen} 
+          onClose={() => setIsSettingsOpen(false)}
+          title="Appearance"
+          description="Customize your experience"
         >
-          <div 
-            className="sp-sheet-header cursor-grab active:cursor-grabbing touch-none"
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-          >
-            <div className="sp-sheet-handle" />
-            <div className="flex items-center justify-between px-5 pt-5 pb-2">
+          {/* Theme Mode Selection */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--text-primary)]">
-                  Appearance
-                </h2>
-                <p className="text-[10px] text-[var(--text-muted)]">Customize your experience</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] sp-footer-label">
+                  Theme Mode
+                </p>
+                <p className="text-[11px] text-[var(--text-secondary)]">
+                  {themeMode === 'system'
+                    ? `Following ${resolvedTheme}`
+                    : `${themeMode[0].toUpperCase()}${themeMode.slice(1)} active`}
+                </p>
               </div>
-              <button 
-                onClick={() => setIsSettingsOpen(false)}
-                className="size-7 flex items-center justify-center rounded-full hover:bg-[var(--surface-elevated)] transition-colors cursor-pointer"
-              >
-                <X size={14} className="text-[var(--text-muted)]" />
-              </button>
+            </div>
+
+            <div className="grid grid-cols-4 gap-2">
+              {THEME_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  data-active={themeMode === option.value}
+                  className="sp-theme-chip rounded-xl py-2.5 text-[10px] font-bold uppercase tracking-[0.12em] flex flex-col items-center gap-1 border border-[var(--sp-card-border)] bg-[var(--surface-elevated)] cursor-pointer"
+                  onClick={() => void handleThemeModeChange(option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="sp-sheet-content">
-            <div className="px-5 py-4">
-              {/* Theme Mode Selection */}
-              <div className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] sp-footer-label">
-                      Theme Mode
-                    </p>
-                    <p className="text-[11px] text-[var(--text-secondary)]">
-                      {themeMode === 'system'
-                        ? `Following ${resolvedTheme}`
-                        : `${themeMode[0].toUpperCase()}${themeMode.slice(1)} active`}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-4 gap-2">
-                  {THEME_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      data-active={themeMode === option.value}
-                      className="sp-theme-chip rounded-xl py-2.5 text-[10px] font-bold uppercase tracking-[0.12em] flex flex-col items-center gap-1 border border-[var(--sp-card-border)] bg-[var(--surface-elevated)] cursor-pointer"
-                      onClick={() => void handleThemeModeChange(option.value)}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
+          {/* Glass Style Selection (Only if Glass mode is active) */}
+          <div className={`transition-opacity duration-300 ${themeMode === 'glass' ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] sp-footer-label">
+                  Glass Style
+                </p>
+                <p className="truncate text-[11px] text-[var(--text-secondary)]">
+                  {GLASS_STYLE_OPTIONS.find((option) => option.value === glassStyle)?.description}
+                </p>
               </div>
-
-              {/* Glass Style Selection (Only if Glass mode is active) */}
-              <div className={`transition-opacity duration-300 ${themeMode === 'glass' ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-                <div className="flex items-center justify-between gap-3 mb-4">
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] sp-footer-label">
-                      Glass Style
-                    </p>
-                    <p className="truncate text-[11px] text-[var(--text-secondary)]">
-                      {GLASS_STYLE_OPTIONS.find((option) => option.value === glassStyle)?.description}
-                    </p>
-                  </div>
-                  <div className="rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-[0.16em] sp-chip sp-glass-style-accent">
-                    {GLASS_STYLE_OPTIONS.find((option) => option.value === glassStyle)?.accentLabel}
-                  </div>
-                </div>
-
-                <div className="sp-glass-style-grid">
-                  {GLASS_STYLE_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      data-active={glassStyle === option.value}
-                      data-glass-style-card={option.value}
-                      className="sp-glass-style-card"
-                      onClick={() => void handleGlassStyleChange(option.value)}
-                    >
-                      <span className="sp-glass-style-preview" aria-hidden="true">
-                        <span className="sp-glass-style-preview-shell" />
-                        <span className="sp-glass-style-preview-card" />
-                        <span className="sp-glass-style-preview-chip" />
-                      </span>
-                      <span className="sp-glass-style-copy">
-                        <span className="sp-glass-style-title-row">
-                          <span className="sp-glass-style-title">{option.label}</span>
-                          <span className="sp-glass-style-badge">{option.shortLabel}</span>
-                        </span>
-                        <span className="sp-glass-style-description">{option.description}</span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
+              <div className="rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-[0.16em] sp-chip sp-glass-style-accent">
+                {GLASS_STYLE_OPTIONS.find((option) => option.value === glassStyle)?.accentLabel}
               </div>
             </div>
+
+            <div className="sp-glass-style-grid">
+              {GLASS_STYLE_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  data-active={glassStyle === option.value}
+                  data-glass-style-card={option.value}
+                  className="sp-glass-style-card"
+                  onClick={() => void handleGlassStyleChange(option.value)}
+                >
+                  <span className="sp-glass-style-preview" aria-hidden="true">
+                    <span className="sp-glass-style-preview-shell" />
+                    <span className="sp-glass-style-preview-card" />
+                    <span className="sp-glass-style-preview-chip" />
+                  </span>
+                  <span className="sp-glass-style-copy">
+                    <span className="sp-glass-style-title-row">
+                      <span className="sp-glass-style-title">{option.label}</span>
+                      <span className="sp-glass-style-badge">{option.shortLabel}</span>
+                    </span>
+                    <span className="sp-glass-style-description">{option.description}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        </BottomSheet>
       </div>
     </Layout>
   )
