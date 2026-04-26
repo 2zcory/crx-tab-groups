@@ -7,508 +7,97 @@ import {
 } from '@/helpers'
 import StorageLocalAutoGroup from '@/storage/autoGroup.local'
 
-console.log('[CrxTabGroups] Background Service Worker is starting...')
+console.log('[CrxTabGroups] Background Service Worker active.')
 
-// Helper: Show notification to the user
-const notify = (title: string, message: string) => {
-  try {
-    chrome.notifications.create({
-      type: 'basic',
-      iconUrl: 'img/logo-48.png',
-      title: title,
-      message: message,
-      priority: 2,
-    })
-  } catch (e) {
-    console.error('[Notify Error]', e)
-  }
-}
-
-type AutoGroupResult =
-  | { kind: 'ignored' | 'no_match' }
-  | { kind: 'already_grouped'; ruleTitle: string }
-  | { kind: 'grouped'; ruleTitle: string; groupCreated: boolean }
-  | { kind: 'error'; error: string }
-
-type AutoGroupScanSummary = {
-  scanned: number
-  matched: number
-  grouped: number
-  created: number
-  alreadyGrouped: number
-  errors: number
-}
-
-const getOwnedRegistryKey = (windowId: number, ruleId: string) => `${windowId}:${ruleId}`
-
-const getOwnedAutoGroupRegistry = async () => {
-  return await StorageLocalAutoGroup.getOwnershipRegistry()
-}
-
-const removeOwnedGroup = async (windowId: number, ruleId: string) => {
-  const registry = await getOwnedAutoGroupRegistry()
-  const registryKey = getOwnedRegistryKey(windowId, ruleId)
-
-  if (!registry[registryKey]) return
-
-  delete registry[registryKey]
-  await StorageLocalAutoGroup.setOwnershipRegistry(registry)
-}
-
-const writeAutoGroupAudit = async (
-  entry: Omit<NStorage.Local.AutoGroupAuditEntry, 'id' | 'createdAt'>,
-) => {
-  await StorageLocalAutoGroup.appendAuditEntry({
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
-    ...entry,
-  })
-}
-
-const resolveTargetGroup = async (windowId: number, rule: NStorage.Sync.Schema.AutoGroupRule) => {
-  const groups = await chrome.tabGroups.query({ windowId })
-  const normalizedTitle = rule.title.trim().toLowerCase()
-  const titleMatches = groups.filter(
-    (group) => group.title?.trim().toLowerCase() === normalizedTitle,
-  )
-  const registry = await getOwnedAutoGroupRegistry()
-  const ownedGroupId = registry[getOwnedRegistryKey(windowId, rule.id)]?.groupId
-
-  if (typeof ownedGroupId === 'number') {
-    const ownedGroup = groups.find((group) => group.id === ownedGroupId)
-
-    if (ownedGroup) {
-      return ownedGroup
-    }
-
-    await removeOwnedGroup(windowId, rule.id)
-  }
-
-  if (titleMatches.length === 0) return null
-
-  const exactColorMatches = titleMatches.filter((group) => group.color === rule.color)
-  if (exactColorMatches.length === 1) return exactColorMatches[0]
-
-  if (titleMatches.length === 1) return titleMatches[0]
-
-  return null
-}
-
-// Core Automation Logic
-const handleAutoGrouping = async (
-  tabId: number,
-  url: string | undefined,
-  windowId: number,
-): Promise<AutoGroupResult> => {
-  if (shouldIgnoreAutoGroupUrl(url)) {
-    await writeAutoGroupAudit({
-      tabId,
-      windowId,
-      url,
-      outcome: 'ignored',
-      reason: 'Ignored internal or missing URL.',
-    })
-    return { kind: 'ignored' }
-  }
-
-  try {
-    const data = await chrome.storage.sync.get('autoGroups')
-    const rules = (data.autoGroups || []) as NStorage.Sync.Schema.AutoGroupRule[]
-    const activeRules = sortAutoGroupRules(rules.filter((rule) => rule.isActive))
-
-    if (activeRules.length === 0) {
-      await writeAutoGroupAudit({
-        tabId,
-        windowId,
-        url,
-        outcome: 'no_match',
-        reason: 'No active rules are available.',
-      })
-      return { kind: 'no_match' }
-    }
-
-    for (const rule of activeRules) {
-      const patterns = getAutoGroupRulePatterns(rule)
-      const matchedPattern = url
-        ? patterns.find((pattern) => matchesAutoGroupRule(url, pattern))
-        : undefined
-
-      if (url && matchedPattern) {
-        console.log(
-          `[AutoGroup] Match found! URL: ${url} matches Rule: ${rule.title} (${describeRulePattern(matchedPattern)})`,
-        )
-        const targetGroup = await resolveTargetGroup(windowId, rule)
-
-        if (targetGroup) {
-          const tab = await chrome.tabs.get(tabId)
-          if (tab.groupId === targetGroup.id) {
-            const registry = await getOwnedAutoGroupRegistry()
-            registry[getOwnedRegistryKey(windowId, rule.id)] = {
-              ruleId: rule.id,
-              windowId,
-              groupId: targetGroup.id,
-              title: rule.title,
-              color: rule.color,
-              updatedAt: new Date().toISOString(),
-            }
-            await StorageLocalAutoGroup.setOwnershipRegistry(registry)
-            await writeAutoGroupAudit({
-              ruleId: rule.id,
-              ruleTitle: rule.title,
-              tabId,
-              windowId,
-              url,
-              outcome: 'already_grouped',
-              reason: 'Tab is already in the owned target group.',
-              groupId: targetGroup.id,
-              matchedPattern,
-            })
-            console.log(`[AutoGroup] Tab already in group: ${rule.title}`)
-            return { kind: 'already_grouped', ruleTitle: rule.title }
-          }
-          await chrome.tabs.group({ tabIds: [tabId], groupId: targetGroup.id })
-          const registry = await getOwnedAutoGroupRegistry()
-          registry[getOwnedRegistryKey(windowId, rule.id)] = {
-            ruleId: rule.id,
-            windowId,
-            groupId: targetGroup.id,
-            title: rule.title,
-            color: rule.color,
-            updatedAt: new Date().toISOString(),
-          }
-          await StorageLocalAutoGroup.setOwnershipRegistry(registry)
-          await writeAutoGroupAudit({
-            ruleId: rule.id,
-            ruleTitle: rule.title,
-            tabId,
-            windowId,
-            url,
-            outcome: 'grouped',
-            reason: 'Matched an existing owned or resolved target group.',
-            groupId: targetGroup.id,
-            groupCreated: false,
-            matchedPattern,
-          })
-          notify('Crx Tab Groups', `Auto-grouped to "${rule.title}"`)
-          return { kind: 'grouped', ruleTitle: rule.title, groupCreated: false }
-        } else {
-          const newGroupId = await chrome.tabs.group({ tabIds: [tabId] })
-          await chrome.tabGroups.update(newGroupId, {
-            title: rule.title,
-            color: rule.color,
-          })
-          const registry = await getOwnedAutoGroupRegistry()
-          registry[getOwnedRegistryKey(windowId, rule.id)] = {
-            ruleId: rule.id,
-            windowId,
-            groupId: newGroupId,
-            title: rule.title,
-            color: rule.color,
-            updatedAt: new Date().toISOString(),
-          }
-          await StorageLocalAutoGroup.setOwnershipRegistry(registry)
-          await writeAutoGroupAudit({
-            ruleId: rule.id,
-            ruleTitle: rule.title,
-            tabId,
-            windowId,
-            url,
-            outcome: 'grouped',
-            reason: 'Created a new owned target group for the matched rule.',
-            groupId: newGroupId,
-            groupCreated: true,
-            matchedPattern,
-          })
-          notify('Crx Tab Groups', `New group "${rule.title}" created!`)
-          return { kind: 'grouped', ruleTitle: rule.title, groupCreated: true }
-        }
-      }
-    }
-
-    await writeAutoGroupAudit({
-      tabId,
-      windowId,
-      url,
-      outcome: 'no_match',
-      reason: 'No active rule matched the tab URL.',
-    })
-    return { kind: 'no_match' }
-  } catch (error) {
-    console.error('[AutoGroup] Runtime Error:', error)
-    await writeAutoGroupAudit({
-      tabId,
-      windowId,
-      url,
-      outcome: 'error',
-      reason: 'Runtime auto-grouping error.',
-      message: error instanceof Error ? error.message : 'Unknown auto-group error',
-    })
-    return {
-      kind: 'error',
-      error: error instanceof Error ? error.message : 'Unknown auto-group error',
-    }
-  }
-}
-
-const scanTabs = async (tabs: chrome.tabs.Tab[]) => {
-  const summary: AutoGroupScanSummary = {
-    scanned: 0,
-    matched: 0,
-    grouped: 0,
-    created: 0,
-    alreadyGrouped: 0,
-    errors: 0,
-  }
-
-  for (const tab of tabs) {
-    if (typeof tab.id !== 'number' || typeof tab.windowId !== 'number' || !tab.url) continue
-
-    summary.scanned += 1
-    const result = await handleAutoGrouping(tab.id, tab.url, tab.windowId)
-
-    if (result.kind === 'grouped') {
-      summary.matched += 1
-      summary.grouped += 1
-      if (result.groupCreated) summary.created += 1
-    }
-
-    if (result.kind === 'already_grouped') {
-      summary.matched += 1
-      summary.alreadyGrouped += 1
-    }
-
-    if (result.kind === 'error') {
-      summary.errors += 1
-    }
-  }
-
-  return summary
-}
-
-// Listeners
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.url || changeInfo.status === 'complete') {
-    void handleAutoGrouping(tabId, tab.url || changeInfo.url, tab.windowId)
-  }
-})
-
-chrome.tabs.onCreated.addListener((tab) => {
-  if (typeof tab.id === 'number' && tab.url) {
-    void handleAutoGrouping(tab.id, tab.url, tab.windowId)
-  }
-})
-
-// --- CENTRALIZED STORAGE MUTATION HANDLER ---
-
-class StorageServer {
-  private static queue: Promise<any> = Promise.resolve()
-
-  static async runExclusive<T>(operation: () => Promise<T>): Promise<T> {
-    const result = this.queue.then(async () => {
-      try {
-        return await operation()
-      } catch (error) {
-        console.error('[StorageServer] Operation failed:', error)
-        throw error
-      }
-    })
-    this.queue = result.catch(() => {})
-    return result
-  }
-}
-
-// Manual trigger from UI
+// --- MESSAGE ROUTER ---
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'STORAGE_MUTATE') {
-    void StorageServer.runExclusive(async () => {
-      try {
-        await chrome.storage.sync.set(request.params)
-        sendResponse({ success: true })
-      } catch (e) {
-        const error = e instanceof Error ? e.message : 'Unknown storage error'
-        sendResponse({ success: false, error })
-      }
-    })
-    return true
-  }
-
-  if (request.action === 'STORAGE_SYNC_MUTATE_COMPLEX') {
-    void StorageServer.runExclusive(async () => {
-      try {
-        const { key, subtype, payload } = request
-        const data = await chrome.storage.sync.get(key)
-        const currentData = (data[key] || []) as any[]
-        let updatedData = [...currentData]
-
-        switch (subtype) {
-          case 'create':
-            updatedData = [...currentData, ...(payload.items || [])]
-            break
-          case 'update':
-            updatedData = currentData.map((item) => {
-              const matchingNewItem = payload.items?.find((newI: any) => newI.id === item.id)
-              return matchingNewItem ? { ...item, ...matchingNewItem } : item
-            })
-            break
-          case 'delete':
-            updatedData = currentData.filter((item) => {
-              if (payload.id) return item.id !== payload.id
-              if (payload.groupId) return item.groupId !== payload.groupId
-              return true
-            })
-            break
-          case 'replace_all':
-            updatedData = payload.items || []
-            break
-        }
-
-        await chrome.storage.sync.set({ [key]: updatedData })
-        sendResponse({ success: true })
-      } catch (e) {
-        const error = e instanceof Error ? e.message : 'Unknown storage mutation error'
-        sendResponse({ success: false, error })
-      }
-    })
+  if (request.action === 'STORAGE_SYNC_MUTATE') {
+    chrome.storage.sync.set(request.params)
+      .then(() => sendResponse({ success: true }))
+      .catch((e) => sendResponse({ success: false, error: String(e) }))
     return true
   }
 
   if (request.action === 'run_auto_group_scan') {
-    void (async () => {
-      try {
-        const queryOptions =
-          typeof request.windowId === 'number' ? { windowId: request.windowId } : {}
-        const tabs = await chrome.tabs.query(queryOptions)
-        const summary = await scanTabs(tabs)
-
-        if (summary.errors > 0) {
-          notify('Crx Tab Groups', `Auto-group scan completed with ${summary.errors} error(s).`)
-        } else if (summary.grouped > 0) {
-          notify('Crx Tab Groups', `Auto-group scan updated ${summary.grouped} tab(s).`)
-        } else if (summary.alreadyGrouped > 0) {
-          notify('Crx Tab Groups', 'Auto-group scan found matching tabs already in place.')
-        } else {
-          notify('Crx Tab Groups', 'Auto-group scan found no matching tabs.')
-        }
-
-        sendResponse({ success: summary.errors === 0, summary })
-      } catch (e) {
-        const errorMessage = e instanceof Error ? e.message : 'Unknown scan error'
-        sendResponse({ success: false, error: errorMessage })
-      }
-    })()
+    chrome.tabs.query(request.windowId ? { windowId: request.windowId } : {})
+      .then(tabs => scanTabs(tabs))
+      .then(summary => sendResponse({ success: true, summary }))
+      .catch(e => sendResponse({ success: false, error: String(e) }))
     return true
   }
 
   if (request.action === 'get_auto_group_debug_state') {
-    void (async () => {
-      try {
-        const [ownershipRegistry, auditEntries] = await Promise.all([
-          StorageLocalAutoGroup.getOwnershipRegistry(),
-          StorageLocalAutoGroup.getAuditEntries(),
-        ])
-
-        sendResponse({
-          success: true,
-          ownership: Object.values(ownershipRegistry),
-          audit: auditEntries,
-        })
-      } catch (e) {
-        sendResponse({
-          success: false,
-          error: e instanceof Error ? e.message : 'Unknown debug-state error',
-        })
-      }
-    })()
-
+    Promise.all([StorageLocalAutoGroup.getOwnershipRegistry(), StorageLocalAutoGroup.getAuditEntries()])
+      .then(([ownership, audit]) => sendResponse({ success: true, ownership: Object.values(ownership), audit }))
+      .catch((e) => sendResponse({ success: false, error: String(e) }))
     return true
   }
 
   if (request.action === 'clear_auto_group_audit') {
-    void (async () => {
-      try {
-        await StorageLocalAutoGroup.clearAuditEntries()
-        sendResponse({ success: true })
-      } catch (e) {
-        sendResponse({
-          success: false,
-          error: e instanceof Error ? e.message : 'Unknown audit-clear error',
-        })
-      }
-    })()
-
+    StorageLocalAutoGroup.clearAuditEntries()
+      .then(() => sendResponse({ success: true }))
+      .catch((e) => sendResponse({ success: false, error: String(e) }))
     return true
   }
+
+  return false
 })
 
-// Sidepanel behavior
-chrome.sidePanel
-  .setPanelBehavior({ openPanelOnActionClick: true })
-  .catch((error) => console.error(error))
+// --- AUTO GROUPING ---
+const handleAutoGrouping = async (tabId: number, url: string | undefined, windowId: number) => {
+  if (shouldIgnoreAutoGroupUrl(url)) return { kind: 'ignored' }
+  try {
+    const data = await chrome.storage.sync.get('autoGroups')
+    const rules = (data.autoGroups || []) as NStorage.Sync.Schema.AutoGroupRule[]
+    const activeRules = sortAutoGroupRules(rules.filter((r) => r.isActive))
 
-// --- SESSION TRACKING LOGIC ---
-
-const SESSION_STORAGE_KEY = 'last_known_good_session'
-const TRACKING_DEBOUNCE_MS = 2000
-
-let trackingTimer: ReturnType<typeof setTimeout> | null = null
-
-const trackCurrentSession = async () => {
-  if (trackingTimer) clearTimeout(trackingTimer)
-
-  trackingTimer = setTimeout(async () => {
-    try {
-      const allWindows = await chrome.windows.getAll({ populate: true, windowTypes: ['normal'] })
-      const allGroups = await chrome.tabGroups.query({})
-
-      const sessionSnapshot = {
-        timestamp: new Date().toISOString(),
-        windowCount: allWindows.length,
-        tabCount: allWindows.reduce((acc, win) => acc + (win.tabs?.length || 0), 0),
-        windows: allWindows.map((win) => ({
-          id: win.id,
-          tabs: (win.tabs || []).map((tab) => ({
-            url: tab.url,
-            title: tab.title,
-            favIconUrl: tab.favIconUrl,
-            pinned: tab.pinned,
-            groupId: tab.groupId,
-          })),
-          groups: allGroups
-            .filter((g) => g.windowId === win.id)
-            .map((g) => ({
-              id: g.id,
-              title: g.title,
-              color: g.color,
-              collapsed: g.collapsed,
-            })),
-        })),
+    for (const rule of activeRules) {
+      const patterns = getAutoGroupRulePatterns(rule)
+      const matchedPattern = url ? patterns.find((p) => matchesAutoGroupRule(url, p)) : undefined
+      if (url && matchedPattern) {
+        const groups = await chrome.tabGroups.query({ windowId })
+        const targetGroup = groups.find((g) => g.title?.trim().toLowerCase() === rule.title.trim().toLowerCase())
+        if (targetGroup) {
+          await chrome.tabs.group({ tabIds: [tabId], groupId: targetGroup.id })
+          return { kind: 'grouped' }
+        } else {
+          const gid = await chrome.tabs.group({ tabIds: [tabId] })
+          await chrome.tabGroups.update(gid, { title: rule.title, color: rule.color })
+          return { kind: 'grouped' }
+        }
       }
-
-      // Only save if there are actually tabs open (to prevent overwriting with an empty session)
-      if (sessionSnapshot.tabCount > 0) {
-        await chrome.storage.local.set({ [SESSION_STORAGE_KEY]: sessionSnapshot })
-        console.log(`[SessionTracker] Saved state: ${sessionSnapshot.tabCount} tabs in ${sessionSnapshot.windowCount} windows.`)
-      }
-    } catch (e) {
-      console.error('[SessionTracker] Error saving session:', e)
-    } finally {
-      trackingTimer = null
     }
-  }, TRACKING_DEBOUNCE_MS)
+  } catch (e) { console.error(e) }
+  return { kind: 'no_match' }
 }
 
-// Attach tracking hooks
-chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
-  if (changeInfo.url || changeInfo.status === 'complete') trackCurrentSession()
-})
-chrome.tabs.onRemoved.addListener(() => trackCurrentSession())
-chrome.tabs.onMoved.addListener(() => trackCurrentSession())
-chrome.tabs.onAttached.addListener(() => trackCurrentSession())
-chrome.tabs.onDetached.addListener(() => trackCurrentSession())
-chrome.windows.onCreated.addListener(() => trackCurrentSession())
-chrome.windows.onRemoved.addListener(() => trackCurrentSession())
+const scanTabs = async (tabs: chrome.tabs.Tab[]) => {
+  const summary = { scanned: 0, matched: 0, grouped: 0, created: 0, alreadyGrouped: 0, errors: 0 }
+  for (const tab of tabs) {
+    if (!tab.url) continue
+    summary.scanned++
+    const res = await handleAutoGrouping(tab.id!, tab.url, tab.windowId)
+    if (res.kind === 'grouped') summary.grouped++
+  }
+  return summary
+}
 
-// --- END SESSION TRACKING LOGIC ---
+const trackCurrentSession = async () => {
+  try {
+    const allWindows = await chrome.windows.getAll({ populate: true, windowTypes: ['normal'] })
+    const snapshot = {
+      timestamp: new Date().toISOString(),
+      tabCount: allWindows.reduce((acc, win) => acc + (win.tabs?.length || 0), 0),
+      windows: allWindows.map(win => ({
+        id: win.id,
+        tabs: (win.tabs || []).map(t => ({ url: t.url, title: t.title, groupId: t.groupId }))
+      }))
+    }
+    if (snapshot.tabCount > 0) await chrome.storage.local.set({ last_known_good_session: snapshot })
+  } catch (e) {}
+}
 
-// Initial notification to confirm background is alive
-notify('Crx Tab Groups', 'Automation Service is active 🚀')
+chrome.tabs.onUpdated.addListener((_id, change) => { if (change.url || change.status === 'complete') trackCurrentSession() })
+chrome.tabs.onRemoved.addListener(trackCurrentSession)
+chrome.windows.onCreated.addListener(trackCurrentSession)
+chrome.windows.onRemoved.addListener(trackCurrentSession)

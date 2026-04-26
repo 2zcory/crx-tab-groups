@@ -1,12 +1,11 @@
 class StorageSync {
   /**
    * Run a storage operation exclusively.
-   * Note: Mutations are now delegated to the Background Service Worker
-   * to ensure cross-context serialization.
+   * Note: Mutations are delegated to the Background Service Worker.
    */
   static async runExclusive<T>(operation: () => Promise<T>): Promise<T> {
-    // We still keep a local queue to prevent overlapping calls within the same context
-    // before they are even sent to the background.
+    // In Sidepanel, we just execute the operation.
+    // Serialization is handled by the Background Service Worker queue.
     return operation()
   }
 
@@ -20,15 +19,30 @@ class StorageSync {
     params: TParams,
   ) {
     return new Promise<void>((resolve, reject) => {
+      console.log('[StorageSync] Sending mutation:', params)
+      
+      // Safety check: ensure background is alive by checking runtime
+      if (!chrome.runtime?.id) {
+        reject(new Error('Extension runtime unavailable'))
+        return
+      }
+
       chrome.runtime.sendMessage(
         { action: 'STORAGE_SYNC_MUTATE', params },
         (response) => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message))
-          } else if (response?.success) {
+          const lastError = chrome.runtime.lastError
+          if (lastError) {
+            console.error('[StorageSync] Runtime error:', lastError.message)
+            reject(new Error(lastError.message))
+            return
+          }
+
+          if (response?.success) {
             resolve()
           } else {
-            reject(new Error(response?.error || 'Unknown storage mutation error'))
+            const errorMsg = response?.error || 'Unknown storage mutation error'
+            console.error('[StorageSync] Mutation failed:', errorMsg)
+            reject(new Error(errorMsg))
           }
         },
       )

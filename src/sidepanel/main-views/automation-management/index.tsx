@@ -66,17 +66,6 @@ const COLOR_MAP: Record<string, string> = {
   orange: 'bg-orange-500',
 }
 
-interface AddToRulesDraft {
-  tabId: number
-  tabTitle?: string
-  url: string
-  hostname: string
-  patternDraft: string
-  destinationRuleId: string
-  newRuleTitle: string
-  newRuleColor: NStorage.Sync.GroupColor
-}
-
 interface DebugState {
   ownership: {
     ruleId: string
@@ -109,11 +98,16 @@ interface SortableRuleCardProps {
   onToggle: (rule: NStorage.Sync.Schema.AutoGroupRule) => void
   onDelete: (id: string) => void
   editingRuleId: string | null
+  editingTitle: string
+  setEditingTitle: (val: string) => void
+  editingColor: NStorage.Sync.GroupColor
+  setEditingColor: (val: NStorage.Sync.GroupColor) => void
   editingPatternDraft: string
   setEditingPatternDraft: (val: string) => void
   addPattern: () => void
-  removePattern: (pattern: string) => void
-  savePatterns: (rule: NStorage.Sync.Schema.AutoGroupRule) => void
+  updatePattern: (index: number, val: string) => void
+  removePattern: (index: number) => void
+  saveChanges: (rule: NStorage.Sync.Schema.AutoGroupRule) => void
   cancelEdit: () => void
   editingPatterns: string[]
 }
@@ -124,11 +118,16 @@ function SortableRuleCard({
   onToggle,
   onDelete,
   editingRuleId,
+  editingTitle,
+  setEditingTitle,
+  editingColor,
+  setEditingColor,
   editingPatternDraft,
   setEditingPatternDraft,
   addPattern,
+  updatePattern,
   removePattern,
-  savePatterns,
+  saveChanges,
   cancelEdit,
   editingPatterns,
 }: SortableRuleCardProps) {
@@ -156,6 +155,7 @@ function SortableRuleCard({
         'group relative flex flex-col gap-3 rounded-2xl border p-3 transition-all cursor-grab active:cursor-grabbing',
         rule.isActive ? 'sp-card sp-card-hover' : 'sp-subtle-surface opacity-70',
         isDragging && 'opacity-50 ring-2 ring-[var(--sp-tab-pill-active)] border-transparent shadow-xl scale-[1.02]',
+        isEditing && 'ring-2 ring-[var(--sp-tab-pill-active)] border-transparent shadow-lg scale-[1.01]'
       )}
     >
       <div className="flex items-center justify-between gap-2">
@@ -164,162 +164,201 @@ function SortableRuleCard({
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation()
-            setIsExpanded(!isExpanded)
+            if (!isEditing) setIsExpanded(!isExpanded)
           }}
         >
           <div className="flex size-7 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--sp-card-hover)] transition-transform duration-200"
                style={{ transform: effectiveExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>
             <ChevronRight size={14} />
           </div>
-          <div className={cn('size-2.5 shrink-0 rounded-full shadow-sm', COLOR_MAP[rule.color])} />
-          <h3 className="sp-copy-primary truncate text-[13px] font-bold" title={rule.title}>
-            {rule.title}
-          </h3>
-          {!rule.isActive && (
+          
+          <div className={cn('size-2.5 shrink-0 rounded-full shadow-sm transition-colors', COLOR_MAP[isEditing ? editingColor : rule.color])} />
+          
+          {isEditing ? (
+            <input
+              autoFocus
+              className="sp-input flex-1 bg-transparent text-[13px] font-bold outline-none border-b border-[var(--sp-tab-pill-active)] py-0"
+              value={editingTitle}
+              onChange={(e) => setEditingTitle(e.target.value)}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <h3 className="sp-copy-primary truncate text-[13px] font-bold" title={rule.title}>
+              {rule.title}
+            </h3>
+          )}
+
+          {!rule.isActive && !isEditing && (
             <span className="sp-chip-muted shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase">
               Paused
             </span>
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-          <Tooltip>
-            <Tooltip.Trigger asChild>
-              <button
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onEdit(rule)
-                }}
-                className="sp-icon-button flex size-7 cursor-pointer items-center justify-center rounded-full"
-              >
-                <Pencil size={12} />
-              </button>
-            </Tooltip.Trigger>
-            <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
-              Edit Patterns
-            </Tooltip.Content>
-          </Tooltip>
-          <Tooltip>
-            <Tooltip.Trigger asChild>
-              <button
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onToggle(rule)
-                }}
-                className={cn(
-                  'flex size-7 cursor-pointer items-center justify-center rounded-full transition-colors',
-                  rule.isActive
-                    ? 'text-amber-500 hover:bg-amber-50'
-                    : 'text-emerald-500 hover:bg-emerald-50',
-                )}
-              >
-                {rule.isActive ? <Pause size={12} /> : <Play size={12} />}
-              </button>
-            </Tooltip.Trigger>
-            <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
-              {rule.isActive ? 'Pause Rule' : 'Resume Rule'}
-            </Tooltip.Content>
-          </Tooltip>
+        {!isEditing && (
+          <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+            <Tooltip>
+              <Tooltip.Trigger asChild>
+                <button
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onEdit(rule)
+                  }}
+                  className="sp-icon-button flex size-7 cursor-pointer items-center justify-center rounded-full"
+                >
+                  <Pencil size={12} />
+                </button>
+              </Tooltip.Trigger>
+              <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
+                Edit Rule
+              </Tooltip.Content>
+            </Tooltip>
+            <Tooltip>
+              <Tooltip.Trigger asChild>
+                <button
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onToggle(rule)
+                  }}
+                  className={cn(
+                    'flex size-7 cursor-pointer items-center justify-center rounded-full transition-colors',
+                    rule.isActive
+                      ? 'text-amber-500 hover:bg-amber-50'
+                      : 'text-emerald-500 hover:bg-emerald-50',
+                  )}
+                >
+                  {rule.isActive ? <Pause size={12} /> : <Play size={12} />}
+                </button>
+              </Tooltip.Trigger>
+              <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
+                {rule.isActive ? 'Pause Rule' : 'Resume Rule'}
+              </Tooltip.Content>
+            </Tooltip>
 
-          <Tooltip>
-            <Tooltip.Trigger asChild>
-              <button
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onDelete(rule.id)
-                }}
-                className="flex size-7 cursor-pointer items-center justify-center rounded-full text-rose-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
-              >
-                <Trash2 size={12} />
-              </button>
-            </Tooltip.Trigger>
-            <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
-              Delete
-            </Tooltip.Content>
-          </Tooltip>
-        </div>
+            <Tooltip>
+              <Tooltip.Trigger asChild>
+                <button
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onDelete(rule.id)
+                  }}
+                  className="flex size-7 cursor-pointer items-center justify-center rounded-full text-rose-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </Tooltip.Trigger>
+              <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
+                Delete
+              </Tooltip.Content>
+            </Tooltip>
+          </div>
+        )}
       </div>
 
       {effectiveExpanded && (
         <div className="animate-in fade-in slide-in-from-top-1 flex flex-col gap-3 duration-200">
-          <div className="sp-subtle-surface flex flex-wrap items-center gap-2 rounded-lg px-2.5 py-2">
-            <span className="sp-chip-muted shrink-0 rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wider">
-              {rule.order === 1 ? 'Highest Priority' : `Priority ${rule.order}`}
-            </span>
-            {getAutoGroupRulePatterns(rule).map((pattern) => (
-              <div
-                key={pattern}
-                className="sp-chip inline-flex max-w-full items-center gap-1 rounded-full px-2 py-1"
-              >
-                <Globe size={10} className="sp-copy-muted shrink-0" />
-                <code className="sp-copy-secondary truncate text-[10px] font-medium" title={pattern}>
-                  {pattern}
-                </code>
-                <span className="sp-chip-muted shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
-                  {describeRulePattern(pattern)}
-                </span>
-              </div>
-            ))}
-          </div>
+          {!isEditing && (
+            <div className="sp-subtle-surface flex flex-wrap items-center gap-2 rounded-lg px-2.5 py-2">
+              <span className="sp-chip-muted shrink-0 rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wider">
+                {rule.order === 1 ? 'Highest Priority' : `Priority ${rule.order}`}
+              </span>
+              {getAutoGroupRulePatterns(rule).map((pattern) => (
+                <div
+                  key={pattern}
+                  className="sp-chip inline-flex max-w-full items-center gap-1 rounded-full px-2 py-1"
+                >
+                  <Globe size={10} className="sp-copy-muted shrink-0" />
+                  <code className="sp-copy-secondary truncate text-[10px] font-medium" title={pattern}>
+                    {pattern}
+                  </code>
+                  <span className="sp-chip-muted shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
+                    {describeRulePattern(pattern)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {isEditing && (
-            <div className="sp-subtle-surface flex flex-col gap-2 rounded-xl p-3">
-              <div className="flex items-center justify-between">
-                <p className="sp-label text-[10px] font-bold uppercase tracking-wider">
-                  Manage Patterns
-                </p>
-                <button type="button" className="sp-icon-button cursor-pointer" onClick={cancelEdit}>
-                  <X size={12} />
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div className="sp-input-shell flex flex-1 items-center gap-2 rounded-xl px-3 py-2">
-                  <Globe size={12} className="sp-copy-muted" />
-                  <input
-                    placeholder="Add another pattern"
-                    className="sp-input w-full border-none bg-transparent text-xs font-medium outline-none"
-                    value={editingPatternDraft}
-                    onChange={(e) => setEditingPatternDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        addPattern()
-                      }
-                    }}
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="sp-primary-action cursor-pointer rounded-lg px-2 py-2 text-[10px] font-bold"
-                  onClick={addPattern}
-                >
-                  Add
-                </button>
-              </div>
-
-              <div className="flex flex-wrap gap-1.5">
-                {editingPatterns.map((pattern) => (
-                  <span
-                    key={pattern}
-                    className="sp-chip inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium"
-                  >
-                    <span>{pattern}</span>
+            <div className="sp-subtle-surface flex flex-col gap-4 rounded-xl p-3" onPointerDown={(e) => e.stopPropagation()}>
+              <div className="flex flex-col gap-2">
+                <label className="sp-label text-[10px] font-bold uppercase tracking-wider ml-1">
+                  Color
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {COLORS.map((color) => (
                     <button
+                      key={color}
                       type="button"
-                      className="sp-copy-muted cursor-pointer hover:text-rose-500"
-                      onClick={() => removePattern(pattern)}
-                    >
-                      <Trash2 size={10} />
-                    </button>
-                  </span>
-                ))}
+                      className={cn(
+                        'size-4 rounded-full transition-transform hover:scale-125 cursor-pointer',
+                        COLOR_MAP[color],
+                        editingColor === color && 'scale-125 ring-2 ring-[var(--sp-tab-pill-active)] ring-offset-2'
+                      )}
+                      onClick={() => setEditingColor(color)}
+                    />
+                  ))}
+                </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2">
+              <div className="flex flex-col gap-2">
+                <label className="sp-label text-[10px] font-bold uppercase tracking-wider ml-1">
+                  Patterns
+                </label>
+                
+                <div className="flex flex-col gap-2">
+                  {editingPatterns.map((pattern, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <div className="sp-input-shell flex flex-1 items-center gap-2 rounded-xl px-3 py-1.5">
+                        <Globe size={12} className="sp-copy-muted shrink-0" />
+                        <input
+                          className="sp-input w-full border-none bg-transparent text-[11px] font-medium outline-none"
+                          value={pattern}
+                          onChange={(e) => updatePattern(idx, e.target.value)}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="sp-copy-muted cursor-pointer hover:text-rose-500 transition-colors"
+                        onClick={() => removePattern(idx)}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="sp-input-shell flex flex-1 items-center gap-2 rounded-xl px-3 py-1.5 border-dashed">
+                    <Plus size={12} className="sp-copy-muted" />
+                    <input
+                      placeholder="Add new pattern"
+                      className="sp-input w-full border-none bg-transparent text-[11px] font-medium outline-none"
+                      value={editingPatternDraft}
+                      onChange={(e) => setEditingPatternDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          addPattern()
+                        }
+                      }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="sp-primary-action cursor-pointer rounded-lg px-2.5 py-1.5 text-[10px] font-bold"
+                    onClick={addPattern}
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--sp-card-border)]">
                 <button
                   type="button"
                   className="sp-secondary-action cursor-pointer rounded-lg px-3 py-1.5 text-[10px] font-bold"
@@ -329,11 +368,11 @@ function SortableRuleCard({
                 </button>
                 <button
                   type="button"
-                  className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-bold text-white"
-                  onClick={() => void savePatterns(rule)}
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-1.5 text-[10px] font-bold text-white shadow-sm hover:bg-emerald-700 transition-colors"
+                  onClick={() => void saveChanges(rule)}
                 >
-                  <Check size={10} />
-                  Save Patterns
+                  <Check size={12} />
+                  Save Changes
                 </button>
               </div>
             </div>
@@ -351,9 +390,13 @@ function AutomationManagement() {
   const [newRuleColor, setNewRuleColor] = useState<NStorage.Sync.GroupColor>('blue')
   const [newRulePattern, setNewRulePattern] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
+  
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null)
+  const [editingTitle, setEditingTitle] = useState('')
+  const [editingColor, setEditingColor] = useState<NStorage.Sync.GroupColor>('blue')
   const [editingPatterns, setEditingPatterns] = useState<string[]>([])
   const [editingPatternDraft, setEditingPatternDraft] = useState('')
+  
   const [showDebug, setShowDebug] = useState(false)
   const [debugState, setDebugState] = useState<DebugState | null>(null)
 
@@ -439,12 +482,15 @@ function AutomationManagement() {
 
   const startPatternEditing = (rule: NStorage.Sync.Schema.AutoGroupRule) => {
     setEditingRuleId(rule.id)
+    setEditingTitle(rule.title)
+    setEditingColor(rule.color)
     setEditingPatterns([...getAutoGroupRulePatterns(rule)])
     setEditingPatternDraft('')
   }
 
   const cancelPatternEditing = () => {
     setEditingRuleId(null)
+    setEditingTitle('')
     setEditingPatterns([])
     setEditingPatternDraft('')
   }
@@ -468,27 +514,58 @@ function AutomationManagement() {
     setEditingPatternDraft('')
   }
 
-  const removePatternFromDraftList = (pattern: string) => {
-    setEditingPatterns((current) => current.filter((p) => p !== pattern))
+  const updatePatternAtIndex = (index: number, val: string) => {
+    setEditingPatterns((current) => {
+      const next = [...current]
+      next[index] = val
+      return next
+    })
+  }
+
+  const removePatternFromDraftList = (index: number) => {
+    setEditingPatterns((current) => current.filter((_, i) => i !== index))
   }
 
   const saveEditedPatterns = async (rule: NStorage.Sync.Schema.AutoGroupRule) => {
-    if (editingPatterns.length === 0) {
-      alert('A rule must have at least one pattern')
+    const title = editingTitle.trim()
+    if (!title) {
+      alert('Title is required')
+      return
+    }
+
+    // Filter out empty and validate existing patterns
+    const validPatterns: string[] = []
+    for (const p of editingPatterns) {
+      const trimmed = p.trim()
+      if (!trimmed) continue
+      
+      const validation = validateAutoGroupRulePattern(normalizeAutoGroupPattern(trimmed))
+      if (!validation.isValid) {
+        alert(`Invalid pattern: ${trimmed}. ${validation.error || ''}`)
+        return
+      }
+      validPatterns.push(validation.normalizedPattern)
+    }
+
+    if (validPatterns.length === 0) {
+      alert('A rule must have at least one valid pattern')
       return
     }
 
     try {
+      console.log('[Automation] Saving changes for rule:', rule.id, { title, editingColor, validPatterns })
       await StorageSyncAutoGroup.update({
         ...rule,
-        urlPatterns: editingPatterns,
+        title,
+        color: editingColor,
+        urlPatterns: validPatterns,
       })
       await fetchRules()
       cancelPatternEditing()
       chrome.runtime.sendMessage({ action: 'run_auto_group_scan' })
     } catch (e) {
-      console.error(e)
-      alert('Failed to save patterns')
+      console.error('[Automation] Save error:', e)
+      alert(`Failed to save changes: ${e instanceof Error ? e.message : 'Unknown error'}`)
     }
   }
 
@@ -665,11 +742,16 @@ function AutomationManagement() {
                 onToggle={toggleRule}
                 onDelete={deleteRule}
                 editingRuleId={editingRuleId}
+                editingTitle={editingTitle}
+                setEditingTitle={setEditingTitle}
+                editingColor={editingColor}
+                setEditingColor={setEditingColor}
                 editingPatternDraft={editingPatternDraft}
                 setEditingPatternDraft={setEditingPatternDraft}
                 addPattern={addPatternToDraftList}
+                updatePattern={updatePatternAtIndex}
                 removePattern={removePatternFromDraftList}
-                savePatterns={saveEditedPatterns}
+                saveChanges={saveEditedPatterns}
                 cancelEdit={cancelPatternEditing}
                 editingPatterns={editingPatterns}
               />
