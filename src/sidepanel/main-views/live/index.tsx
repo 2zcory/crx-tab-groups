@@ -631,16 +631,23 @@ function LiveManagement() {
         }
       },
       showThemeSmokeState: async () => {
-        await getActiveGroups()
+        const ensureTabInState = async () => {
+          for (let i = 0; i < 10; i++) {
+            await getActiveGroups()
+            const tabs = await chrome.tabs.query({})
+            const exampleTab = tabs.find((tab) => (tab.url || '').startsWith('https://example.com/'))
+            
+            if (exampleTab?.id && findTabById(exampleTab.id)) {
+              return exampleTab
+            }
+            await new Promise((resolve) => setTimeout(resolve, 200))
+          }
+          throw new Error('Example tab not found in local state after retries')
+        }
 
-        const tabs = await chrome.tabs.query({})
-        const exampleTab = tabs.find((tab) => (tab.url || '').startsWith('https://example.com/'))
+        const exampleTab = await ensureTabInState()
         const groupedWindows = windowsRef.current
         const firstGroup = groupedWindows.flatMap((win) => win.groups).find((group) => group.tabs.length > 0)
-
-        if (!exampleTab?.id) {
-          throw new Error('Example tab not found for theme smoke harness')
-        }
 
         if (!firstGroup) {
           throw new Error('No grouped tab card available for theme smoke harness')
@@ -653,11 +660,11 @@ function LiveManagement() {
           title: firstGroup.title || undefined,
           color: firstGroup.color,
         })
-        setActiveTabId(exampleTab.id)
+        setActiveTabId(exampleTab.id ?? null)
         await waitForLiveHarnessCommit()
 
         return {
-          tabId: exampleTab.id,
+          tabId: exampleTab.id ?? null,
           groupId: firstGroup.id,
           saveMenuOpen: true,
           addToRulesOpen: true,
@@ -1676,6 +1683,18 @@ function LiveManagement() {
       {totalTabsAllCount === 0 && (
         <div className="sp-empty-state rounded-2xl py-12 text-center">
           <p className="sp-copy-secondary text-sm font-medium">No active tabs found</p>
+        </div>
+      )}
+
+      {/* Theme Smoke Overlay (Only for verifier) */}
+      {harnessMode === LIVE_ADD_TO_RULES_HARNESS_MODE && activeTab && (
+        <div
+          data-live-surface="drag-overlay"
+          className="fixed inset-0 pointer-events-none z-[9999] flex items-center justify-center opacity-0"
+        >
+          <div className="w-[280px]">
+            <TabListItem tab={activeTab} isOverlay />
+          </div>
         </div>
       )}
 

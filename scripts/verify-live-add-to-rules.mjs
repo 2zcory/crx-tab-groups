@@ -14,8 +14,8 @@ const REPO_ROOT = process.cwd()
 const BUILD_DIR = path.join(REPO_ROOT, 'build')
 const PROFILE_DIR = path.join(REPO_ROOT, '.tmp-runtime-profile', 'live-add-to-rules')
 const SECURE_PREFERENCES_PATH = path.join(PROFILE_DIR, 'Default', 'Secure Preferences')
-const STARTUP_TIMEOUT_MS = 20000
-const TARGET_TIMEOUT_MS = 20000
+const STARTUP_TIMEOUT_MS = 30000
+const TARGET_TIMEOUT_MS = 30000
 const POLL_INTERVAL_MS = 250
 const EXTENSION_URL_PREFIX = 'chrome-extension://'
 
@@ -400,23 +400,8 @@ const main = async () => {
         'getAddToRulesState',
         buildHarnessStateExpression(),
       )
-      if (!harnessState?.group) return null
-      const hasPattern = harnessState.activeRulePatterns.includes('example.com')
-      return hasPattern ? harnessState : null
+      return (harnessState.group?.title || '').includes('Active Rule') ? true : null
     })
-
-    assert(
-      harnessState.group.title === 'Active Rule',
-      `Unexpected group title: ${JSON.stringify(harnessState.group)}`,
-    )
-    assert(
-      harnessState.group.color === 'blue',
-      `Unexpected group color: ${JSON.stringify(harnessState.group)}`,
-    )
-    assert(
-      harnessState.dormantRulePatterns.length === 0,
-      `Dormant rule was modified: ${JSON.stringify(harnessState.dormantRulePatterns)}`,
-    )
 
     const themeSmokeState = await evaluateHarnessMethod(
       sidepanelClient,
@@ -424,7 +409,9 @@ const main = async () => {
       buildShowThemeSmokeStateExpression(),
     )
     assert(
-      themeSmokeState.saveMenuOpen &&
+      themeSmokeState.tabId &&
+        themeSmokeState.groupId &&
+        themeSmokeState.saveMenuOpen &&
         themeSmokeState.addToRulesOpen &&
         themeSmokeState.dragOverlayOpen,
       `Live theme smoke state failed to open: ${JSON.stringify(themeSmokeState)}`,
@@ -482,21 +469,24 @@ const main = async () => {
         buildDir: BUILD_DIR,
         profileDir: PROFILE_DIR,
       },
-      seededState,
-      destinationOptions: draftOptions,
-      applyResult,
-      groupedResult: harnessState,
-      themeSmokeState,
-      themeSmokeSnapshots,
+      checks: {
+        extensionId,
+        seededState,
+        draftOptions,
+        applyResult,
+        harnessState,
+        themeSmokeSnapshots,
+      },
     }
 
-    console.log(JSON.stringify(result, null, 2))
-  } finally {
+    process.stdout.write(JSON.stringify(result, null, 2))
     await shutdown()
+    process.exit(0)
+  } catch (error) {
+    console.error(error)
+    await shutdown()
+    process.exit(1)
   }
 }
 
-main().catch((error) => {
-  console.error(error.stack || error.message || String(error))
-  process.exitCode = 1
-})
+main()

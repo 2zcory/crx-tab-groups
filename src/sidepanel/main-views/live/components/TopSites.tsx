@@ -22,7 +22,7 @@ function MostVisitedURLFavIcon(props: IMostVisitedURLFavIconProps) {
 
     if (!domainName) return
 
-    const favIcon = props.favIcons[domainName]
+    const favIcon = props.favIcons?.[domainName]
 
     setFavIconUrl(favIcon?.url || '')
   }
