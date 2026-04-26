@@ -18,6 +18,7 @@ const STARTUP_TIMEOUT_MS = 20000
 const TARGET_TIMEOUT_MS = 20000
 const POLL_INTERVAL_MS = 250
 const EXTENSION_URL_PREFIX = 'chrome-extension://'
+const DEFAULT_GLASS_STYLE = 'frosted-light'
 
 const chromePath =
   process.env.CHROME_PATH || DEFAULT_BROWSER_CANDIDATES.find((candidate) => existsSync(candidate))
@@ -201,6 +202,7 @@ const buildHarnessReadyExpression = () => `(
     Boolean(
       window.__CRX_TAB_GROUPS_THEME_HARNESS__ &&
         typeof window.__CRX_TAB_GROUPS_THEME_HARNESS__.setThemeMode === 'function' &&
+        typeof window.__CRX_TAB_GROUPS_THEME_HARNESS__.setGlassStyle === 'function' &&
         typeof window.__CRX_TAB_GROUPS_THEME_HARNESS__.clearThemeMode === 'function' &&
         typeof window.__CRX_TAB_GROUPS_THEME_HARNESS__.getThemeState === 'function',
     )
@@ -213,6 +215,13 @@ const buildGetThemeStateExpression = () => `(
 const buildSetThemeModeExpression = (mode) => `(
   async () => {
     await window.__CRX_TAB_GROUPS_THEME_HARNESS__.setThemeMode('${mode}')
+    return window.__CRX_TAB_GROUPS_THEME_HARNESS__.getThemeState()
+  }
+)()`
+
+const buildSetGlassStyleExpression = (style) => `(
+  async () => {
+    await window.__CRX_TAB_GROUPS_THEME_HARNESS__.setGlassStyle('${style}')
     return window.__CRX_TAB_GROUPS_THEME_HARNESS__.getThemeState()
   }
 )()`
@@ -280,7 +289,11 @@ const main = async () => {
 
     const baseline = await sidepanelClient.evaluate(buildClearThemeModeExpression())
     assert(
-      baseline.themeMode === 'system' && baseline.storedThemeMode === 'system',
+      baseline.themeMode === 'system' &&
+        baseline.storedThemeMode === 'system' &&
+        baseline.glassStyle === DEFAULT_GLASS_STYLE &&
+        baseline.storedGlassStyle === DEFAULT_GLASS_STYLE &&
+        baseline.rootGlassStyle === DEFAULT_GLASS_STYLE,
       `Unexpected baseline theme state: ${JSON.stringify(baseline)}`,
     )
 
@@ -344,9 +357,21 @@ const main = async () => {
         glassState.resolvedTheme === 'glass' &&
         glassState.rootTheme === 'glass' &&
         glassState.rootThemeMode === 'glass' &&
+        glassState.glassStyle === DEFAULT_GLASS_STYLE &&
+        glassState.rootGlassStyle === DEFAULT_GLASS_STYLE &&
         glassState.isDarkClassApplied === false &&
         glassState.storedThemeMode === 'glass',
       `Glass mode contract mismatch: ${JSON.stringify(glassState)}`,
+    )
+
+    const auroraGlassState = await sidepanelClient.evaluate(buildSetGlassStyleExpression('aurora-dark'))
+    assert(
+      auroraGlassState.themeMode === 'glass' &&
+        auroraGlassState.resolvedTheme === 'glass' &&
+        auroraGlassState.glassStyle === 'aurora-dark' &&
+        auroraGlassState.rootGlassStyle === 'aurora-dark' &&
+        auroraGlassState.storedGlassStyle === 'aurora-dark',
+      `Aurora glass style contract mismatch: ${JSON.stringify(auroraGlassState)}`,
     )
 
     await sidepanelClient.close()
@@ -355,7 +380,11 @@ const main = async () => {
     const glassPersisted = await expectThemeState(
       sidepanelClient,
       'glass persistence after reload',
-      (state) => state.themeMode === 'glass' && state.resolvedTheme === 'glass',
+      (state) =>
+        state.themeMode === 'glass' &&
+        state.resolvedTheme === 'glass' &&
+        state.glassStyle === 'aurora-dark' &&
+        state.rootGlassStyle === 'aurora-dark',
     )
 
     const result = {
@@ -374,6 +403,7 @@ const main = async () => {
         systemDarkState,
         systemLightState,
         glassState,
+        auroraGlassState,
         glassPersisted,
       },
     }

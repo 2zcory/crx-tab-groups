@@ -243,6 +243,114 @@ html {
   --sp-statusbar-border: rgba(255, 255, 255, 0.28);
 }
 
+[data-theme='glass'][data-glass-style='frosted-light'] {
+  background:
+    radial-gradient(circle at top left, rgba(125, 211, 252, 0.38), transparent 34%),
+    radial-gradient(circle at top right, rgba(192, 132, 252, 0.18), transparent 28%),
+    linear-gradient(180deg, #dfe8f4 0%, #cfdceb 52%, #c7d5e8 100%);
+  --surface: rgba(255, 255, 255, 0.22);
+  --surface-elevated: rgba(255, 255, 255, 0.34);
+  --surface-muted: rgba(241, 245, 249, 0.3);
+  --border-strong: rgba(255, 255, 255, 0.32);
+  --text-primary: #162033;
+  --text-secondary: #334155;
+  --text-muted: #526277;
+  --sp-shell-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.2));
+  --sp-shell-gradient: radial-gradient(circle at top, rgba(255, 255, 255, 0.42), transparent 52%);
+  --sp-card-bg: rgba(255, 255, 255, 0.2);
+  --sp-card-border: rgba(255, 255, 255, 0.3);
+  --sp-card-hover: rgba(255, 255, 255, 0.3);
+  --sp-footer-bg: rgba(255, 255, 255, 0.26);
+  --sp-footer-border: rgba(255, 255, 255, 0.3);
+  --sp-tab-pill-bg: rgba(255, 255, 255, 0.18);
+  --sp-tab-pill-active: #162033;
+  --sp-tab-pill-text: #526277;
+  --sp-statusbar-bg: rgba(255, 255, 255, 0.24);
+  --sp-statusbar-border: rgba(255, 255, 255, 0.28);
+}
+
+[data-theme='glass'][data-glass-style='aurora-dark'] {
+  color-scheme: dark;
+  background:
+    radial-gradient(circle at top left, rgba(34, 211, 238, 0.24), transparent 28%),
+    radial-gradient(circle at top right, rgba(168, 85, 247, 0.24), transparent 34%),
+    radial-gradient(circle at bottom center, rgba(14, 165, 233, 0.16), transparent 38%),
+    linear-gradient(180deg, #08111f 0%, #050914 50%, #03060d 100%);
+  --background: oklch(0.15 0.02 255);
+  --foreground: oklch(0.97 0.01 260);
+  --card: oklch(0.18 0.02 255 / 0.56);
+  --card-foreground: oklch(0.97 0.01 260);
+  --popover: oklch(0.18 0.02 255 / 0.62);
+  --popover-foreground: oklch(0.97 0.01 260);
+  --primary: oklch(0.78 0.09 230);
+  --primary-foreground: oklch(0.13 0.02 255);
+  --secondary: oklch(0.24 0.02 255 / 0.82);
+  --secondary-foreground: oklch(0.95 0.01 260);
+  --muted: oklch(0.23 0.02 255 / 0.84);
+  --muted-foreground: oklch(0.73 0.02 255);
+  --accent: oklch(0.27 0.03 255 / 0.88);
+  --accent-foreground: oklch(0.97 0.01 260);
+  --border: oklch(0.92 0.02 250 / 0.18);
+  --input: oklch(0.94 0.01 250 / 0.16);
+  --ring: oklch(0.72 0.1 235);
+  --surface: rgba(11, 19, 38, 0.62);
+  --surface-elevated: rgba(16, 27, 52, 0.76);
+  --surface-muted: rgba(20, 31, 58, 0.6);
+  --border-strong: rgba(148, 163, 184, 0.24);
+  --text-primary: #e7eefc;
+  --text-secondary: #c1d0f0;
+  --text-muted: #8ea3cc;
+  --shadow-sm: 0 16px 32px rgba(2, 6, 23, 0.34);
+  --shadow-md: 0 28px 60px rgba(2, 6, 23, 0.46);
+  --glass-surface: rgba(14, 24, 46, 0.56);
+  --glass-surface-elevated: rgba(18, 32, 60, 0.72);
+  --glass-border: rgba(125, 211, 252, 0.2);
+  --glass-highlight: rgba(196, 181, 253, 0.18);
+  --glass-shadow: 0 28px 64px rgba(2, 6, 23, 0.52);
+  --sp-shell-bg: linear-gradient(180deg, rgba(7, 13, 27, 0.72), rgba(5, 10, 20, 0.76));
+  --sp-shell-gradient: radial-gradient(circle at top, rgba(34, 211, 238, 0.18), transparent 48%);
+  --sp-card-bg: var(--glass-surface);
+  --sp-card-border: var(--glass-border);
+  --sp-card-hover: var(--glass-surface-elevated);
+  --sp-footer-bg: rgba(10, 18, 34, 0.72);
+  --sp-footer-border: rgba(125, 211, 252, 0.16);
+  --sp-tab-pill-bg: rgba(14, 24, 46, 0.52);
+  --sp-tab-pill-active: #dff4ff;
+  --sp-tab-pill-text: #8ea3cc;
+  --sp-statusbar-bg: rgba(10, 18, 34, 0.68);
+  --sp-statusbar-border: rgba(125, 211, 252, 0.18);
+}
+
+[data-theme='glass'][data-glass-style='minimal-clear'] {
+  background:
+    linear-gradient(180deg, #edf2f7 0%, #e4ebf3 52%, #dde6ef 100%);
+  --surface: rgba(255, 255, 255, 0.7);
+  --surface-elevated: rgba(255, 255, 255, 0.82);
+  --surface-muted: rgba(248, 250, 252, 0.8);
+  --border-strong: rgba(148, 163, 184, 0.24);
+  --text-primary: #172030;
+  --text-secondary: #334155;
+  --text-muted: #5b6b80;
+  --glass-surface: rgba(255, 255, 255, 0.66);
+  --glass-surface-elevated: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(203, 213, 225, 0.72);
+  --glass-highlight: rgba(255, 255, 255, 0.4);
+  --glass-backdrop-blur: blur(12px);
+  --glass-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+  --sp-shell-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(248, 250, 252, 0.82));
+  --sp-shell-gradient: radial-gradient(circle at top, rgba(255, 255, 255, 0.32), transparent 54%);
+  --sp-card-bg: var(--glass-surface);
+  --sp-card-border: var(--glass-border);
+  --sp-card-hover: var(--glass-surface-elevated);
+  --sp-footer-bg: rgba(255, 255, 255, 0.74);
+  --sp-footer-border: rgba(203, 213, 225, 0.78);
+  --sp-tab-pill-bg: rgba(255, 255, 255, 0.62);
+  --sp-tab-pill-active: #172030;
+  --sp-tab-pill-text: #5b6b80;
+  --sp-statusbar-bg: rgba(255, 255, 255, 0.7);
+  --sp-statusbar-border: rgba(203, 213, 225, 0.74);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

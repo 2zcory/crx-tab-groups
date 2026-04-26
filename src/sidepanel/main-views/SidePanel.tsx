@@ -14,10 +14,13 @@ import StorageLocal from '@/storage/local'
 
 type ThemeMode = 'light' | 'dark' | 'system' | 'glass'
 type ResolvedTheme = 'light' | 'dark' | 'glass'
+type GlassStyle = 'frosted-light' | 'aurora-dark' | 'minimal-clear'
 
 const THEME_STORAGE_KEY = 'themeMode'
+const GLASS_STYLE_STORAGE_KEY = 'glassStyle'
 const THEME_HARNESS_QUERY_KEY = 'codex-harness'
 const THEME_HARNESS_MODE = 'theme-modes'
+const DEFAULT_GLASS_STYLE: GlassStyle = 'frosted-light'
 
 const THEME_OPTIONS: Array<{ value: ThemeMode; label: string }> = [
   { value: 'light', label: 'Light' },
@@ -26,11 +29,30 @@ const THEME_OPTIONS: Array<{ value: ThemeMode; label: string }> = [
   { value: 'glass', label: 'Glass' },
 ]
 
+const GLASS_STYLE_OPTIONS: Array<{ value: GlassStyle; label: string; description: string }> = [
+  {
+    value: 'frosted-light',
+    label: 'Frosted Light',
+    description: 'Bright, airy, and clean.',
+  },
+  {
+    value: 'aurora-dark',
+    label: 'Aurora Dark',
+    description: 'Dark aurora gradient with premium glow.',
+  },
+  {
+    value: 'minimal-clear',
+    label: 'Minimal Clear',
+    description: 'Lower blur and easier readability.',
+  },
+]
+
 export const SidePanel = () => {
   const [isMigrating, setIsMigrating] = useState(false)
   const [activeTab, setActiveTab] = useState<ETabMenu>(ETabMenu.TAB_SYNC)
   const [themeMode, setThemeMode] = useState<ThemeMode>('system')
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light')
+  const [glassStyle, setGlassStyle] = useState<GlassStyle>(DEFAULT_GLASS_STYLE)
 
   useEffect(() => {
     setIsMigrating(true)
@@ -40,10 +62,22 @@ export const SidePanel = () => {
   useEffect(() => {
     let isMounted = true
 
-    StorageLocal.get<{ [THEME_STORAGE_KEY]?: ThemeMode }>(THEME_STORAGE_KEY).then((data) => {
+    StorageLocal.get<{
+      [THEME_STORAGE_KEY]?: ThemeMode
+      [GLASS_STYLE_STORAGE_KEY]?: GlassStyle
+    }>([THEME_STORAGE_KEY, GLASS_STYLE_STORAGE_KEY]).then((data) => {
+      if (!isMounted) return
+
       const storedThemeMode = data?.[THEME_STORAGE_KEY]
-      if (!isMounted || !storedThemeMode) return
-      setThemeMode(storedThemeMode)
+      const storedGlassStyle = data?.[GLASS_STYLE_STORAGE_KEY]
+
+      if (storedThemeMode) {
+        setThemeMode(storedThemeMode)
+      }
+
+      if (storedGlassStyle) {
+        setGlassStyle(storedGlassStyle)
+      }
     })
 
     return () => {
@@ -81,11 +115,17 @@ export const SidePanel = () => {
     root.classList.toggle('dark', resolvedTheme === 'dark')
     root.setAttribute('data-theme', resolvedTheme)
     root.setAttribute('data-theme-mode', themeMode)
-  }, [resolvedTheme, themeMode])
+    root.setAttribute('data-glass-style', glassStyle)
+  }, [glassStyle, resolvedTheme, themeMode])
 
   const handleThemeModeChange = async (nextThemeMode: ThemeMode) => {
     setThemeMode(nextThemeMode)
     await StorageLocal.set({ [THEME_STORAGE_KEY]: nextThemeMode })
+  }
+
+  const handleGlassStyleChange = async (nextGlassStyle: GlassStyle) => {
+    setGlassStyle(nextGlassStyle)
+    await StorageLocal.set({ [GLASS_STYLE_STORAGE_KEY]: nextGlassStyle })
   }
 
   const waitForThemeCommit = () =>
@@ -101,26 +141,38 @@ export const SidePanel = () => {
 
     window.__CRX_TAB_GROUPS_THEME_HARNESS__ = {
       async clearThemeMode() {
-        await StorageLocal.set({ [THEME_STORAGE_KEY]: 'system' })
+        await StorageLocal.set({
+          [THEME_STORAGE_KEY]: 'system',
+          [GLASS_STYLE_STORAGE_KEY]: DEFAULT_GLASS_STYLE,
+        })
         setThemeMode('system')
+        setGlassStyle(DEFAULT_GLASS_STYLE)
         await waitForThemeCommit()
       },
       async setThemeMode(nextThemeMode) {
         await handleThemeModeChange(nextThemeMode)
         await waitForThemeCommit()
       },
+      async setGlassStyle(nextGlassStyle) {
+        await handleGlassStyleChange(nextGlassStyle)
+        await waitForThemeCommit()
+      },
       async getThemeState() {
-        const storedThemeMode = await StorageLocal.get<{ [THEME_STORAGE_KEY]?: ThemeMode }>(
-          THEME_STORAGE_KEY,
-        )
+        const storedThemePrefs = await StorageLocal.get<{
+          [THEME_STORAGE_KEY]?: ThemeMode
+          [GLASS_STYLE_STORAGE_KEY]?: GlassStyle
+        }>([THEME_STORAGE_KEY, GLASS_STYLE_STORAGE_KEY])
 
         return {
           themeMode,
           resolvedTheme,
+          glassStyle,
           rootTheme: document.documentElement.getAttribute('data-theme'),
           rootThemeMode: document.documentElement.getAttribute('data-theme-mode'),
+          rootGlassStyle: document.documentElement.getAttribute('data-glass-style'),
           isDarkClassApplied: document.documentElement.classList.contains('dark'),
-          storedThemeMode: storedThemeMode?.[THEME_STORAGE_KEY] ?? null,
+          storedThemeMode: storedThemePrefs?.[THEME_STORAGE_KEY] ?? null,
+          storedGlassStyle: storedThemePrefs?.[GLASS_STYLE_STORAGE_KEY] ?? null,
         }
       },
     }
@@ -128,7 +180,7 @@ export const SidePanel = () => {
     return () => {
       delete window.__CRX_TAB_GROUPS_THEME_HARNESS__
     }
-  }, [resolvedTheme, themeMode])
+  }, [glassStyle, resolvedTheme, themeMode])
 
   if (isMigrating) {
     return <div>Migrating...</div>
@@ -176,6 +228,8 @@ export const SidePanel = () => {
                 <p className="truncate text-[11px] text-[var(--text-secondary)]">
                   {themeMode === 'system'
                     ? `Following ${resolvedTheme}`
+                    : themeMode === 'glass'
+                      ? `${GLASS_STYLE_OPTIONS.find((option) => option.value === glassStyle)?.label || 'Glass'} active`
                     : `${themeMode[0].toUpperCase()}${themeMode.slice(1)} active`}
                 </p>
               </div>
@@ -194,6 +248,33 @@ export const SidePanel = () => {
                 ))}
               </div>
             </div>
+
+            {themeMode === 'glass' && (
+              <div className="flex items-center justify-between gap-3 border-t border-[var(--sp-footer-border)] px-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] sp-footer-label">
+                    Glass Style
+                  </p>
+                  <p className="truncate text-[11px] text-[var(--text-secondary)]">
+                    {GLASS_STYLE_OPTIONS.find((option) => option.value === glassStyle)?.description}
+                  </p>
+                </div>
+
+                <div className="sp-theme-bar">
+                  {GLASS_STYLE_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      data-active={glassStyle === option.value}
+                      className="sp-theme-chip rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em]"
+                      onClick={() => void handleGlassStyleChange(option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -208,13 +289,17 @@ declare global {
     __CRX_TAB_GROUPS_THEME_HARNESS__?: {
       clearThemeMode: () => Promise<void>
       setThemeMode: (nextThemeMode: ThemeMode) => Promise<void>
+      setGlassStyle: (nextGlassStyle: GlassStyle) => Promise<void>
       getThemeState: () => Promise<{
         themeMode: ThemeMode
         resolvedTheme: ResolvedTheme
+        glassStyle: GlassStyle
         rootTheme: string | null
         rootThemeMode: string | null
+        rootGlassStyle: string | null
         isDarkClassApplied: boolean
         storedThemeMode: ThemeMode | null
+        storedGlassStyle: GlassStyle | null
       }>
     }
   }
