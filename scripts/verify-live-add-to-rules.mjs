@@ -259,12 +259,24 @@ const buildSetGlassThemeExpression = (style) => `(
     glassButton.click()
     await waitForCommit()
 
+    // Ensure settings sheet is open to find style cards
     const styleButton = document.querySelector('[data-glass-style-card="${style}"]')
-    if (!(styleButton instanceof HTMLButtonElement)) {
+    if (!styleButton) {
+      // Try to open settings sheet if card not found directly
+      const settingsButton = document.querySelector('button[title="Appearance Settings"]') || 
+                             document.querySelector('button svg.lucide-settings2')?.parentElement
+      if (settingsButton) {
+        settingsButton.click()
+        await waitForCommit()
+      }
+    }
+
+    const styleButtonFinal = document.querySelector('[data-glass-style-card="${style}"]')
+    if (!(styleButtonFinal instanceof HTMLButtonElement)) {
       throw new Error('Glass style button not found: ${style}')
     }
 
-    styleButton.click()
+    styleButtonFinal.click()
     await waitForCommit()
 
     return {

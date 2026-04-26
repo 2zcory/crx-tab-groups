@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { X, Settings2 } from 'lucide-react'
 
 import './SidePanel.css'
 import migrateScheme from '@/migrations'
@@ -84,6 +85,7 @@ export const SidePanel = () => {
   const [themeMode, setThemeMode] = useState<ThemeMode>('system')
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light')
   const [glassStyle, setGlassStyle] = useState<GlassStyle>(DEFAULT_GLASS_STYLE)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   useEffect(() => {
     setIsMigrating(true)
@@ -226,6 +228,15 @@ export const SidePanel = () => {
             defaultValue={ETabMenu.TAB_SYNC}
             onValueChange={(val) => setActiveTab(Number(val) as ETabMenu)}
             className="flex-1 min-h-0"
+            rightElement={
+              <button
+                onClick={() => setIsSettingsOpen(true)}
+                className="size-8 flex items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--sp-card-hover)] transition-colors cursor-pointer"
+                title="Appearance Settings"
+              >
+                <Settings2 size={15} />
+              </button>
+            }
           >
             <Tabs.Content value={ETabMenu.TAB_SYNC}>
               <LiveManagement />
@@ -250,81 +261,108 @@ export const SidePanel = () => {
                 Automation Rules Management
               </footer>
             )}
+          </div>
+        </div>
 
-            <div className="sp-theme-section">
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] sp-footer-label">
-                  Theme
-                </p>
-                <p className="truncate text-[11px] text-[var(--text-secondary)]">
-                  {themeMode === 'system'
-                    ? `Following ${resolvedTheme}`
-                    : themeMode === 'glass'
-                      ? `${GLASS_STYLE_OPTIONS.find((option) => option.value === glassStyle)?.label || 'Glass'} active`
-                    : `${themeMode[0].toUpperCase()}${themeMode.slice(1)} active`}
-                </p>
+        {/* Settings Bottom Sheet */}
+        <div 
+          className={`sp-sheet-backdrop ${isSettingsOpen ? 'sp-sheet-backdrop-open' : ''}`}
+          onClick={() => setIsSettingsOpen(false)}
+        />
+        <div className={`sp-sheet ${isSettingsOpen ? 'sp-sheet-open' : ''}`}>
+          <div className="sp-sheet-header">
+            <div className="sp-sheet-handle" />
+            <div className="flex items-center justify-between px-5 pt-5 pb-2">
+              <div>
+                <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--text-primary)]">
+                  Appearance
+                </h2>
+                <p className="text-[10px] text-[var(--text-muted)]">Customize your experience</p>
               </div>
-
-              <div className="sp-theme-bar">
-                {THEME_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    data-active={themeMode === option.value}
-                    className="sp-theme-chip rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em]"
-                    onClick={() => void handleThemeModeChange(option.value)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
+              <button 
+                onClick={() => setIsSettingsOpen(false)}
+                className="size-7 flex items-center justify-center rounded-full hover:bg-[var(--surface-elevated)] transition-colors cursor-pointer"
+              >
+                <X size={14} className="text-[var(--text-muted)]" />
+              </button>
             </div>
+          </div>
 
-            {themeMode === 'glass' && (
-              <div className="sp-theme-section sp-glass-style-section">
-                <div className="min-w-0">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] sp-footer-label">
-                        Glass Style
-                      </p>
-                      <p className="truncate text-[11px] text-[var(--text-secondary)]">
-                        {GLASS_STYLE_OPTIONS.find((option) => option.value === glassStyle)?.description}
-                      </p>
-                    </div>
-                    <div className="rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-[0.16em] sp-chip sp-glass-style-accent">
-                      {GLASS_STYLE_OPTIONS.find((option) => option.value === glassStyle)?.accentLabel}
-                    </div>
-                  </div>
-
-                  <div className="sp-glass-style-grid">
-                    {GLASS_STYLE_OPTIONS.map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        data-active={glassStyle === option.value}
-                        data-glass-style-card={option.value}
-                        className="sp-glass-style-card"
-                        onClick={() => void handleGlassStyleChange(option.value)}
-                      >
-                        <span className="sp-glass-style-preview" aria-hidden="true">
-                          <span className="sp-glass-style-preview-shell" />
-                          <span className="sp-glass-style-preview-card" />
-                          <span className="sp-glass-style-preview-chip" />
-                        </span>
-                        <span className="sp-glass-style-copy">
-                          <span className="sp-glass-style-title-row">
-                            <span className="sp-glass-style-title">{option.label}</span>
-                            <span className="sp-glass-style-badge">{option.shortLabel}</span>
-                          </span>
-                          <span className="sp-glass-style-description">{option.description}</span>
-                        </span>
-                      </button>
-                    ))}
+          <div className="sp-sheet-content">
+            <div className="px-5 py-4">
+              {/* Theme Mode Selection */}
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] sp-footer-label">
+                      Theme Mode
+                    </p>
+                    <p className="text-[11px] text-[var(--text-secondary)]">
+                      {themeMode === 'system'
+                        ? `Following ${resolvedTheme}`
+                        : `${themeMode[0].toUpperCase()}${themeMode.slice(1)} active`}
+                    </p>
                   </div>
                 </div>
+
+                <div className="grid grid-cols-4 gap-2">
+                  {THEME_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      data-active={themeMode === option.value}
+                      className="sp-theme-chip rounded-xl py-2.5 text-[10px] font-bold uppercase tracking-[0.12em] flex flex-col items-center gap-1 border border-[var(--sp-card-border)] bg-[var(--surface-elevated)] cursor-pointer"
+                      onClick={() => void handleThemeModeChange(option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            )}
+
+              {/* Glass Style Selection (Only if Glass mode is active) */}
+              <div className={`transition-opacity duration-300 ${themeMode === 'glass' ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] sp-footer-label">
+                      Glass Style
+                    </p>
+                    <p className="truncate text-[11px] text-[var(--text-secondary)]">
+                      {GLASS_STYLE_OPTIONS.find((option) => option.value === glassStyle)?.description}
+                    </p>
+                  </div>
+                  <div className="rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-[0.16em] sp-chip sp-glass-style-accent">
+                    {GLASS_STYLE_OPTIONS.find((option) => option.value === glassStyle)?.accentLabel}
+                  </div>
+                </div>
+
+                <div className="sp-glass-style-grid">
+                  {GLASS_STYLE_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      data-active={glassStyle === option.value}
+                      data-glass-style-card={option.value}
+                      className="sp-glass-style-card"
+                      onClick={() => void handleGlassStyleChange(option.value)}
+                    >
+                      <span className="sp-glass-style-preview" aria-hidden="true">
+                        <span className="sp-glass-style-preview-shell" />
+                        <span className="sp-glass-style-preview-card" />
+                        <span className="sp-glass-style-preview-chip" />
+                      </span>
+                      <span className="sp-glass-style-copy">
+                        <span className="sp-glass-style-title-row">
+                          <span className="sp-glass-style-title">{option.label}</span>
+                          <span className="sp-glass-style-badge">{option.shortLabel}</span>
+                        </span>
+                        <span className="sp-glass-style-description">{option.description}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

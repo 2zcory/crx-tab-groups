@@ -68,6 +68,7 @@ interface IProps {
   onValueChange?: (value: string) => void
   children: React.ReactNode
   className?: string
+  rightElement?: React.ReactNode
 }
 
 function Tabs(props: IProps) {
@@ -117,18 +118,27 @@ function Tabs(props: IProps) {
       onValueChange={handleValueChange}
       className={props.className}
     >
-      <TabsList>
-        {props.tabs.map((tab) => (
-          <TabsTrigger
-            key={tab.value}
-            value={`${tab.value}`}
-            ref={(el) => {
-              triggerRefs.current[`${tab.value}`] = el
-            }}
-          >
-            {tab.label}
-          </TabsTrigger>
-        ))}
+      <TabsList className="justify-between pr-0">
+        <div className="flex items-center gap-4">
+          {props.tabs.map((tab) => (
+            <TabsTrigger
+              key={tab.value}
+              value={`${tab.value}`}
+              ref={(el) => {
+                triggerRefs.current[`${tab.value}`] = el
+              }}
+            >
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </div>
+
+        {props.rightElement && (
+          <div className="flex items-center px-2">
+            {props.rightElement}
+          </div>
+        )}
+
         <div
           className="absolute bottom-0 z-10 h-[2px] bg-[var(--sp-tab-pill-active)] transition-all duration-300 ease-in-out"
           style={{
