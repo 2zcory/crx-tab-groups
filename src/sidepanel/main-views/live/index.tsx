@@ -545,9 +545,20 @@ function LiveManagement() {
         ]
       },
       applyExampleTabToRule: async (destinationRuleId: string) => {
-        const exampleTab = (await chrome.tabs.query({})).find((tab) =>
+        let exampleTab = (await chrome.tabs.query({})).find((tab) =>
           (tab.url || '').startsWith('https://example.com/'),
         )
+
+        if (!exampleTab) {
+          // Retry a few times with delay if the tab is still initializing
+          for (let i = 0; i < 10; i++) {
+            await new Promise((resolve) => setTimeout(resolve, 200))
+            exampleTab = (await chrome.tabs.query({})).find((tab) =>
+              (tab.url || '').startsWith('https://example.com/'),
+            )
+            if (exampleTab) break
+          }
+        }
 
         if (!exampleTab) {
           throw new Error('Example tab not found for harness scenario')
@@ -584,6 +595,9 @@ function LiveManagement() {
           ...selectedRule,
           urlPatterns: [...getAutoGroupRulePatterns(selectedRule), validation.normalizedPattern],
         })
+
+        // Wait a bit for storage mutation to settle before triggering scan
+        await new Promise((resolve) => setTimeout(resolve, 500))
 
         const scanResponse = await triggerAutoGroupScan()
         await fetchAutoGroupRules()
@@ -835,20 +849,26 @@ function LiveManagement() {
     void getActiveGroups()
   }
 
-  const triggerAutoGroupScan = () =>
-    new Promise<AutoGroupScanResponse>((resolve) => {
-      chrome.runtime.sendMessage({ action: 'run_auto_group_scan' }, (response) => {
-        if (chrome.runtime.lastError) {
-          resolve({
-            success: false,
-            error: chrome.runtime.lastError.message || 'Auto-group scan failed',
-          })
-          return
+  const triggerAutoGroupScan = async () => {
+    // Retry up to 3 times for transient issues (common in fast-moving extension test environments)
+    for (let i = 0; i < 3; i++) {
+      try {
+        const response = await chrome.runtime.sendMessage({ action: 'run_auto_group_scan' })
+        return (response || { success: false, error: 'Auto-group scan failed' }) as AutoGroupScanResponse
+      } catch (e) {
+        if (i < 2) {
+          console.warn(`[Harness] Auto-group scan attempt ${i + 1} failed, retrying in 500ms...`, e)
+          await new Promise((resolve) => setTimeout(resolve, 500))
+          continue
         }
-
-        resolve((response || { success: false, error: 'Auto-group scan failed' }) as AutoGroupScanResponse)
-      })
-    })
+        return {
+          success: false,
+          error: String(e) || 'Auto-group scan failed',
+        }
+      }
+    }
+    return { success: false, error: 'Auto-group scan failed after retries' }
+  }
 
   const runAutoGroupScan = () => {
     setAutoGroupScanStatus({

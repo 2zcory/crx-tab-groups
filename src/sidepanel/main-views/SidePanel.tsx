@@ -90,10 +90,16 @@ export const SidePanel = () => {
 
   useEffect(() => {
     setIsMigrating(true)
-    migrateScheme().then(() => setIsMigrating(false))
+    migrateScheme().finally(() => setIsMigrating(false))
   }, [])
 
   useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search)
+    const harness = searchParams.get(THEME_HARNESS_QUERY_KEY)
+    if (harness === THEME_HARNESS_MODE || harness === 'live-add-to-rules') {
+      setIsSettingsOpen(true)
+    }
+
     let isMounted = true
 
     StorageLocal.get<{
