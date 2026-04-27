@@ -14,16 +14,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('[Background] Received message:', request.action)
 
   if (request.action === 'STORAGE_SYNC_MUTATE') {
-    chrome.storage.sync.set(request.params, () => {
-      const err = chrome.runtime.lastError
-      if (err) {
-        console.error('[Background] Mutation error:', err.message)
-        sendResponse({ success: false, error: err.message })
-      } else {
-        console.log('[Background] Mutation success')
-        sendResponse({ success: true })
+    try {
+      if (!request.params || typeof request.params !== 'object') {
+        throw new Error('Invalid mutation params')
       }
-    })
+
+      chrome.storage.sync.set(request.params, () => {
+        const err = chrome.runtime.lastError
+        if (err) {
+          console.error('[Background] Mutation error:', err.message)
+          sendResponse({ success: false, error: err.message })
+        } else {
+          console.log('[Background] Mutation success')
+          sendResponse({ success: true })
+        }
+      })
+    } catch (e) {
+      console.error('[Background] Mutation sync error:', e)
+      sendResponse({ success: false, error: String(e) })
+    }
     return true
   }
 

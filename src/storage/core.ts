@@ -18,11 +18,53 @@ class StorageSync {
   static async set<TParams extends object = Partial<NStorage.Sync.Schema.Database>>(
     params: TParams,
   ) {
-    // Forcing direct storage access to bypass message port issues in test environments
-    console.log('[StorageSync] Direct mutation:', params)
-    await chrome.storage.sync.set(params)
+    const MAX_RETRIES = 5
+    let lastError: any = null
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const response = await new Promise<{ success: boolean; error?: string }>((resolve, reject) => {
+          chrome.runtime.sendMessage(
+            { action: 'STORAGE_SYNC_MUTATE', params },
+            (res) => {
+              const err = chrome.runtime.lastError
+              if (err) {
+                reject(new Error(err.message))
+              } else {
+                resolve(res)
+              }
+            }
+          )
+        })
+
+        if (response.success) {
+          return
+        } else {
+          throw new Error(response.error || 'Mutation failed without error message')
+        }
+      } catch (e: any) {
+        lastError = e
+        console.warn(`[StorageSync] Mutation attempt ${attempt} failed:`, e.message)
+        
+        // If it's a message port error or connection error, wait before retrying
+        if (
+          e.message.includes('message port closed') || 
+          e.message.includes('Could not establish connection') ||
+          e.message.includes('connection attempt failed')
+        ) {
+          await new Promise(r => setTimeout(r, 200 * attempt))
+          continue
+        }
+        
+        // For other errors (like quota), fail immediately
+        throw e
+      }
+    }
+
+    console.error('[StorageSync] Centralized mutation failed after max retries. Falling back to direct mutation.', lastError)
     
-    // Check for lastError to match the previous API behavior
+    // Fallback to direct mutation if messaging bridge is completely broken
+    await chrome.storage.sync.set(params as any)
     if (chrome.runtime.lastError) {
       throw new Error(chrome.runtime.lastError.message)
     }
