@@ -243,6 +243,22 @@ const buildShowThemeSmokeStateExpression = () => `(
 
 const buildSetGlassThemeExpression = (style) => `(
   async () => {
+    const themeHarness = window.__CRX_TAB_GROUPS_THEME_HARNESS__
+    if (
+      themeHarness &&
+      typeof themeHarness.setThemeMode === 'function' &&
+      typeof themeHarness.setGlassStyle === 'function'
+    ) {
+      await themeHarness.setThemeMode('glass')
+      await themeHarness.setGlassStyle('${style}')
+
+      return {
+        rootTheme: document.documentElement.getAttribute('data-theme'),
+        rootThemeMode: document.documentElement.getAttribute('data-theme-mode'),
+        rootGlassStyle: document.documentElement.getAttribute('data-glass-style'),
+      }
+    }
+
     const waitForCommit = () =>
       new Promise((resolve) => {
         requestAnimationFrame(() => {

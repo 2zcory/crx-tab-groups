@@ -3,8 +3,7 @@ import { EMockGroup } from '@/enums'
 import onTabUpdated from '@/listeners/onTabUpdated'
 import StorageSyncGroup from '@/storage/group.sync'
 import StorageSyncTab from '@/storage/tab.sync'
-import StorageSyncAutoGroup from '@/storage/autoGroup.sync'
-import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
+import { forwardRef, useEffect, useState, useMemo, useCallback, useRef, useImperativeHandle } from 'react'
 import { CheckCircle2, FolderPlus, LoaderCircle, Monitor, X } from 'lucide-react'
 import { BentoGroupCard } from '@/components/BentoGroupCard'
 import Tooltip from '@/components/ui/tooltip'
@@ -28,12 +27,15 @@ import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-ki
 import TabListItem from './components/TabListItem'
 import { StarterSuggestions } from './components/StarterSuggestions'
 import {
-  getAutoGroupRulePatterns,
-  normalizeAutoGroupPattern,
   shouldIgnoreAutoGroupUrl,
-  sortAutoGroupRules,
-  validateAutoGroupRulePattern,
 } from '@/helpers'
+import {
+  AutoGroupScanStatus,
+  LIVE_ADD_TO_RULES_HARNESS_MODE,
+  LIVE_HARNESS_QUERY_KEY,
+  QuickRuleSourceGroup,
+  triggerAutoGroupScan,
+} from './add-to-rules'
 
 interface TabGroup extends chrome.tabGroups.TabGroup {
   tabs: chrome.tabs.Tab[]
@@ -55,101 +57,11 @@ interface SaveStatus {
   message?: string
 }
 
-interface AutoGroupScanStatus {
-  tone: 'idle' | 'success' | 'warning' | 'error'
-  message?: string
-}
-
 const AUTO_GROUP_STATUS_AUTO_DISMISS_MS = 5000
 const AUTO_GROUP_STATUS_EXIT_MS = 180
 const LIVE_TOAST_BOTTOM_OFFSET_PX = 10
 
 type AutoGroupToastPhase = 'entering' | 'visible' | 'exiting'
-
-interface AutoGroupScanResponse {
-  success: boolean
-  summary?: {
-    scanned: number
-    matched: number
-    grouped: number
-    created: number
-    alreadyGrouped: number
-    errors: number
-  }
-  error?: string
-}
-
-interface QuickRuleSourceGroup {
-  title?: string
-  color?: NStorage.Sync.GroupColor
-}
-
-interface LiveAddToRulesHarnessSeedResult {
-  autoGroups: NStorage.Sync.Schema.AutoGroupRule[]
-  createdTab: {
-    id?: number
-    url?: string
-    windowId: number
-  }
-}
-
-interface LiveAddToRulesHarnessState {
-  exampleTab: {
-    id?: number
-    groupId?: number
-    url?: string
-  } | null
-  group: {
-    id: number
-    title?: string
-    color: string
-  } | null
-  activeRulePatterns: string[]
-  dormantRulePatterns: string[]
-}
-
-interface LiveThemeSmokeHarnessState {
-  tabId: number | null
-  groupId: number | null
-  saveMenuOpen: boolean
-  addToRulesOpen: boolean
-  dragOverlayOpen: boolean
-}
-
-interface LiveAddToRulesHarnessDraftOption {
-  value: string
-  label: string
-}
-
-declare global {
-  interface Window {
-    __CRX_TAB_GROUPS_HARNESS__?: {
-      seedAddToRulesScenario: () => Promise<LiveAddToRulesHarnessSeedResult>
-      getExampleTabDraftOptions: () => Promise<LiveAddToRulesHarnessDraftOption[]>
-      applyExampleTabToRule: (
-        destinationRuleId: string,
-      ) => Promise<{
-        success: boolean
-        scanResponse: AutoGroupScanResponse
-        pattern: string
-      }>
-      getAddToRulesState: () => Promise<LiveAddToRulesHarnessState>
-      showThemeSmokeState: () => Promise<LiveThemeSmokeHarnessState>
-    }
-  }
-}
-
-interface AddToRulesDraft {
-  tabId: number
-  tabTitle?: string
-  url: string
-  hostname: string
-  patternDraft: string
-  destinationRuleId: string
-  newRuleTitle: string
-  newRuleColor: NStorage.Sync.GroupColor
-  sourceGroup?: QuickRuleSourceGroup
-}
 
 type TabContainerKind = 'pinned' | 'ungrouped' | 'group'
 
@@ -197,31 +109,6 @@ const getContainerGroupId = (containerId: string) => {
 }
 
 const TAB_GROUP_NONE = -1
-const NEW_RULE_DESTINATION_ID = 'new'
-
-const COLORS: NStorage.Sync.GroupColor[] = [
-  'grey',
-  'blue',
-  'red',
-  'yellow',
-  'green',
-  'pink',
-  'purple',
-  'cyan',
-  'orange',
-]
-
-const COLOR_MAP: Record<NStorage.Sync.GroupColor, string> = {
-  grey: 'bg-slate-400',
-  blue: 'bg-blue-500',
-  red: 'bg-red-500',
-  yellow: 'bg-yellow-500',
-  green: 'bg-green-500',
-  pink: 'bg-pink-500',
-  purple: 'bg-purple-500',
-  cyan: 'bg-cyan-500',
-  orange: 'bg-orange-500',
-}
 
 const getDropTargetForTab = (windows: WindowData[], tabId: number): TabDropTarget | null => {
   for (const win of windows) {
@@ -255,59 +142,30 @@ const getDropTargetForTab = (windows: WindowData[], tabId: number): TabDropTarge
 const getValidTabId = (tab: chrome.tabs.Tab | undefined): number | null =>
   typeof tab?.id === 'number' ? tab.id : null
 
-const getHostnamePatternFromTab = (tab: chrome.tabs.Tab) => {
-  if (!tab.url || shouldIgnoreAutoGroupUrl(tab.url)) return null
-
-  try {
-    return new URL(tab.url).hostname.toLowerCase()
-  } catch {
-    return null
-  }
+export interface LiveThemeSmokeSeed {
+  exampleTab: chrome.tabs.Tab
+  groupId: number
+  groupTitle?: string
+  groupColor: NStorage.Sync.GroupColor
+  saveMenuOpen: boolean
+  dragOverlayOpen: boolean
 }
 
-const getPathPatternFromTab = (tab: chrome.tabs.Tab) => {
-  if (!tab.url || shouldIgnoreAutoGroupUrl(tab.url)) return null
-
-  try {
-    const parsedUrl = new URL(tab.url)
-    const pathname = parsedUrl.pathname
-
-    if (!pathname || pathname === '/') return parsedUrl.hostname.toLowerCase()
-
-    const segments = pathname.split('/').filter(Boolean)
-    const firstSegment = segments[0]
-
-    return `${parsedUrl.hostname.toLowerCase()}/${firstSegment}/*`
-  } catch {
-    return null
-  }
+export interface LiveManagementHandle {
+  refreshActiveGroups: () => Promise<void>
+  findTabById: (id: number) => chrome.tabs.Tab | undefined
+  setAutoGroupScanStatus: (status: AutoGroupScanStatus) => void
+  seedThemeSmokeState: () => Promise<LiveThemeSmokeSeed>
 }
 
-const getExactPatternFromTab = (tab: chrome.tabs.Tab) => {
-  if (!tab.url || shouldIgnoreAutoGroupUrl(tab.url)) return null
-
-  try {
-    const parsedUrl = new URL(tab.url)
-    return parsedUrl.href.replace(/^[a-z]+:\/\//i, '')
-  } catch {
-    return null
-  }
+interface LiveManagementProps {
+  onOpenAddToRules: (tab: chrome.tabs.Tab, sourceGroup?: QuickRuleSourceGroup) => void
 }
 
-const getQuickRuleTitle = (tab: chrome.tabs.Tab, sourceGroup?: QuickRuleSourceGroup) => {
-  const groupTitle = sourceGroup?.title?.trim()
-  if (groupTitle) return groupTitle
-
-  return getHostnamePatternFromTab(tab) || tab.title?.trim() || 'Quick Rule'
-}
-
-const getSelectableAutoGroupRules = (rules: NStorage.Sync.Schema.AutoGroupRule[]) =>
-  sortAutoGroupRules(rules.filter((rule) => rule.isActive))
-
-const LIVE_HARNESS_QUERY_KEY = 'codex-harness'
-const LIVE_ADD_TO_RULES_HARNESS_MODE = 'live-add-to-rules'
-
-function LiveManagement() {
+const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(function LiveManagement(
+  { onOpenAddToRules },
+  ref,
+) {
   const [windows, setWindows] = useState<WindowData[]>([])
   const windowsRef = useRef<WindowData[]>([])
   const [totalTabsAllCount, setTotalTabsAllCount] = useState(0)
@@ -316,8 +174,6 @@ function LiveManagement() {
   const [showSaveMenu, setShowSaveMenu] = useState<number | null>(null)
   const [newSnapshotTitle, setNewSnapshotTitle] = useState('')
   const [isNamingNewSnapshot, setIsNamingNewSnapshot] = useState(false)
-  const [autoGroupRules, setAutoGroupRules] = useState<NStorage.Sync.Schema.AutoGroupRule[]>([])
-  const [addToRulesDraft, setAddToRulesDraft] = useState<AddToRulesDraft | null>(null)
   const [autoGroupScanStatus, setAutoGroupScanStatus] = useState<AutoGroupScanStatus>({
     tone: 'idle',
   })
@@ -334,13 +190,6 @@ function LiveManagement() {
   // DND State
   const [activeTabId, setActiveTabId] = useState<number | null>(null)
   const isDraggingLocal = useRef(false)
-
-  const waitForLiveHarnessCommit = () =>
-    new Promise<void>((resolve) => {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => resolve())
-      })
-    })
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -412,7 +261,6 @@ function LiveManagement() {
   useEffect(() => {
     getActiveGroups()
     fetchSavedSnapshots()
-    fetchAutoGroupRules()
   }, [getActiveGroups])
 
   useEffect(() => {
@@ -469,230 +317,6 @@ function LiveManagement() {
     const res = await StorageSyncGroup.getListWithTabs()
     setSavedSnapshots(res || [])
   }, [])
-
-  const fetchAutoGroupRules = useCallback(async () => {
-    const rules = await StorageSyncAutoGroup.getList()
-    setAutoGroupRules(getSelectableAutoGroupRules(rules))
-  }, [])
-
-  useEffect(() => {
-    if (harnessMode !== LIVE_ADD_TO_RULES_HARNESS_MODE) return
-
-    window.__CRX_TAB_GROUPS_HARNESS__ = {
-      seedAddToRulesScenario: async () => {
-        const now = new Date().toISOString()
-        const autoGroups: NStorage.Sync.Schema.AutoGroupRule[] = [
-          {
-            id: 'rule-active',
-            title: 'Active Rule',
-            color: 'blue',
-            order: 1,
-            urlPatterns: [],
-            isActive: true,
-            createdAt: now,
-          },
-          {
-            id: 'rule-dormant',
-            title: 'Dormant Rule',
-            color: 'red',
-            order: 2,
-            urlPatterns: [],
-            isActive: false,
-            createdAt: now,
-          },
-        ]
-
-        const existingTabs = await chrome.tabs.query({})
-        const tabsToClose = existingTabs
-          .filter((tab) => tab.id && !tab.url?.startsWith('chrome-extension://'))
-          .map((tab) => tab.id as number)
-
-        if (tabsToClose.length > 0) {
-          await chrome.tabs.remove(tabsToClose)
-        }
-
-        await chrome.storage.sync.clear()
-        await chrome.storage.local.clear()
-        await chrome.storage.sync.set({ autoGroups, groups: [], tabs: [] })
-
-        const createdTab = await chrome.tabs.create({
-          url: 'https://example.com/',
-          active: false,
-        })
-
-        await fetchAutoGroupRules()
-        await fetchSavedSnapshots()
-        await getActiveGroups()
-
-        return {
-          autoGroups,
-          createdTab: {
-            id: createdTab.id,
-            url: createdTab.url,
-            windowId: createdTab.windowId,
-          },
-        }
-      },
-      getExampleTabDraftOptions: async () => {
-        const rules = getSelectableAutoGroupRules(await StorageSyncAutoGroup.getList())
-
-        return [
-          { value: NEW_RULE_DESTINATION_ID, label: 'Create new rule' },
-          ...rules.map((rule) => ({
-            value: rule.id,
-            label: `${rule.title} - priority ${rule.order}`,
-          })),
-        ]
-      },
-      applyExampleTabToRule: async (destinationRuleId: string) => {
-        let exampleTab = (await chrome.tabs.query({})).find((tab) =>
-          (tab.url || '').startsWith('https://example.com/'),
-        )
-
-        if (!exampleTab) {
-          // Retry a few times with delay if the tab is still initializing
-          for (let i = 0; i < 10; i++) {
-            await new Promise((resolve) => setTimeout(resolve, 200))
-            exampleTab = (await chrome.tabs.query({})).find((tab) =>
-              (tab.url || '').startsWith('https://example.com/'),
-            )
-            if (exampleTab) break
-          }
-        }
-
-        if (!exampleTab) {
-          throw new Error('Example tab not found for harness scenario')
-        }
-
-        const hostname = getHostnamePatternFromTab(exampleTab)
-        if (!hostname) {
-          throw new Error('Example tab hostname could not be derived')
-        }
-
-        const validation = validateAutoGroupRulePattern(hostname)
-        if (!validation.isValid) {
-          throw new Error(validation.error || 'Harness pattern validation failed')
-        }
-
-        const currentRules = sortAutoGroupRules(await StorageSyncAutoGroup.getList())
-        const selectedRule = getSelectableAutoGroupRules(currentRules).find(
-          (rule) => rule.id === destinationRuleId,
-        )
-
-        if (!selectedRule) {
-          throw new Error('Selected active rule is no longer available')
-        }
-
-        const duplicatePattern = getAutoGroupRulePatterns(selectedRule).some(
-          (pattern) => pattern.toLowerCase() === validation.normalizedPattern.toLowerCase(),
-        )
-
-        if (duplicatePattern) {
-          throw new Error(`Pattern already exists in ${selectedRule.title}`)
-        }
-
-        await StorageSyncAutoGroup.update({
-          ...selectedRule,
-          urlPatterns: [...getAutoGroupRulePatterns(selectedRule), validation.normalizedPattern],
-        })
-
-        // Wait a bit for storage mutation to settle before triggering scan
-        await new Promise((resolve) => setTimeout(resolve, 500))
-
-        const scanResponse = await triggerAutoGroupScan()
-        await fetchAutoGroupRules()
-        await getActiveGroups()
-
-        return {
-          success: scanResponse.success,
-          scanResponse,
-          pattern: validation.normalizedPattern,
-        }
-      },
-      getAddToRulesState: async () => {
-        const tabs = await chrome.tabs.query({})
-        const exampleTab = tabs.find((tab) => (tab.url || '').startsWith('https://example.com/'))
-        const rules = await StorageSyncAutoGroup.getList()
-        const activeRule = rules.find((rule) => rule.id === 'rule-active')
-        const dormantRule = rules.find((rule) => rule.id === 'rule-dormant')
-
-        let group: LiveAddToRulesHarnessState['group'] = null
-
-        if (exampleTab && typeof exampleTab.groupId === 'number' && exampleTab.groupId >= 0) {
-          const liveGroup = await chrome.tabGroups.get(exampleTab.groupId)
-          group = {
-            id: liveGroup.id,
-            title: liveGroup.title,
-            color: liveGroup.color,
-          }
-        }
-
-        return {
-          exampleTab: exampleTab
-            ? {
-                id: exampleTab.id,
-                groupId: exampleTab.groupId,
-                url: exampleTab.url,
-              }
-            : null,
-          group,
-          activeRulePatterns: getAutoGroupRulePatterns(
-            activeRule || { urlPattern: '', urlPatterns: [] },
-          ),
-          dormantRulePatterns: getAutoGroupRulePatterns(
-            dormantRule || { urlPattern: '', urlPatterns: [] },
-          ),
-        }
-      },
-      showThemeSmokeState: async () => {
-        const ensureTabInState = async () => {
-          for (let i = 0; i < 10; i++) {
-            await getActiveGroups()
-            const tabs = await chrome.tabs.query({})
-            const exampleTab = tabs.find((tab) => (tab.url || '').startsWith('https://example.com/'))
-            
-            if (exampleTab?.id && findTabById(exampleTab.id)) {
-              return exampleTab
-            }
-            await new Promise((resolve) => setTimeout(resolve, 200))
-          }
-          throw new Error('Example tab not found in local state after retries')
-        }
-
-        const exampleTab = await ensureTabInState()
-        const groupedWindows = windowsRef.current
-        const firstGroup = groupedWindows.flatMap((win) => win.groups).find((group) => group.tabs.length > 0)
-
-        if (!firstGroup) {
-          throw new Error('No grouped tab card available for theme smoke harness')
-        }
-
-        openSaveMenu(firstGroup)
-        setIsNamingNewSnapshot(true)
-        setNewSnapshotTitle(firstGroup.title || 'Untitled Group')
-        openAddToRulesDraft(exampleTab, {
-          title: firstGroup.title || undefined,
-          color: firstGroup.color,
-        })
-        setActiveTabId(exampleTab.id ?? null)
-        await waitForLiveHarnessCommit()
-
-        return {
-          tabId: exampleTab.id ?? null,
-          groupId: firstGroup.id,
-          saveMenuOpen: true,
-          addToRulesOpen: true,
-          dragOverlayOpen: true,
-        }
-      },
-    }
-
-    return () => {
-      if (window.__CRX_TAB_GROUPS_HARNESS__) {
-        delete window.__CRX_TAB_GROUPS_HARNESS__
-      }
-    }
-  }, [fetchSavedSnapshots, fetchAutoGroupRules, getActiveGroups, harnessMode])
 
   const handleRestoreSnapshot = async (group: NStorage.Sync.Response.Group) => {
     try {
@@ -849,27 +473,6 @@ function LiveManagement() {
     void getActiveGroups()
   }
 
-  const triggerAutoGroupScan = async () => {
-    // Retry up to 3 times for transient issues (common in fast-moving extension test environments)
-    for (let i = 0; i < 3; i++) {
-      try {
-        const response = await chrome.runtime.sendMessage({ action: 'run_auto_group_scan' })
-        return (response || { success: false, error: 'Auto-group scan failed' }) as AutoGroupScanResponse
-      } catch (e) {
-        if (i < 2) {
-          console.warn(`[Harness] Auto-group scan attempt ${i + 1} failed, retrying in 500ms...`, e)
-          await new Promise((resolve) => setTimeout(resolve, 500))
-          continue
-        }
-        return {
-          success: false,
-          error: String(e) || 'Auto-group scan failed',
-        }
-      }
-    }
-    return { success: false, error: 'Auto-group scan failed after retries' }
-  }
-
   const runAutoGroupScan = () => {
     setAutoGroupScanStatus({
       tone: 'idle',
@@ -898,181 +501,6 @@ function LiveManagement() {
     })
   }
 
-  const openAddToRulesDraft = (tab: chrome.tabs.Tab, sourceGroup?: QuickRuleSourceGroup) => {
-    const hostname = getHostnamePatternFromTab(tab)
-
-    if (!hostname || !tab.url || typeof tab.id !== 'number') {
-      setAutoGroupScanStatus({
-        tone: 'warning',
-        message: 'Cannot add this tab URL to Rules',
-      })
-      return
-    }
-
-    const title = getQuickRuleTitle(tab, sourceGroup)
-    const color = sourceGroup?.color || 'blue'
-    const matchingRule = autoGroupRules.find(
-      (rule) => rule.title.trim().toLowerCase() === title.toLowerCase() && rule.color === color,
-    )
-
-    setAddToRulesDraft({
-      tabId: tab.id,
-      tabTitle: tab.title,
-      url: tab.url,
-      hostname,
-      patternDraft: hostname,
-      destinationRuleId: matchingRule?.id || NEW_RULE_DESTINATION_ID,
-      newRuleTitle: title,
-      newRuleColor: color,
-      sourceGroup,
-    })
-  }
-
-  const applyAddToRulesDraft = async () => {
-    if (!addToRulesDraft) return
-
-    const normalizedPattern = normalizeAutoGroupPattern(addToRulesDraft.patternDraft)
-    const validation = validateAutoGroupRulePattern(normalizedPattern)
-
-    if (!validation.isValid) {
-      setAutoGroupScanStatus({
-        tone: 'warning',
-        message: validation.error || 'Rule pattern is invalid',
-      })
-      return
-    }
-
-    const title = addToRulesDraft.newRuleTitle.trim()
-
-    if (addToRulesDraft.destinationRuleId === NEW_RULE_DESTINATION_ID && !title) {
-      setAutoGroupScanStatus({
-        tone: 'warning',
-        message: 'Rule title is required',
-      })
-      return
-    }
-
-    try {
-      const currentRules = sortAutoGroupRules(await StorageSyncAutoGroup.getList())
-      const selectableRules = getSelectableAutoGroupRules(currentRules)
-      const selectedRule =
-        addToRulesDraft.destinationRuleId === NEW_RULE_DESTINATION_ID
-          ? null
-          : selectableRules.find((rule) => rule.id === addToRulesDraft.destinationRuleId)
-
-      if (addToRulesDraft.destinationRuleId !== NEW_RULE_DESTINATION_ID && !selectedRule) {
-        setAutoGroupScanStatus({
-          tone: 'warning',
-          message: 'Selected active rule is no longer available',
-        })
-        await fetchAutoGroupRules()
-        return
-      }
-
-      if (selectedRule) {
-        const duplicatePattern = getAutoGroupRulePatterns(selectedRule).some(
-          (pattern) => pattern.toLowerCase() === validation.normalizedPattern.toLowerCase(),
-        )
-
-        if (duplicatePattern) {
-          setAutoGroupScanStatus({
-            tone: 'warning',
-            message: `Pattern already exists in ${selectedRule.title}`,
-          })
-          return
-        }
-
-        await StorageSyncAutoGroup.update({
-          ...selectedRule,
-          urlPatterns: [...getAutoGroupRulePatterns(selectedRule), validation.normalizedPattern],
-        })
-      } else {
-        const existingExactRule = currentRules.some((rule) => {
-          const existingPatterns = getAutoGroupRulePatterns(rule).map((item) => item.toLowerCase())
-
-          return (
-            rule.title.trim().toLowerCase() === title.toLowerCase() &&
-            existingPatterns.includes(validation.normalizedPattern.toLowerCase())
-          )
-        })
-
-        if (existingExactRule) {
-          setAutoGroupScanStatus({
-            tone: 'warning',
-            message: `Pattern already exists under ${title}`,
-          })
-          return
-        }
-
-        const conflictingGroupIdentity = currentRules.some(
-          (rule) =>
-            rule.title.trim().toLowerCase() === title.toLowerCase() &&
-            rule.color !== addToRulesDraft.newRuleColor,
-        )
-
-        if (conflictingGroupIdentity) {
-          setAutoGroupScanStatus({
-            tone: 'warning',
-            message: `Rule title "${title}" already uses another color`,
-          })
-          return
-        }
-
-        const now = new Date().toISOString()
-        const rule: NStorage.Sync.Schema.AutoGroupRule = {
-          id: crypto.randomUUID(),
-          title,
-          color: addToRulesDraft.newRuleColor,
-          order: currentRules.length + 1,
-          urlPatterns: [validation.normalizedPattern],
-          isActive: true,
-          createdAt: now,
-        }
-
-        await StorageSyncAutoGroup.create(rule)
-      }
-
-      const scanResponse = await triggerAutoGroupScan()
-      await fetchAutoGroupRules()
-
-      const savedMessage =
-        addToRulesDraft.destinationRuleId === NEW_RULE_DESTINATION_ID
-          ? `Rule created for ${validation.normalizedPattern}`
-          : `Pattern added: ${validation.normalizedPattern}`
-
-      if (!scanResponse.success) {
-        setAutoGroupScanStatus({
-          tone: 'warning',
-          message: `${savedMessage}. Auto-group scan failed.`,
-        })
-      } else if (scanResponse.summary?.grouped && scanResponse.summary.grouped > 0) {
-        setAutoGroupScanStatus({
-          tone: 'success',
-          message: `${savedMessage}. Grouped ${scanResponse.summary.grouped} tab${scanResponse.summary.grouped === 1 ? '' : 's'}.`,
-        })
-      } else if (scanResponse.summary?.alreadyGrouped && scanResponse.summary.alreadyGrouped > 0) {
-        setAutoGroupScanStatus({
-          tone: 'success',
-          message: `${savedMessage}. Matching tab${scanResponse.summary.alreadyGrouped === 1 ? '' : 's'} already grouped.`,
-        })
-      } else {
-        setAutoGroupScanStatus({
-          tone: 'warning',
-          message: `${savedMessage}. No matching tabs were grouped.`,
-        })
-      }
-
-      setAddToRulesDraft(null)
-      void getActiveGroups()
-    } catch (e) {
-      console.error(e)
-      setAutoGroupScanStatus({
-        tone: 'error',
-        message: 'Add to Rules failed',
-      })
-    }
-  }
-
   const findTabById = (id: number) => {
     for (const win of windowsRef.current) {
       const tab = [
@@ -1084,6 +512,62 @@ function LiveManagement() {
     }
     return undefined
   }
+
+  const seedThemeSmokeState = useCallback(async () => {
+    const ensureTabInState = async () => {
+      for (let i = 0; i < 10; i++) {
+        await getActiveGroups()
+        const tabs = await chrome.tabs.query({})
+        const exampleTab = tabs.find((tab) => (tab.url || '').startsWith('https://example.com/'))
+
+        if (exampleTab?.id && findTabById(exampleTab.id)) {
+          return exampleTab
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 200))
+      }
+
+      throw new Error('Example tab not found in local state after retries')
+    }
+
+    const exampleTab = await ensureTabInState()
+    const groupedWindows = windowsRef.current
+    const firstGroup = groupedWindows.flatMap((win) => win.groups).find((group) => group.tabs.length > 0)
+
+    if (!firstGroup) {
+      throw new Error('No grouped tab card available for theme smoke harness')
+    }
+
+    openSaveMenu(firstGroup)
+    setIsNamingNewSnapshot(true)
+    setNewSnapshotTitle(firstGroup.title || 'Untitled Group')
+    setActiveTabId(exampleTab.id ?? null)
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve())
+      })
+    })
+
+    return {
+      exampleTab,
+      groupId: firstGroup.id,
+      groupTitle: firstGroup.title || undefined,
+      groupColor: firstGroup.color,
+      saveMenuOpen: true,
+      dragOverlayOpen: true,
+    }
+  }, [getActiveGroups])
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      refreshActiveGroups: getActiveGroups,
+      findTabById,
+      setAutoGroupScanStatus,
+      seedThemeSmokeState,
+    }),
+    [getActiveGroups, seedThemeSmokeState],
+  )
 
   const findContainer = (id: number | string) => {
     if (typeof id === 'string') return id
@@ -1310,26 +794,6 @@ function LiveManagement() {
     [activeTabId, windows],
   )
 
-  const addToRulesPatternSuggestions = useMemo(() => {
-    if (!addToRulesDraft) return []
-
-    const draftTab: chrome.tabs.Tab = {
-      id: addToRulesDraft.tabId,
-      url: addToRulesDraft.url,
-      title: addToRulesDraft.tabTitle,
-    } as chrome.tabs.Tab
-    const hostPattern = getHostnamePatternFromTab(draftTab)
-    const pathPattern = getPathPatternFromTab(draftTab)
-    const exactPattern = getExactPatternFromTab(draftTab)
-    const suggestions = [
-      hostPattern ? { label: 'Host', value: hostPattern } : null,
-      pathPattern ? { label: 'Path', value: pathPattern } : null,
-      exactPattern ? { label: 'Exact', value: exactPattern } : null,
-    ].filter((item): item is { label: string; value: string } => Boolean(item))
-
-    return Array.from(new Map(suggestions.map((item) => [item.value, item])).values())
-  }, [addToRulesDraft])
-
   return (
     <DndContext
       sensors={sensors}
@@ -1421,7 +885,7 @@ function LiveManagement() {
                     title={MOCK_GROUP[EMockGroup.PINNED]}
                     tabs={win.tabsPinned}
                     className="sp-subtle-surface"
-                    onAddTabToRules={(tab) => openAddToRulesDraft(tab)}
+                    onAddTabToRules={(tab) => onOpenAddToRules(tab)}
                   />
                 </SortableContext>
               )}
@@ -1441,7 +905,7 @@ function LiveManagement() {
                     onToggleCollapsed={() => void toggleGroupCollapsed(group)}
                     onCloseTabs={() => void closeGroupTabs(group)}
                     onAddTabToRules={(tab) =>
-                      openAddToRulesDraft(tab, {
+                      onOpenAddToRules(tab, {
                         title: group.title || undefined,
                         color: group.color,
                       })
@@ -1584,137 +1048,13 @@ function LiveManagement() {
                     title={MOCK_GROUP[EMockGroup.UNGROUP]}
                     tabs={win.tabsUngroup}
                     className="sp-empty-state"
-                    onAddTabToRules={(tab) => openAddToRulesDraft(tab)}
+                    onAddTabToRules={(tab) => onOpenAddToRules(tab)}
                   />
                 </SortableContext>
               )}
             </div>
           </div>
         ))}
-
-        {addToRulesDraft && (
-          <section className="sp-card rounded-2xl p-3" data-live-surface="add-to-rules">
-            <div className="mb-3 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="sp-label text-[10px] font-bold uppercase tracking-[0.18em]">
-                  Add To Rules
-                </p>
-                <p className="sp-copy-primary mt-0.5 truncate text-[12px] font-bold">
-                  {addToRulesDraft.tabTitle || addToRulesDraft.hostname}
-                </p>
-              </div>
-              <button
-                type="button"
-                className="sp-icon-button flex size-7 shrink-0 items-center justify-center rounded-full"
-                onClick={() => setAddToRulesDraft(null)}
-              >
-                <X size={13} />
-              </button>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label className="sp-label ml-1 text-[10px] font-bold uppercase">
-                  Pattern
-                </label>
-                <input
-                  className="sp-input-shell sp-input w-full rounded-xl border-none px-3 py-2 text-[12px] font-medium outline-none"
-                  value={addToRulesDraft.patternDraft}
-                  onChange={(event) =>
-                    setAddToRulesDraft((current) =>
-                      current ? { ...current, patternDraft: event.target.value } : current,
-                    )
-                  }
-                />
-                <div className="flex flex-wrap gap-1.5">
-                  {addToRulesPatternSuggestions.map((suggestion) => (
-                    <button
-                      key={suggestion.value}
-                      type="button"
-                      className={cn(
-                        'rounded-full px-2 py-1 text-[10px] font-bold ring-1 transition-colors',
-                        addToRulesDraft.patternDraft === suggestion.value
-                          ? 'bg-[var(--sp-tab-pill-active)] text-[var(--primary-foreground)] ring-[var(--sp-tab-pill-active)]'
-                          : 'sp-chip hover:bg-[var(--surface-muted)]',
-                      )}
-                      onClick={() =>
-                        setAddToRulesDraft((current) =>
-                          current ? { ...current, patternDraft: suggestion.value } : current,
-                        )
-                      }
-                    >
-                      {suggestion.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="sp-label ml-1 text-[10px] font-bold uppercase">
-                  Destination
-                </label>
-                <select
-                  className="sp-input-shell sp-input w-full rounded-xl border-none px-3 py-2 text-[12px] font-bold outline-none"
-                  value={addToRulesDraft.destinationRuleId}
-                  onChange={(event) =>
-                    setAddToRulesDraft((current) =>
-                      current ? { ...current, destinationRuleId: event.target.value } : current,
-                    )
-                  }
-                >
-                  <option value={NEW_RULE_DESTINATION_ID}>Create new rule</option>
-                  {autoGroupRules.map((rule) => (
-                    <option key={rule.id} value={rule.id}>
-                      {rule.title} - priority {rule.order}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {addToRulesDraft.destinationRuleId === NEW_RULE_DESTINATION_ID && (
-                <div className="sp-subtle-surface flex flex-col gap-2 rounded-xl p-2">
-                  <input
-                    className="sp-input-shell sp-input w-full rounded-lg border-none px-2.5 py-2 text-[12px] font-bold outline-none"
-                    value={addToRulesDraft.newRuleTitle}
-                    onChange={(event) =>
-                      setAddToRulesDraft((current) =>
-                        current ? { ...current, newRuleTitle: event.target.value } : current,
-                      )
-                    }
-                    placeholder="New rule title"
-                  />
-                  <div className="flex flex-wrap gap-1.5">
-                    {COLORS.map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        className={cn(
-                          'size-4 rounded-full transition-transform hover:scale-110',
-                          COLOR_MAP[color],
-                          addToRulesDraft.newRuleColor === color &&
-                            'scale-110 ring-2 ring-[var(--sp-tab-pill-active)] ring-offset-1',
-                        )}
-                        onClick={() =>
-                          setAddToRulesDraft((current) =>
-                            current ? { ...current, newRuleColor: color } : current,
-                          )
-                        }
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <Button
-                type="button"
-                className="sp-primary-action h-8 rounded-xl text-[11px] font-bold"
-                onClick={() => void applyAddToRulesDraft()}
-              >
-                Add Pattern
-              </Button>
-            </div>
-          </section>
-        )}
 
         {totalTabsAllCount === 0 && (
           <StarterSuggestions 
@@ -1760,6 +1100,6 @@ function LiveManagement() {
       </DragOverlay>
     </DndContext>
   )
-}
+})
 
 export default LiveManagement

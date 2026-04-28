@@ -1,9 +1,9 @@
-import { useEffect, useState, useRef } from 'react'
-import { X, Settings2 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Settings2 } from 'lucide-react'
 
 import './SidePanel.css'
 import migrateScheme from '@/migrations'
-import LiveManagement from './live'
+import LiveManagement, { LiveManagementHandle } from './live'
 import Layout from './layout'
 import Tabs from '@/components/ui/tabs'
 import { TAB_MENU } from '@/constants'
@@ -12,7 +12,31 @@ import GroupManagement from './group-management'
 import AutomationManagement from './automation-management'
 import { LiveStatusBar } from './live/components/LiveStatusBar'
 import StorageLocal from '@/storage/local'
+import StorageSyncAutoGroup from '@/storage/autoGroup.sync'
 import { BottomSheet } from '@/components/ui/bottom-sheet'
+import {
+  getAutoGroupRulePatterns,
+  normalizeAutoGroupPattern,
+  sortAutoGroupRules,
+  validateAutoGroupRulePattern,
+} from '@/helpers'
+
+import {
+  AddToRulesDraft,
+  AutoGroupScanResponse,
+  QuickRuleSourceGroup,
+  buildAddToRulesDraft,
+  getSelectableAutoGroupRules,
+  LiveAddToRulesHarnessDraftOption,
+  LiveAddToRulesHarnessSeedResult,
+  LiveAddToRulesHarnessState,
+  LiveThemeSmokeHarnessState,
+  LIVE_ADD_TO_RULES_HARNESS_MODE,
+  LIVE_HARNESS_QUERY_KEY,
+  NEW_RULE_DESTINATION_ID,
+  triggerAutoGroupScan,
+} from './live/add-to-rules'
+import { LiveAddToRulesSheetContent } from './live/components/LiveAddToRulesSheetContent'
 
 type ThemeMode = 'light' | 'dark' | 'system' | 'glass'
 type ResolvedTheme = 'light' | 'dark' | 'glass'
@@ -22,6 +46,11 @@ type GlassStyle =
   | 'minimal-clear'
   | 'warm-glass'
   | 'monochrome-glass'
+
+type SidePanelSheetState =
+  | { kind: 'appearance' }
+  | { kind: 'live-add-to-rules'; payload: AddToRulesDraft }
+  | null
 
 const THEME_STORAGE_KEY = 'themeMode'
 const GLASS_STYLE_STORAGE_KEY = 'glassStyle'
@@ -80,24 +109,75 @@ const GLASS_STYLE_OPTIONS: Array<{
   },
 ]
 
+declare global {
+  interface Window {
+    __CRX_TAB_GROUPS_THEME_HARNESS__?: {
+      clearThemeMode: () => Promise<void>
+      setThemeMode: (nextThemeMode: ThemeMode) => Promise<void>
+      setGlassStyle: (nextGlassStyle: GlassStyle) => Promise<void>
+      getThemeState: () => Promise<{
+        themeMode: ThemeMode
+        resolvedTheme: ResolvedTheme
+        glassStyle: GlassStyle
+        rootTheme: string | null
+        rootThemeMode: string | null
+        rootGlassStyle: string | null
+        isDarkClassApplied: boolean
+        storedThemeMode: ThemeMode | null
+        storedGlassStyle: GlassStyle | null
+      }>
+    }
+    __CRX_TAB_GROUPS_HARNESS__?: {
+      seedAddToRulesScenario: () => Promise<LiveAddToRulesHarnessSeedResult>
+      getExampleTabDraftOptions: () => Promise<LiveAddToRulesHarnessDraftOption[]>
+      applyExampleTabToRule: (
+        destinationRuleId: string,
+      ) => Promise<{
+        success: boolean
+        scanResponse: AutoGroupScanResponse
+        pattern: string
+      }>
+      getAddToRulesState: () => Promise<LiveAddToRulesHarnessState>
+      showThemeSmokeState: () => Promise<LiveThemeSmokeHarnessState>
+    }
+  }
+}
+
 export const SidePanel = () => {
   const [isMigrating, setIsMigrating] = useState(false)
   const [activeTab, setActiveTab] = useState<ETabMenu>(ETabMenu.TAB_SYNC)
   const [themeMode, setThemeMode] = useState<ThemeMode>('system')
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light')
   const [glassStyle, setGlassStyle] = useState<GlassStyle>(DEFAULT_GLASS_STYLE)
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [activeSheet, setActiveSheet] = useState<SidePanelSheetState>(null)
+  const [autoGroupRules, setAutoGroupRules] = useState<NStorage.Sync.Schema.AutoGroupRule[]>([])
+
+  const liveManagementRef = useRef<LiveManagementHandle | null>(null)
+  const harnessMode = useMemo(() => {
+    if (typeof window === 'undefined') return null
+    return new URLSearchParams(window.location.search).get(LIVE_HARNESS_QUERY_KEY)
+  }, [])
+
+  const fetchAutoGroupRules = useCallback(async () => {
+    const rules = await StorageSyncAutoGroup.getList()
+    setAutoGroupRules(getSelectableAutoGroupRules(rules))
+  }, [])
 
   useEffect(() => {
     setIsMigrating(true)
-    migrateScheme().finally(() => setIsMigrating(false))
+    migrateScheme()
+      .finally(() => setIsMigrating(false))
   }, [])
+
+  useEffect(() => {
+    void fetchAutoGroupRules()
+  }, [fetchAutoGroupRules])
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search)
     const harness = searchParams.get(THEME_HARNESS_QUERY_KEY)
-    if (harness === THEME_HARNESS_MODE || harness === 'live-add-to-rules') {
-      setIsSettingsOpen(true)
+    if (harness === THEME_HARNESS_MODE) {
+      setActiveSheet({ kind: 'appearance' })
     }
 
     let isMounted = true
@@ -158,6 +238,40 @@ export const SidePanel = () => {
     root.setAttribute('data-glass-style', glassStyle)
   }, [glassStyle, resolvedTheme, themeMode])
 
+  const reportLiveStatus = useCallback((tone: 'idle' | 'success' | 'warning' | 'error', message?: string) => {
+    liveManagementRef.current?.setAutoGroupScanStatus({ tone, message })
+  }, [])
+
+  const openAppearanceSheet = useCallback(() => {
+    setActiveSheet({ kind: 'appearance' })
+  }, [])
+
+  const closeSheet = useCallback(() => {
+    setActiveSheet(null)
+  }, [])
+
+  const openLiveAddToRules = useCallback(
+    (tab: chrome.tabs.Tab, sourceGroup?: QuickRuleSourceGroup) => {
+      const draft = buildAddToRulesDraft(tab, autoGroupRules, sourceGroup)
+
+      if (!draft) {
+        reportLiveStatus('warning', 'Cannot add this tab URL to Rules')
+        return
+      }
+
+      setActiveSheet({ kind: 'live-add-to-rules', payload: draft })
+    },
+    [autoGroupRules, reportLiveStatus],
+  )
+
+  const updateLiveAddToRulesDraft = useCallback((patch: Partial<AddToRulesDraft>) => {
+    setActiveSheet((current) =>
+      current?.kind === 'live-add-to-rules'
+        ? { kind: 'live-add-to-rules', payload: { ...current.payload, ...patch } }
+        : current,
+    )
+  }, [])
+
   const handleThemeModeChange = async (nextThemeMode: ThemeMode) => {
     setThemeMode(nextThemeMode)
     await StorageLocal.set({ [THEME_STORAGE_KEY]: nextThemeMode })
@@ -175,9 +289,135 @@ export const SidePanel = () => {
       })
     })
 
+  const waitForSidePanelCommit = () =>
+    new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve())
+      })
+    })
+
+  const submitLiveAddToRules = useCallback(async () => {
+    if (activeSheet?.kind !== 'live-add-to-rules') return
+
+    const addToRulesDraft = activeSheet.payload
+    const normalizedPattern = normalizeAutoGroupPattern(addToRulesDraft.patternDraft)
+    const validation = validateAutoGroupRulePattern(normalizedPattern)
+
+    if (!validation.isValid) {
+      reportLiveStatus('warning', validation.error || 'Rule pattern is invalid')
+      return
+    }
+
+    const title = addToRulesDraft.newRuleTitle.trim()
+
+    if (addToRulesDraft.destinationRuleId === NEW_RULE_DESTINATION_ID && !title) {
+      reportLiveStatus('warning', 'Rule title is required')
+      return
+    }
+
+    try {
+      const currentRules = sortAutoGroupRules(await StorageSyncAutoGroup.getList())
+      const selectableRules = getSelectableAutoGroupRules(currentRules)
+      const selectedRule =
+        addToRulesDraft.destinationRuleId === NEW_RULE_DESTINATION_ID
+          ? null
+          : selectableRules.find((rule) => rule.id === addToRulesDraft.destinationRuleId)
+
+      if (addToRulesDraft.destinationRuleId !== NEW_RULE_DESTINATION_ID && !selectedRule) {
+        reportLiveStatus('warning', 'Selected active rule is no longer available')
+        await fetchAutoGroupRules()
+        return
+      }
+
+      if (selectedRule) {
+        const duplicatePattern = getAutoGroupRulePatterns(selectedRule).some(
+          (pattern) => pattern.toLowerCase() === validation.normalizedPattern.toLowerCase(),
+        )
+
+        if (duplicatePattern) {
+          reportLiveStatus('warning', `Pattern already exists in ${selectedRule.title}`)
+          return
+        }
+
+        await StorageSyncAutoGroup.update({
+          ...selectedRule,
+          urlPatterns: [...getAutoGroupRulePatterns(selectedRule), validation.normalizedPattern],
+        })
+      } else {
+        const existingExactRule = currentRules.some((rule) => {
+          const existingPatterns = getAutoGroupRulePatterns(rule).map((item) => item.toLowerCase())
+
+          return (
+            rule.title.trim().toLowerCase() === title.toLowerCase() &&
+            existingPatterns.includes(validation.normalizedPattern.toLowerCase())
+          )
+        })
+
+        if (existingExactRule) {
+          reportLiveStatus('warning', `Pattern already exists under ${title}`)
+          return
+        }
+
+        const conflictingGroupIdentity = currentRules.some(
+          (rule) =>
+            rule.title.trim().toLowerCase() === title.toLowerCase() &&
+            rule.color !== addToRulesDraft.newRuleColor,
+        )
+
+        if (conflictingGroupIdentity) {
+          reportLiveStatus('warning', `Rule title "${title}" already uses another color`)
+          return
+        }
+
+        const now = new Date().toISOString()
+        const rule: NStorage.Sync.Schema.AutoGroupRule = {
+          id: crypto.randomUUID(),
+          title,
+          color: addToRulesDraft.newRuleColor,
+          order: currentRules.length + 1,
+          urlPatterns: [validation.normalizedPattern],
+          isActive: true,
+          createdAt: now,
+        }
+
+        await StorageSyncAutoGroup.create(rule)
+      }
+
+      const scanResponse = await triggerAutoGroupScan()
+      await fetchAutoGroupRules()
+      await liveManagementRef.current?.refreshActiveGroups()
+
+      const savedMessage =
+        addToRulesDraft.destinationRuleId === NEW_RULE_DESTINATION_ID
+          ? `Rule created for ${validation.normalizedPattern}`
+          : `Pattern added: ${validation.normalizedPattern}`
+
+      if (!scanResponse.success) {
+        reportLiveStatus('warning', `${savedMessage}. Auto-group scan failed.`)
+      } else if (scanResponse.summary?.grouped && scanResponse.summary.grouped > 0) {
+        reportLiveStatus(
+          'success',
+          `${savedMessage}. Grouped ${scanResponse.summary.grouped} tab${scanResponse.summary.grouped === 1 ? '' : 's'}.`,
+        )
+      } else if (scanResponse.summary?.alreadyGrouped && scanResponse.summary.alreadyGrouped > 0) {
+        reportLiveStatus(
+          'success',
+          `${savedMessage}. Matching tab${scanResponse.summary.alreadyGrouped === 1 ? '' : 's'} already grouped.`,
+        )
+      } else {
+        reportLiveStatus('warning', `${savedMessage}. No matching tabs were grouped.`)
+      }
+
+      setActiveSheet(null)
+    } catch (error) {
+      console.error(error)
+      reportLiveStatus('error', 'Add to Rules failed')
+    }
+  }, [activeSheet, fetchAutoGroupRules, reportLiveStatus])
+
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search)
-    if (searchParams.get(THEME_HARNESS_QUERY_KEY) !== THEME_HARNESS_MODE) return
+    const harness = new URLSearchParams(window.location.search).get(THEME_HARNESS_QUERY_KEY)
+    if (harness !== THEME_HARNESS_MODE && harness !== LIVE_ADD_TO_RULES_HARNESS_MODE) return
 
     window.__CRX_TAB_GROUPS_THEME_HARNESS__ = {
       async clearThemeMode() {
@@ -222,9 +462,215 @@ export const SidePanel = () => {
     }
   }, [glassStyle, resolvedTheme, themeMode])
 
+  useEffect(() => {
+    if (harnessMode !== LIVE_ADD_TO_RULES_HARNESS_MODE) return
+
+    window.__CRX_TAB_GROUPS_HARNESS__ = {
+      seedAddToRulesScenario: async () => {
+        const now = new Date().toISOString()
+        const autoGroups: NStorage.Sync.Schema.AutoGroupRule[] = [
+          {
+            id: 'rule-active',
+            title: 'Active Rule',
+            color: 'blue',
+            order: 1,
+            urlPatterns: [],
+            isActive: true,
+            createdAt: now,
+          },
+          {
+            id: 'rule-dormant',
+            title: 'Dormant Rule',
+            color: 'red',
+            order: 2,
+            urlPatterns: [],
+            isActive: false,
+            createdAt: now,
+          },
+        ]
+
+        const existingTabs = await chrome.tabs.query({})
+        const tabsToClose = existingTabs
+          .filter((tab) => tab.id && !tab.url?.startsWith('chrome-extension://'))
+          .map((tab) => tab.id as number)
+
+        if (tabsToClose.length > 0) {
+          await chrome.tabs.remove(tabsToClose)
+        }
+
+        await chrome.storage.sync.clear()
+        await chrome.storage.local.clear()
+        await chrome.storage.sync.set({ autoGroups, groups: [], tabs: [] })
+
+        const createdTab = await chrome.tabs.create({
+          url: 'https://example.com/',
+          active: false,
+        })
+
+        await fetchAutoGroupRules()
+        await liveManagementRef.current?.refreshActiveGroups()
+
+        return {
+          autoGroups,
+          createdTab: {
+            id: createdTab.id,
+            url: createdTab.url,
+            windowId: createdTab.windowId,
+          },
+        }
+      },
+      getExampleTabDraftOptions: async () => {
+        const rules = getSelectableAutoGroupRules(await StorageSyncAutoGroup.getList())
+
+        return [
+          { value: NEW_RULE_DESTINATION_ID, label: 'Create new rule' },
+          ...rules.map((rule) => ({
+            value: rule.id,
+            label: `${rule.title} - priority ${rule.order}`,
+          })),
+        ]
+      },
+      applyExampleTabToRule: async (destinationRuleId: string) => {
+        let exampleTab = (await chrome.tabs.query({})).find((tab) =>
+          (tab.url || '').startsWith('https://example.com/'),
+        )
+
+        if (!exampleTab) {
+          for (let i = 0; i < 10; i++) {
+            await new Promise((resolve) => setTimeout(resolve, 200))
+            exampleTab = (await chrome.tabs.query({})).find((tab) =>
+              (tab.url || '').startsWith('https://example.com/'),
+            )
+            if (exampleTab) break
+          }
+        }
+
+        if (!exampleTab) {
+          throw new Error('Example tab not found for harness scenario')
+        }
+
+        const openDraft = buildAddToRulesDraft(exampleTab, autoGroupRules)
+        if (!openDraft) {
+          throw new Error('Example tab draft could not be created')
+        }
+
+        setActiveSheet({
+          kind: 'live-add-to-rules',
+          payload: {
+            ...openDraft,
+            destinationRuleId,
+          },
+        })
+        await waitForSidePanelCommit()
+
+        const normalizedPattern = normalizeAutoGroupPattern(openDraft.patternDraft)
+        const validation = validateAutoGroupRulePattern(normalizedPattern)
+        if (!validation.isValid) {
+          throw new Error(validation.error || 'Harness pattern validation failed')
+        }
+
+        const currentRules = sortAutoGroupRules(await StorageSyncAutoGroup.getList())
+        const selectedRule = getSelectableAutoGroupRules(currentRules).find(
+          (rule) => rule.id === destinationRuleId,
+        )
+
+        if (!selectedRule) {
+          throw new Error('Selected active rule is no longer available')
+        }
+
+        const duplicatePattern = getAutoGroupRulePatterns(selectedRule).some(
+          (pattern) => pattern.toLowerCase() === validation.normalizedPattern.toLowerCase(),
+        )
+
+        if (duplicatePattern) {
+          throw new Error(`Pattern already exists in ${selectedRule.title}`)
+        }
+
+        await StorageSyncAutoGroup.update({
+          ...selectedRule,
+          urlPatterns: [...getAutoGroupRulePatterns(selectedRule), validation.normalizedPattern],
+        })
+
+        await new Promise((resolve) => setTimeout(resolve, 500))
+
+        const scanResponse = await triggerAutoGroupScan()
+        await fetchAutoGroupRules()
+        await liveManagementRef.current?.refreshActiveGroups()
+        setActiveSheet(null)
+
+        return {
+          success: scanResponse.success,
+          scanResponse,
+          pattern: validation.normalizedPattern,
+        }
+      },
+      getAddToRulesState: async () => {
+        const tabs = await chrome.tabs.query({})
+        const exampleTab = tabs.find((tab) => (tab.url || '').startsWith('https://example.com/'))
+        const rules = await StorageSyncAutoGroup.getList()
+        const activeRule = rules.find((rule) => rule.id === 'rule-active')
+        const dormantRule = rules.find((rule) => rule.id === 'rule-dormant')
+
+        let group: LiveAddToRulesHarnessState['group'] = null
+
+        if (exampleTab && typeof exampleTab.groupId === 'number' && exampleTab.groupId >= 0) {
+          const liveGroup = await chrome.tabGroups.get(exampleTab.groupId)
+          group = {
+            id: liveGroup.id,
+            title: liveGroup.title,
+            color: liveGroup.color,
+          }
+        }
+
+        return {
+          exampleTab: exampleTab
+            ? {
+                id: exampleTab.id,
+                groupId: exampleTab.groupId,
+                url: exampleTab.url,
+              }
+            : null,
+          group,
+          activeRulePatterns: getAutoGroupRulePatterns(
+            activeRule || { urlPattern: '', urlPatterns: [] },
+          ),
+          dormantRulePatterns: getAutoGroupRulePatterns(
+            dormantRule || { urlPattern: '', urlPatterns: [] },
+          ),
+        }
+      },
+      showThemeSmokeState: async () => {
+        const liveSeed = await liveManagementRef.current?.seedThemeSmokeState()
+        if (!liveSeed) {
+          throw new Error('Live theme smoke state could not be prepared')
+        }
+
+        openLiveAddToRules(liveSeed.exampleTab, {
+          title: liveSeed.groupTitle,
+          color: liveSeed.groupColor,
+        })
+        await waitForSidePanelCommit()
+
+        return {
+          tabId: liveSeed.exampleTab.id ?? null,
+          groupId: liveSeed.groupId,
+          saveMenuOpen: liveSeed.saveMenuOpen,
+          addToRulesOpen: true,
+          dragOverlayOpen: liveSeed.dragOverlayOpen,
+        }
+      },
+    }
+
+    return () => {
+      delete window.__CRX_TAB_GROUPS_HARNESS__
+    }
+  }, [autoGroupRules, fetchAutoGroupRules, harnessMode, openLiveAddToRules])
+
   if (isMigrating) {
     return <div>Migrating...</div>
   }
+
+  const addToRulesDraft = activeSheet?.kind === 'live-add-to-rules' ? activeSheet.payload : null
 
   return (
     <Layout>
@@ -237,7 +683,7 @@ export const SidePanel = () => {
             className="flex-1 min-h-0"
             rightElement={
               <button
-                onClick={() => setIsSettingsOpen(true)}
+                onClick={openAppearanceSheet}
                 className="size-8 flex items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--sp-card-hover)] transition-colors cursor-pointer"
                 title="Appearance Settings"
               >
@@ -246,7 +692,7 @@ export const SidePanel = () => {
             }
           >
             <Tabs.Content value={ETabMenu.TAB_SYNC}>
-              <LiveManagement />
+              <LiveManagement ref={liveManagementRef} onOpenAddToRules={openLiveAddToRules} />
             </Tabs.Content>
             <Tabs.Content value={ETabMenu.AUTOMATION}>
               <AutomationManagement />
@@ -271,15 +717,14 @@ export const SidePanel = () => {
           </div>
         </div>
 
-        <BottomSheet 
-          isOpen={isSettingsOpen} 
-          onClose={() => setIsSettingsOpen(false)}
+        <BottomSheet
+          isOpen={activeSheet?.kind === 'appearance'}
+          onClose={closeSheet}
           title="Appearance"
           description="Customize your experience"
         >
-          {/* Theme Mode Selection */}
           <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-4 flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] sp-footer-label">
                   Theme Mode
@@ -307,9 +752,10 @@ export const SidePanel = () => {
             </div>
           </div>
 
-          {/* Glass Style Selection (Only if Glass mode is active) */}
-          <div className={`transition-opacity duration-300 ${themeMode === 'glass' ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-            <div className="flex items-center justify-between gap-3 mb-4">
+          <div
+            className={`transition-opacity duration-300 ${themeMode === 'glass' ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}
+          >
+            <div className="mb-4 flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] sp-footer-label">
                   Glass Style
@@ -350,30 +796,27 @@ export const SidePanel = () => {
             </div>
           </div>
         </BottomSheet>
+
+        <BottomSheet
+          isOpen={Boolean(addToRulesDraft)}
+          onClose={closeSheet}
+          title="Add To Rules"
+          description="Save this tab pattern into an automation rule"
+          sheetDataAttributes={{ 'data-bottom-sheet': 'live-add-to-rules' }}
+        >
+          {addToRulesDraft && (
+            <LiveAddToRulesSheetContent
+              draft={addToRulesDraft}
+              autoGroupRules={autoGroupRules}
+              onUpdateDraft={updateLiveAddToRulesDraft}
+              onCancel={closeSheet}
+              onSubmit={() => void submitLiveAddToRules()}
+            />
+          )}
+        </BottomSheet>
       </div>
     </Layout>
   )
 }
 
 export default SidePanel
-
-declare global {
-  interface Window {
-    __CRX_TAB_GROUPS_THEME_HARNESS__?: {
-      clearThemeMode: () => Promise<void>
-      setThemeMode: (nextThemeMode: ThemeMode) => Promise<void>
-      setGlassStyle: (nextGlassStyle: GlassStyle) => Promise<void>
-      getThemeState: () => Promise<{
-        themeMode: ThemeMode
-        resolvedTheme: ResolvedTheme
-        glassStyle: GlassStyle
-        rootTheme: string | null
-        rootThemeMode: string | null
-        rootGlassStyle: string | null
-        isDarkClassApplied: boolean
-        storedThemeMode: ThemeMode | null
-        storedGlassStyle: GlassStyle | null
-      }>
-    }
-  }
-}
