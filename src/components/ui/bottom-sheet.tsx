@@ -1,5 +1,5 @@
 import { motion, AnimatePresence, useDragControls } from 'framer-motion'
-import { ReactNode, useEffect } from 'react'
+import { ReactNode, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 
 import { cn } from '@/lib/utils'
@@ -26,11 +26,14 @@ export const BottomSheet = ({
   sheetDataAttributes,
 }: BottomSheetProps) => {
   const dragControls = useDragControls()
+  const sheetRef = useRef<HTMLDivElement | null>(null)
+  const hasAppliedInitialFocusRef = useRef(false)
 
   // Prevent scrolling when open
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden'
+      hasAppliedInitialFocusRef.current = false
     } else {
       document.body.style.overflow = ''
     }
@@ -39,25 +42,43 @@ export const BottomSheet = ({
     }
   }, [isOpen])
 
-  return (
+  if (typeof document === 'undefined') {
+    return null
+  }
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div className="fixed inset-0 z-50 flex items-end overflow-hidden">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
             onClick={onClose}
-            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
           />
 
           {/* Sheet */}
           <motion.div
-            initial={{ y: '100%' }}
+            ref={sheetRef}
+            initial={{ y: '100vh' }}
             animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            exit={{ y: '100vh' }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            onAnimationComplete={() => {
+              if (!isOpen || hasAppliedInitialFocusRef.current === true) {
+                return
+              }
+
+              const focusTarget = sheetRef.current?.querySelector<HTMLElement>(
+                '[data-bottom-sheet-autofocus], input, select, textarea, button, [tabindex]:not([tabindex="-1"])',
+              )
+
+              focusTarget?.focus({ preventScroll: true })
+              hasAppliedInitialFocusRef.current = true
+            }}
             drag="y"
             dragControls={dragControls}
             dragListener={false}
@@ -70,21 +91,22 @@ export const BottomSheet = ({
             }}
             {...sheetDataAttributes}
             className={cn(
-              'fixed inset-x-0 bottom-0 z-50 flex max-h-[90%] flex-col rounded-t-[2rem] border-t border-[var(--sp-card-border)] bg-[var(--sp-shell-bg)] shadow-2xl',
+              'relative z-10 flex max-h-[90vh] w-full flex-col rounded-t-[2rem] border-t border-[var(--sp-card-border)] bg-[var(--sp-shell-bg)] shadow-2xl will-change-transform',
               sheetClassName,
             )}
-            style={{ 
+            style={{
               background: 'var(--sp-shell-bg)',
-              backdropFilter: 'var(--sp-shell-blur)'
+              backdropFilter: 'var(--sp-shell-blur)',
+              transform: 'translateZ(0)',
             }}
           >
             {/* Handle / Header Area */}
-            <div 
+            <div
               className="flex w-full cursor-grab flex-col items-center pt-3 pb-2 active:cursor-grabbing"
               onPointerDown={(e) => dragControls.start(e)}
             >
               <div className="h-1.5 w-12 rounded-full bg-[var(--sp-card-border)] opacity-50" />
-              
+
               {(title || description) && (
                 <div className="w-full px-6 pt-4 pb-2">
                   {title && (
@@ -104,8 +126,9 @@ export const BottomSheet = ({
               {children}
             </div>
           </motion.div>
-        </>
+        </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   )
 }

@@ -32,13 +32,15 @@ export const LiveAddToRulesSheetContent = ({
         <p className="sp-copy-primary truncate text-[12px] font-bold">
           {draft.tabTitle || draft.hostname}
         </p>
-        <p className="sp-copy-muted mt-1 text-[11px]">{draft.url}</p>
+        <p className="sp-copy-muted mt-1 break-all text-[11px] [overflow-wrap:anywhere]">
+          {draft.url}
+        </p>
       </div>
 
       <div className="flex flex-col gap-1.5">
         <label className="sp-label ml-1 text-[10px] font-bold uppercase">Pattern</label>
         <input
-          autoFocus
+          data-bottom-sheet-autofocus
           className="sp-input-shell sp-input w-full rounded-xl border-none px-3 py-2 text-[12px] font-medium outline-none"
           value={draft.patternDraft}
           onChange={(event) => onUpdateDraft({ patternDraft: event.target.value })}
