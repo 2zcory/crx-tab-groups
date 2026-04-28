@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 
 import {
   AddToRulesDraft,
+  AutoGroupScanStatus,
   COLOR_MAP,
   COLORS,
   NEW_RULE_DESTINATION_ID,
@@ -12,6 +13,7 @@ import {
 interface LiveAddToRulesSheetContentProps {
   draft: AddToRulesDraft
   autoGroupRules: NStorage.Sync.Schema.AutoGroupRule[]
+  status: AutoGroupScanStatus
   onUpdateDraft: (patch: Partial<AddToRulesDraft>) => void
   onCancel: () => void
   onSubmit: () => void
@@ -20,6 +22,7 @@ interface LiveAddToRulesSheetContentProps {
 export const LiveAddToRulesSheetContent = ({
   draft,
   autoGroupRules,
+  status,
   onUpdateDraft,
   onCancel,
   onSubmit,
@@ -103,6 +106,23 @@ export const LiveAddToRulesSheetContent = ({
               />
             ))}
           </div>
+        </div>
+      )}
+
+      {status.message && (
+        <div
+          className={cn(
+            'rounded-xl border px-3 py-2 text-[11px] font-bold leading-4',
+            status.tone === 'success' && 'border-emerald-200 bg-emerald-50/95 text-emerald-700',
+            status.tone === 'warning' && 'border-amber-200 bg-amber-50/95 text-amber-700',
+            status.tone === 'error' && 'border-rose-200 bg-rose-50/95 text-rose-700',
+            status.tone === 'idle' &&
+              'border-[var(--sp-card-border)] bg-[color:color-mix(in_srgb,var(--surface-muted)_94%,transparent)] text-[var(--text-secondary)]',
+          )}
+          role="status"
+          aria-live="polite"
+        >
+          {status.message}
         </div>
       )}
 

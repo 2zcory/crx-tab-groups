@@ -67,7 +67,7 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
         className,
       )}
     >
-      <div className="flex items-center justify-between mb-1.5 px-1 gap-2">
+      <div className="mb-1.5 flex items-start justify-between gap-2 px-1">
         <div
           className={cn(
             'flex min-w-0 flex-1 items-center gap-2',
@@ -93,17 +93,19 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
               {collapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
             </span>
           )}
-          <div className={cn('w-2 h-2 rounded-full', color ? `bg-${color}-500` : 'bg-slate-400')} />
-          <h3 className="sp-copy-primary font-bold text-[12px] truncate max-w-[180px] uppercase tracking-tight">
+          <div
+            className={cn('h-2 w-2 shrink-0 rounded-full', color ? `bg-${color}-500` : 'bg-slate-400')}
+          />
+          <h3 className="sp-copy-primary min-w-0 flex-1 truncate font-bold text-[12px] uppercase tracking-tight">
             {title}
           </h3>
-          <span className="sp-chip text-[9px] px-1.5 py-0.5 rounded-full font-bold">
+          <span className="sp-chip shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold">
             {tabs.length}
           </span>
         </div>
 
         {(actions || onCloseTabs) && (
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1 self-start">
             {actions}
             {onCloseTabs && (
               <button

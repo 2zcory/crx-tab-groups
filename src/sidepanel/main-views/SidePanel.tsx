@@ -23,6 +23,7 @@ import {
 
 import {
   AddToRulesDraft,
+  AutoGroupScanStatus,
   AutoGroupScanResponse,
   QuickRuleSourceGroup,
   buildAddToRulesDraft,
@@ -151,6 +152,7 @@ export const SidePanel = () => {
   const [glassStyle, setGlassStyle] = useState<GlassStyle>(DEFAULT_GLASS_STYLE)
   const [activeSheet, setActiveSheet] = useState<SidePanelSheetState>(null)
   const [autoGroupRules, setAutoGroupRules] = useState<NStorage.Sync.Schema.AutoGroupRule[]>([])
+  const [addToRulesStatus, setAddToRulesStatus] = useState<AutoGroupScanStatus>({ tone: 'idle' })
 
   const liveManagementRef = useRef<LiveManagementHandle | null>(null)
   const harnessMode = useMemo(() => {
@@ -248,6 +250,7 @@ export const SidePanel = () => {
 
   const closeSheet = useCallback(() => {
     setActiveSheet(null)
+    setAddToRulesStatus({ tone: 'idle' })
   }, [])
 
   const openLiveAddToRules = useCallback(
@@ -259,6 +262,7 @@ export const SidePanel = () => {
         return
       }
 
+      setAddToRulesStatus({ tone: 'idle' })
       setActiveSheet({ kind: 'live-add-to-rules', payload: draft })
     },
     [autoGroupRules, reportLiveStatus],
@@ -304,18 +308,25 @@ export const SidePanel = () => {
     const validation = validateAutoGroupRulePattern(normalizedPattern)
 
     if (!validation.isValid) {
-      reportLiveStatus('warning', validation.error || 'Rule pattern is invalid')
+      setAddToRulesStatus({
+        tone: 'warning',
+        message: validation.error || 'Rule pattern is invalid',
+      })
       return
     }
 
     const title = addToRulesDraft.newRuleTitle.trim()
 
     if (addToRulesDraft.destinationRuleId === NEW_RULE_DESTINATION_ID && !title) {
-      reportLiveStatus('warning', 'Rule title is required')
+      setAddToRulesStatus({
+        tone: 'warning',
+        message: 'Rule title is required',
+      })
       return
     }
 
     try {
+      setAddToRulesStatus({ tone: 'idle' })
       const currentRules = sortAutoGroupRules(await StorageSyncAutoGroup.getList())
       const selectableRules = getSelectableAutoGroupRules(currentRules)
       const selectedRule =
@@ -324,7 +335,10 @@ export const SidePanel = () => {
           : selectableRules.find((rule) => rule.id === addToRulesDraft.destinationRuleId)
 
       if (addToRulesDraft.destinationRuleId !== NEW_RULE_DESTINATION_ID && !selectedRule) {
-        reportLiveStatus('warning', 'Selected active rule is no longer available')
+        setAddToRulesStatus({
+          tone: 'warning',
+          message: 'Selected active rule is no longer available',
+        })
         await fetchAutoGroupRules()
         return
       }
@@ -335,7 +349,10 @@ export const SidePanel = () => {
         )
 
         if (duplicatePattern) {
-          reportLiveStatus('warning', `Pattern already exists in ${selectedRule.title}`)
+          setAddToRulesStatus({
+            tone: 'warning',
+            message: `Pattern already exists in ${selectedRule.title}`,
+          })
           return
         }
 
@@ -354,7 +371,10 @@ export const SidePanel = () => {
         })
 
         if (existingExactRule) {
-          reportLiveStatus('warning', `Pattern already exists under ${title}`)
+          setAddToRulesStatus({
+            tone: 'warning',
+            message: `Pattern already exists under ${title}`,
+          })
           return
         }
 
@@ -365,7 +385,10 @@ export const SidePanel = () => {
         )
 
         if (conflictingGroupIdentity) {
-          reportLiveStatus('warning', `Rule title "${title}" already uses another color`)
+          setAddToRulesStatus({
+            tone: 'warning',
+            message: `Rule title "${title}" already uses another color`,
+          })
           return
         }
 
@@ -392,6 +415,9 @@ export const SidePanel = () => {
           ? `Rule created for ${validation.normalizedPattern}`
           : `Pattern added: ${validation.normalizedPattern}`
 
+      setActiveSheet(null)
+      setAddToRulesStatus({ tone: 'idle' })
+
       if (!scanResponse.success) {
         reportLiveStatus('warning', `${savedMessage}. Auto-group scan failed.`)
       } else if (scanResponse.summary?.grouped && scanResponse.summary.grouped > 0) {
@@ -407,11 +433,12 @@ export const SidePanel = () => {
       } else {
         reportLiveStatus('warning', `${savedMessage}. No matching tabs were grouped.`)
       }
-
-      setActiveSheet(null)
     } catch (error) {
       console.error(error)
-      reportLiveStatus('error', 'Add to Rules failed')
+      setAddToRulesStatus({
+        tone: 'error',
+        message: 'Add to Rules failed',
+      })
     }
   }, [activeSheet, fetchAutoGroupRules, reportLiveStatus])
 
@@ -808,6 +835,7 @@ export const SidePanel = () => {
             <LiveAddToRulesSheetContent
               draft={addToRulesDraft}
               autoGroupRules={autoGroupRules}
+              status={addToRulesStatus}
               onUpdateDraft={updateLiveAddToRulesDraft}
               onCancel={closeSheet}
               onSubmit={() => void submitLiveAddToRules()}

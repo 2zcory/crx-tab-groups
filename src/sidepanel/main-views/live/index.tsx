@@ -5,6 +5,7 @@ import StorageSyncGroup from '@/storage/group.sync'
 import StorageSyncTab from '@/storage/tab.sync'
 import { forwardRef, useEffect, useState, useMemo, useCallback, useRef, useImperativeHandle } from 'react'
 import { CheckCircle2, FolderPlus, LoaderCircle, Monitor, X } from 'lucide-react'
+import { createPortal } from 'react-dom'
 import { BentoGroupCard } from '@/components/BentoGroupCard'
 import Tooltip from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
@@ -60,6 +61,9 @@ interface SaveStatus {
 const AUTO_GROUP_STATUS_AUTO_DISMISS_MS = 5000
 const AUTO_GROUP_STATUS_EXIT_MS = 180
 const LIVE_TOAST_BOTTOM_OFFSET_PX = 10
+const SNAPSHOT_MENU_VIEWPORT_MARGIN_PX = 8
+const SNAPSHOT_MENU_OFFSET_PX = 8
+const SNAPSHOT_MENU_WIDTH_PX = 224
 
 type AutoGroupToastPhase = 'entering' | 'visible' | 'exiting'
 
@@ -180,8 +184,15 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(fun
   const [renderedAutoGroupScanStatus, setRenderedAutoGroupScanStatus] =
     useState<AutoGroupScanStatus | null>(null)
   const [autoGroupToastPhase, setAutoGroupToastPhase] = useState<AutoGroupToastPhase>('visible')
+  const [saveMenuPosition, setSaveMenuPosition] = useState<{
+    top: number
+    left: number
+    width: number
+  } | null>(null)
   const autoGroupStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const autoGroupStatusExitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const saveMenuRef = useRef<HTMLDivElement | null>(null)
+  const saveMenuTriggerRef = useRef<HTMLButtonElement | null>(null)
   const harnessMode = useMemo(() => {
     if (typeof window === 'undefined') return null
     return new URLSearchParams(window.location.search).get(LIVE_HARNESS_QUERY_KEY)
@@ -313,6 +324,66 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(fun
     }
   }, [autoGroupScanStatus, renderedAutoGroupScanStatus?.message])
 
+  const updateSaveMenuPosition = useCallback(() => {
+    if (!saveMenuTriggerRef.current) return
+
+    const triggerRect = saveMenuTriggerRef.current.getBoundingClientRect()
+    const width = Math.min(
+      SNAPSHOT_MENU_WIDTH_PX,
+      Math.max(160, window.innerWidth - SNAPSHOT_MENU_VIEWPORT_MARGIN_PX * 2),
+    )
+    const left = Math.min(
+      Math.max(SNAPSHOT_MENU_VIEWPORT_MARGIN_PX, triggerRect.right - width),
+      window.innerWidth - width - SNAPSHOT_MENU_VIEWPORT_MARGIN_PX,
+    )
+    const top = Math.min(
+      triggerRect.bottom + SNAPSHOT_MENU_OFFSET_PX,
+      window.innerHeight - SNAPSHOT_MENU_VIEWPORT_MARGIN_PX,
+    )
+
+    setSaveMenuPosition({ top, left, width })
+  }, [])
+
+  useEffect(() => {
+    if (showSaveMenu === null) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null
+
+      if (saveMenuRef.current?.contains(target) || saveMenuTriggerRef.current?.contains(target)) {
+        return
+      }
+
+      setShowSaveMenu(null)
+      setIsNamingNewSnapshot(false)
+      setSaveMenuPosition(null)
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+
+      setShowSaveMenu(null)
+      setIsNamingNewSnapshot(false)
+      setSaveMenuPosition(null)
+    }
+
+    updateSaveMenuPosition()
+
+    const handleViewportChange = () => updateSaveMenuPosition()
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('resize', handleViewportChange)
+    document.addEventListener('scroll', handleViewportChange, true)
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('resize', handleViewportChange)
+      document.removeEventListener('scroll', handleViewportChange, true)
+    }
+  }, [showSaveMenu, updateSaveMenuPosition])
+
   const fetchSavedSnapshots = useCallback(async () => {
     const res = await StorageSyncGroup.getListWithTabs()
     setSavedSnapshots(res || [])
@@ -372,6 +443,7 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(fun
     const finalTitle = getUniqueSnapshotTitle(newSnapshotTitle || group.title || 'Untitled Group')
     setShowSaveMenu(null)
     setIsNamingNewSnapshot(false)
+    setSaveMenuPosition(null)
     setSaveStatus(group.id, {
       state: 'pending',
       message: 'Saving...',
@@ -415,6 +487,7 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(fun
   ) => {
     setShowSaveMenu(null)
     setIsNamingNewSnapshot(false)
+    setSaveMenuPosition(null)
     setSaveStatus(liveGroup.id, {
       state: 'pending',
       message: 'Saving...',
@@ -942,7 +1015,9 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(fun
                             if (showSaveMenu === group.id) {
                               setShowSaveMenu(null)
                               setIsNamingNewSnapshot(false)
+                              setSaveMenuPosition(null)
                             } else {
+                              saveMenuTriggerRef.current = event.currentTarget
                               openSaveMenu(group)
                             }
                           }}
@@ -963,26 +1038,37 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(fun
                           </span>
                         </Button>
 
-                        {showSaveMenu === group.id && (
-                          <div
-                            data-live-surface="save-menu"
-                            className="sp-overlay-panel absolute right-0 top-9 z-50 flex w-64 flex-col gap-1 rounded-xl p-2 text-left"
-                            onClick={(event) => event.stopPropagation()}
-                          >
+                        {showSaveMenu === group.id &&
+                          saveMenuPosition &&
+                          typeof document !== 'undefined' &&
+                          createPortal(
+                            <div className="pointer-events-none fixed inset-0 z-[70]">
+                              <div
+                                ref={saveMenuRef}
+                                data-live-surface="save-menu"
+                                className="sp-overlay-panel pointer-events-auto fixed flex flex-col gap-1 rounded-xl p-2 text-left shadow-xl"
+                                style={{
+                                  top: `${saveMenuPosition.top}px`,
+                                  left: `${saveMenuPosition.left}px`,
+                                  width: `${saveMenuPosition.width}px`,
+                                  maxHeight: `calc(100vh - ${saveMenuPosition.top + SNAPSHOT_MENU_VIEWPORT_MARGIN_PX}px)`,
+                                }}
+                                onClick={(event) => event.stopPropagation()}
+                              >
                             <button
                               type="button"
-                              className="sp-overlay-item flex items-center justify-between rounded-lg px-2 py-1.5 text-[11px] font-bold"
+                              className="sp-overlay-item flex items-center justify-between rounded-lg px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em]"
                               onClick={() => setIsNamingNewSnapshot((current) => !current)}
                             >
-                              <span>Save as new snapshot</span>
+                              <span>New Snapshot</span>
                               <FolderPlus size={12} className="sp-copy-muted" />
                             </button>
 
                             {isNamingNewSnapshot && (
-                              <div className="sp-subtle-surface flex items-center gap-1.5 rounded-lg p-1.5">
+                              <div className="sp-subtle-surface flex flex-col gap-1.5 rounded-lg p-1.5">
                                 <input
                                   autoFocus
-                                  className="sp-input-shell sp-input min-w-0 flex-1 rounded-md border-none px-2 py-1 text-[11px] font-medium outline-none"
+                                  className="sp-input-shell sp-input min-w-0 w-full rounded-md border-none px-2 py-1.5 text-[11px] font-medium outline-none"
                                   value={newSnapshotTitle}
                                   onChange={(event) => setNewSnapshotTitle(event.target.value)}
                                   onKeyDown={(event) => {
@@ -993,7 +1079,7 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(fun
                                 <Button
                                   type="button"
                                   size="sm"
-                                  className="h-7 rounded-md px-2 text-[10px] font-bold"
+                                  className="h-7 w-full rounded-md px-2 text-[10px] font-bold"
                                   onClick={() => void saveGroupSnapshot(group)}
                                 >
                                   Save
@@ -1004,16 +1090,16 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(fun
                             <div className="sp-divider my-1" />
 
                             <p className="sp-label px-2 py-1 text-[9px] font-bold uppercase tracking-wider">
-                              Overwrite existing
+                              Overwrite
                             </p>
 
                             {savedSnapshots.length > 0 ? (
-                              <div className="flex max-h-48 flex-col gap-0.5 overflow-y-auto">
+                              <div className="flex max-h-36 flex-col gap-0.5 overflow-y-auto">
                                 {savedSnapshots.map((snapshot) => (
                                   <button
                                     key={snapshot.id}
                                     type="button"
-                                    className="sp-overlay-item flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-[11px]"
+                                    className="sp-overlay-item flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-[10px]"
                                     onClick={() => void updateExistingSnapshot(group, snapshot)}
                                   >
                                     <span className="sp-copy-secondary min-w-0 truncate font-medium">
@@ -1030,8 +1116,10 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(fun
                                 No saved snapshots yet
                               </p>
                             )}
-                          </div>
-                        )}
+                              </div>
+                            </div>,
+                            document.body,
+                          )}
                       </div>
                     }
                   />
