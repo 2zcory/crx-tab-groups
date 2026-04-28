@@ -39,7 +39,6 @@ export default defineManifest({
     'storage',
     'topSites',
     'webNavigation',
-    'notifications',
   ],
   host_permissions: ['<all_urls>'],
 })
