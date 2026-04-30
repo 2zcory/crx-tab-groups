@@ -222,14 +222,6 @@ function SortableRuleCard({
                   Paused
                 </span>
               )}
-              {!isEditing && (
-                <span
-                  className="sp-rule-card-meta shrink-0 text-[10px] font-medium tabular-nums"
-                  title={`Priority ${rule.order} · ${rulePatterns.length} pattern${rulePatterns.length === 1 ? '' : 's'}`}
-                >
-                  P{rule.order} · {rulePatterns.length}
-                </span>
-              )}
             </div>
           </div>
         </div>
