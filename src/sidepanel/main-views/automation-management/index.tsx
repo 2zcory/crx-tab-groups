@@ -183,7 +183,7 @@ function SortableRuleCard({
         isEditing && 'ring-2 ring-[var(--sp-tab-pill-active)] border-transparent shadow-lg scale-[1.01]',
       )}
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center gap-2">
         <div
           className="flex min-w-0 flex-1 items-center gap-1.5 cursor-pointer"
           onPointerDown={(e) => e.stopPropagation()}
@@ -244,7 +244,7 @@ function SortableRuleCard({
         </div>
 
         {!isEditing && (
-          <div className="sp-action-rail flex shrink-0 items-center gap-0.5 rounded-xl px-0.5 py-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="sp-action-rail absolute right-2.5 top-2.5 z-10 flex items-center gap-0.5 rounded-xl px-0.5 py-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
             <Tooltip>
               <Tooltip.Trigger asChild>
                 <button
