@@ -199,23 +199,23 @@ function SortableRuleCard({
             <ChevronRight size={14} />
           </div>
 
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-1.5">
               <div className="min-w-0 flex-1">
-              {isEditing ? (
-                <input
-                  autoFocus
-                  className="sp-input flex-1 bg-transparent text-[13px] font-bold outline-none border-b border-[var(--sp-tab-pill-active)] py-0"
-                  value={editingTitle}
-                  onChange={(e) => setEditingTitle(e.target.value)}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ) : (
-                <h3 className="sp-copy-primary truncate text-[13px] font-bold" title={rule.title}>
-                  {rule.title}
-                </h3>
-              )}
+                {isEditing ? (
+                  <input
+                    autoFocus
+                    className="sp-input flex-1 bg-transparent text-[13px] font-bold outline-none border-b border-[var(--sp-tab-pill-active)] py-0"
+                    value={editingTitle}
+                    onChange={(e) => setEditingTitle(e.target.value)}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <h3 className="sp-copy-primary truncate text-[13px] font-bold" title={rule.title}>
+                    {rule.title}
+                  </h3>
+                )}
               </div>
               {!rule.isActive && !isEditing && (
                 <span className="sp-chip-muted shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase">
@@ -223,25 +223,6 @@ function SortableRuleCard({
                 </span>
               )}
             </div>
-
-            {!isEditing && (
-              <div className="flex items-center gap-1">
-                <span
-                  className="sp-rule-card-badge inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
-                  title={`Priority ${rule.order}`}
-                >
-                  <ArrowUpWideNarrow size={10} className="shrink-0" />
-                  {rule.order}
-                </span>
-                <span
-                  className="sp-rule-card-badge inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
-                  title={`${rulePatterns.length} pattern${rulePatterns.length === 1 ? '' : 's'}`}
-                >
-                  <Globe size={10} className="shrink-0" />
-                  {rulePatterns.length}
-                </span>
-              </div>
-            )}
           </div>
         </div>
 
@@ -311,7 +292,25 @@ function SortableRuleCard({
       {effectiveExpanded && (
         <div className="sp-rule-card-body flex flex-col gap-2.5 border-t border-[var(--sp-card-border)] pt-2.5">
           {!isEditing && (
-            <div className="sp-subtle-surface flex flex-wrap items-center gap-1.5 rounded-lg px-2 py-1.5">
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-1">
+                <span
+                  className="sp-rule-card-badge inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                  title={`Priority ${rule.order}`}
+                >
+                  <ArrowUpWideNarrow size={10} className="shrink-0" />
+                  {rule.order}
+                </span>
+                <span
+                  className="sp-rule-card-badge inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                  title={`${rulePatterns.length} pattern${rulePatterns.length === 1 ? '' : 's'}`}
+                >
+                  <Globe size={10} className="shrink-0" />
+                  {rulePatterns.length}
+                </span>
+              </div>
+
+              <div className="sp-subtle-surface flex flex-wrap items-center gap-1.5 rounded-lg px-2 py-1.5">
               {getAutoGroupRulePatterns(rule).map((pattern) => (
                 <div
                   key={pattern}
@@ -326,6 +325,7 @@ function SortableRuleCard({
                   </span>
                 </div>
               ))}
+              </div>
             </div>
           )}
 
