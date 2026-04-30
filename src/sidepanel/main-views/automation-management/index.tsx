@@ -21,6 +21,7 @@ import {
   RefreshCw,
   Eraser,
   ChevronRight,
+  ArrowUpWideNarrow,
 } from 'lucide-react'
 import { useEffect, useState, useCallback } from 'react'
 import Tooltip from '@/components/ui/tooltip'
@@ -224,10 +225,18 @@ function SortableRuleCard({
 
             {!isEditing && (
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="sp-rule-card-badge rounded-full px-1.5 py-0.5 text-[10px] font-semibold">
+                <span
+                  className="sp-rule-card-badge inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                  title={`Priority ${rule.order}`}
+                >
+                  <ArrowUpWideNarrow size={10} className="shrink-0" />
                   {rule.order}
                 </span>
-                <span className="sp-rule-card-badge rounded-full px-1.5 py-0.5 text-[10px] font-semibold">
+                <span
+                  className="sp-rule-card-badge inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                  title={`${rulePatterns.length} pattern${rulePatterns.length === 1 ? '' : 's'}`}
+                >
+                  <Globe size={10} className="shrink-0" />
                   {rulePatterns.length}
                 </span>
               </div>
