@@ -40,6 +40,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import type { CSSProperties } from 'react'
 
 const COLORS: NStorage.Sync.GroupColor[] = [
   'grey',
@@ -63,6 +64,21 @@ const COLOR_MAP: Record<string, string> = {
   purple: 'bg-purple-500',
   cyan: 'bg-cyan-500',
   orange: 'bg-orange-500',
+}
+
+const RULE_CARD_TINT_MAP: Record<
+  NStorage.Sync.GroupColor,
+  { accent: string; tint: string; border: string }
+> = {
+  grey: { accent: 'rgb(100 116 139)', tint: 'rgba(100, 116, 139, 0.08)', border: 'rgba(100, 116, 139, 0.2)' },
+  blue: { accent: 'rgb(59 130 246)', tint: 'rgba(59, 130, 246, 0.08)', border: 'rgba(59, 130, 246, 0.22)' },
+  red: { accent: 'rgb(239 68 68)', tint: 'rgba(239, 68, 68, 0.08)', border: 'rgba(239, 68, 68, 0.22)' },
+  yellow: { accent: 'rgb(234 179 8)', tint: 'rgba(234, 179, 8, 0.09)', border: 'rgba(234, 179, 8, 0.24)' },
+  green: { accent: 'rgb(34 197 94)', tint: 'rgba(34, 197, 94, 0.08)', border: 'rgba(34, 197, 94, 0.22)' },
+  pink: { accent: 'rgb(236 72 153)', tint: 'rgba(236, 72, 153, 0.08)', border: 'rgba(236, 72, 153, 0.22)' },
+  purple: { accent: 'rgb(168 85 247)', tint: 'rgba(168, 85, 247, 0.08)', border: 'rgba(168, 85, 247, 0.22)' },
+  cyan: { accent: 'rgb(6 182 212)', tint: 'rgba(6, 182, 212, 0.08)', border: 'rgba(6, 182, 212, 0.22)' },
+  orange: { accent: 'rgb(249 115 22)', tint: 'rgba(249, 115, 22, 0.08)', border: 'rgba(249, 115, 22, 0.22)' },
 }
 
 interface DebugState {
@@ -144,16 +160,24 @@ function SortableRuleCard({
     transition,
     zIndex: isDragging ? 50 : undefined,
   }
+  const activeColor = isEditing ? editingColor : rule.color
+  const surfaceTint = RULE_CARD_TINT_MAP[activeColor]
+  const cardSurfaceStyle = {
+    ...style,
+    '--sp-rule-card-accent': surfaceTint.accent,
+    '--sp-rule-card-tint': surfaceTint.tint,
+    '--sp-rule-card-border-accent': surfaceTint.border,
+  } as CSSProperties
 
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={cardSurfaceStyle}
       {...attributes}
       {...listeners}
       className={cn(
-        'group relative flex flex-col gap-3 rounded-2xl border p-3 transition-all cursor-grab active:cursor-grabbing',
-        rule.isActive ? 'sp-card sp-card-hover' : 'sp-subtle-surface opacity-70',
+        'sp-rule-card-surface group relative flex flex-col gap-2.5 rounded-2xl border p-2.5 transition-all cursor-grab active:cursor-grabbing',
+        rule.isActive ? 'sp-card sp-card-hover' : 'sp-card opacity-70',
         isDragging && 'opacity-50 ring-2 ring-[var(--sp-tab-pill-active)] border-transparent shadow-xl scale-[1.02]',
         isEditing && 'ring-2 ring-[var(--sp-tab-pill-active)] border-transparent shadow-lg scale-[1.01]',
       )}
@@ -173,13 +197,6 @@ function SortableRuleCard({
           >
             <ChevronRight size={14} />
           </div>
-
-          <div
-            className={cn(
-              'size-2.5 shrink-0 rounded-full shadow-sm transition-colors',
-              COLOR_MAP[isEditing ? editingColor : rule.color],
-            )}
-          />
 
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <div className="flex min-w-0 items-center gap-1.5">
@@ -207,10 +224,10 @@ function SortableRuleCard({
 
             {!isEditing && (
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="sp-rule-card-badge rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
-                  {rule.order === 1 ? 'Top Priority' : `P${rule.order}`}
+                <span className="sp-rule-card-badge rounded-full px-1.5 py-0.5 text-[10px] font-semibold">
+                  {rule.order}
                 </span>
-                <span className="sp-rule-card-badge rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
+                <span className="sp-rule-card-badge rounded-full px-1.5 py-0.5 text-[10px] font-semibold">
                   {rulePatterns.length}
                 </span>
               </div>
@@ -219,7 +236,7 @@ function SortableRuleCard({
         </div>
 
         {!isEditing && (
-          <div className="sp-action-rail flex shrink-0 items-center gap-1 rounded-full px-1 py-1 opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="sp-action-rail flex shrink-0 items-center gap-0.5 rounded-xl px-0.5 py-0.5 opacity-0 transition-opacity group-hover:opacity-100">
             <Tooltip>
               <Tooltip.Trigger asChild>
                 <button
@@ -228,7 +245,7 @@ function SortableRuleCard({
                     e.stopPropagation()
                     onEdit(rule)
                   }}
-                  className="sp-icon-button flex size-7 cursor-pointer items-center justify-center rounded-full"
+                  className="sp-icon-button flex size-6 cursor-pointer items-center justify-center rounded-lg"
                 >
                   <Pencil size={12} />
                 </button>
@@ -246,7 +263,7 @@ function SortableRuleCard({
                     onToggle(rule)
                   }}
                   className={cn(
-                    'flex size-7 cursor-pointer items-center justify-center rounded-full transition-colors',
+                    'flex size-6 cursor-pointer items-center justify-center rounded-lg transition-colors',
                     rule.isActive
                       ? 'text-amber-500 hover:bg-amber-50'
                       : 'text-emerald-500 hover:bg-emerald-50',
@@ -268,7 +285,7 @@ function SortableRuleCard({
                     e.stopPropagation()
                     onDelete(rule.id)
                   }}
-                  className="flex size-7 cursor-pointer items-center justify-center rounded-full text-rose-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                  className="flex size-6 cursor-pointer items-center justify-center rounded-lg text-rose-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
                 >
                   <Trash2 size={12} />
                 </button>
@@ -282,12 +299,9 @@ function SortableRuleCard({
       </div>
 
       {effectiveExpanded && (
-        <div className="sp-rule-card-body flex flex-col gap-3 border-t border-[var(--sp-card-border)] pt-3">
+        <div className="sp-rule-card-body flex flex-col gap-2.5 border-t border-[var(--sp-card-border)] pt-2.5">
           {!isEditing && (
-            <div className="sp-subtle-surface flex flex-wrap items-center gap-2 rounded-lg px-2.5 py-2">
-              <span className="sp-chip-muted shrink-0 rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wider">
-                {rule.order === 1 ? 'Highest Priority' : `Priority ${rule.order}`}
-              </span>
+            <div className="sp-subtle-surface flex flex-wrap items-center gap-1.5 rounded-lg px-2 py-1.5">
               {getAutoGroupRulePatterns(rule).map((pattern) => (
                 <div
                   key={pattern}
