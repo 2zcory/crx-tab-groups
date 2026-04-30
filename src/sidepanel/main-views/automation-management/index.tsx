@@ -199,8 +199,8 @@ function SortableRuleCard({
             <ChevronRight size={14} />
           </div>
 
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <div className="flex min-w-0 items-center gap-1.5">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            <div className="min-w-0 flex-1">
               {isEditing ? (
                 <input
                   autoFocus
@@ -215,16 +215,10 @@ function SortableRuleCard({
                   {rule.title}
                 </h3>
               )}
-
-              {!rule.isActive && !isEditing && (
-                <span className="sp-chip-muted shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase">
-                  Paused
-                </span>
-              )}
             </div>
 
             {!isEditing && (
-              <div className="flex flex-wrap items-center gap-1.5">
+              <div className="flex shrink-0 items-center gap-1">
                 <span
                   className="sp-rule-card-badge inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
                   title={`Priority ${rule.order}`}
@@ -239,6 +233,11 @@ function SortableRuleCard({
                   <Globe size={10} className="shrink-0" />
                   {rulePatterns.length}
                 </span>
+                {!rule.isActive && (
+                  <span className="sp-chip-muted shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase">
+                    Paused
+                  </span>
+                )}
               </div>
             )}
           </div>
