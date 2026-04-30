@@ -185,19 +185,14 @@ function SortableRuleCard({
     >
       <div className="flex items-center gap-2">
         <div
-          className="flex min-w-0 flex-1 items-center gap-1.5 cursor-pointer"
+          className="flex min-w-0 flex-1 items-center gap-2 cursor-pointer"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation()
             if (!isEditing) setIsExpanded(!isExpanded)
           }}
         >
-          <div
-            className="sp-rule-card-chevron flex size-7 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--sp-card-hover)]"
-            style={{ transform: effectiveExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
-          >
-            <ChevronRight size={14} />
-          </div>
+          <div className="sp-rule-card-accent shrink-0 rounded-full" />
 
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-1.5">
@@ -222,12 +217,25 @@ function SortableRuleCard({
                   Paused
                 </span>
               )}
+              {!isEditing && (
+                <div
+                  className="sp-rule-card-chevron-shell flex size-6 shrink-0 items-center justify-center rounded-full"
+                  aria-hidden="true"
+                >
+                  <div
+                    className="sp-rule-card-chevron flex items-center justify-center text-[var(--text-muted)]"
+                    style={{ transform: effectiveExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                  >
+                    <ChevronRight size={14} />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         {!isEditing && (
-          <div className="sp-action-rail absolute right-2.5 top-2.5 z-10 flex items-center gap-0.5 rounded-xl px-0.5 py-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+          <div className="sp-action-rail absolute right-2.5 top-1/2 z-10 flex -translate-y-1/2 items-center gap-0.5 rounded-xl px-0.5 py-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
             <Tooltip>
               <Tooltip.Trigger asChild>
                 <button
