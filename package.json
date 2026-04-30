@@ -20,6 +20,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "verify:live-add-to-rules": "npm run build && node ./scripts/verify-live-add-to-rules.mjs",
+    "verify:saved-restore": "npm run build && node ./scripts/verify-saved-restore.mjs",
     "verify:theme-modes": "npm run build && node ./scripts/verify-theme-modes.mjs",
     "fmt": "prettier --write '**/*.{tsx,ts,json,css,scss,md}'",
     "zip": "npm run build && node src/zip.js"

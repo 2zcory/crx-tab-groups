@@ -15,7 +15,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import Tooltip from '@/components/ui/tooltip'
 
 type RestoreState = 'idle' | 'pending' | 'full' | 'partial' | 'failed' | 'updated' | 'deleted'
@@ -119,6 +119,47 @@ type RestoreEligibility =
       note: string
     }
 
+export type SavedRestoreHarnessFaultMode = 'group-setup'
+
+export interface SavedRestoreHarnessState {
+  savedGroup: {
+    id: string
+    title: string
+    color?: NStorage.Sync.GroupColor
+    tabs: Array<{
+      id: string
+      title: string
+      url: string | null
+      isRepaired: boolean
+      canRestore: boolean
+      note?: string
+      reason?: 'missing_url' | 'unsupported_url'
+    }>
+  } | null
+  status: RestoreStatus | null
+  liveTabs: Array<{
+    id: number
+    url: string | null
+    pendingUrl: string | null
+    groupId: number
+    windowId: number
+  }>
+  liveGroup: {
+    id: number
+    title?: string
+    color?: NStorage.Sync.GroupColor
+  } | null
+}
+
+export interface GroupManagementHandle {
+  refreshSavedGroups: () => Promise<void>
+  runRestoreHarnessScenario: (
+    groupId: string,
+    faultMode?: SavedRestoreHarnessFaultMode,
+  ) => Promise<void>
+  getRestoreHarnessState: (groupId: string) => Promise<SavedRestoreHarnessState>
+}
+
 const getSavedTabRestoreEligibility = (tab: NStorage.Sync.Schema.Tab): RestoreEligibility => {
   if (!tab.url) {
     return {
@@ -148,7 +189,7 @@ const getSavedTabRestoreEligibility = (tab: NStorage.Sync.Schema.Tab): RestoreEl
   return { canRestore: true }
 }
 
-function GroupManagement() {
+const GroupManagement = forwardRef<GroupManagementHandle>(function GroupManagement(_, ref) {
   const [groups, setGroups] = useState<NStorage.Sync.Response.Group[]>([])
   const [liveGroups, setLiveGroups] = useState<LiveTabGroup[]>([])
   const [restoreStatuses, setRestoreStatuses] = useState<Record<string, RestoreStatus>>({})
@@ -156,6 +197,9 @@ function GroupManagement() {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
+  const groupsRef = useRef<NStorage.Sync.Response.Group[]>([])
+  const restoreStatusesRef = useRef<Record<string, RestoreStatus>>({})
+  const nextHarnessFaultRef = useRef<SavedRestoreHarnessFaultMode | null>(null)
 
   useEffect(() => {
     fetchGroups()
@@ -184,8 +228,17 @@ function GroupManagement() {
   const fetchGroups = async () => {
     const res = await StorageSyncGroup.getListWithTabs()
     const groupsOrdered = [...res].sort((a, b) => a.order - b.order)
+    groupsRef.current = groupsOrdered
     setGroups(groupsOrdered)
   }
+
+  useEffect(() => {
+    groupsRef.current = groups
+  }, [groups])
+
+  useEffect(() => {
+    restoreStatusesRef.current = restoreStatuses
+  }, [restoreStatuses])
 
   const startEditing = (group: NStorage.Sync.Response.Group) => {
     setEditingGroupId(group.id)
@@ -245,6 +298,56 @@ function GroupManagement() {
       ...current,
       [groupId]: status,
     }))
+  }
+
+  const getRestoreHarnessState = async (groupId: string): Promise<SavedRestoreHarnessState> => {
+    const savedGroup = groupsRef.current.find((group) => group.id === groupId) || null
+    const allLiveTabs = await chrome.tabs.query({})
+    const liveTabs = allLiveTabs
+      .filter((tab) => !tab.url?.startsWith('chrome-extension://') && typeof tab.id === 'number')
+      .map((tab) => ({
+        id: tab.id as number,
+        url: tab.url || null,
+        pendingUrl: tab.pendingUrl || null,
+        groupId: typeof tab.groupId === 'number' ? tab.groupId : -1,
+        windowId: tab.windowId,
+      }))
+    const firstGroupedTab = liveTabs.find((tab) => tab.groupId >= 0)
+
+    return {
+      savedGroup: savedGroup
+        ? {
+            id: savedGroup.id,
+            title: savedGroup.title,
+            color: savedGroup.color,
+            tabs: [...savedGroup.tabs]
+              .sort((a, b) => a.order - b.order)
+              .map((tab) => {
+                const eligibility = getSavedTabRestoreEligibility(tab)
+
+                return {
+                  id: tab.id,
+                  title: tab.title,
+                  url: tab.url || null,
+                  isRepaired: Boolean(tab.isRepaired),
+                  canRestore: eligibility.canRestore,
+                  note: eligibility.note,
+                  reason: eligibility.canRestore ? undefined : eligibility.reason,
+                }
+              }),
+          }
+        : null,
+      status: restoreStatusesRef.current[groupId] || null,
+      liveTabs,
+      liveGroup:
+        typeof firstGroupedTab?.groupId === 'number' && firstGroupedTab.groupId >= 0
+          ? await chrome.tabGroups.get(firstGroupedTab.groupId).then((group) => ({
+              id: group.id,
+              title: group.title,
+              color: group.color,
+            }))
+          : null,
+    }
   }
 
   const updateGroupSnapshot = async (
@@ -401,6 +504,11 @@ function GroupManagement() {
 
     if (createdTabIds.length > 0) {
       try {
+        if (nextHarnessFaultRef.current === 'group-setup') {
+          nextHarnessFaultRef.current = null
+          throw new Error('Harness forced group setup failure')
+        }
+
         const liveGroupId = await groupTabs(createdTabIds as [number, ...number[]])
         const updates: chrome.tabGroups.UpdateProperties = {}
 
@@ -458,6 +566,24 @@ function GroupManagement() {
 
     await fetchLiveGroups()
   }
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      refreshSavedGroups: fetchGroups,
+      runRestoreHarnessScenario: async (groupId, faultMode) => {
+        const group = groupsRef.current.find((item) => item.id === groupId)
+        if (!group) {
+          throw new Error(`Saved snapshot not found for restore harness: ${groupId}`)
+        }
+
+        nextHarnessFaultRef.current = faultMode || null
+        await restoreGroup(group)
+      },
+      getRestoreHarnessState,
+    }),
+    [groups],
+  )
 
   return (
     <div className="flex flex-col gap-3 p-2">
@@ -724,6 +850,6 @@ function GroupManagement() {
       )}
     </div>
   )
-}
+})
 
 export default GroupManagement

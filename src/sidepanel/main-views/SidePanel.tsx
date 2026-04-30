@@ -8,7 +8,11 @@ import Layout from './layout'
 import Tabs from '@/components/ui/tabs'
 import { TAB_MENU } from '@/constants'
 import { ETabMenu } from '@/enums'
-import GroupManagement from './group-management'
+import GroupManagement, {
+  GroupManagementHandle,
+  SavedRestoreHarnessFaultMode,
+  SavedRestoreHarnessState,
+} from './group-management'
 import AutomationManagement from './automation-management'
 import { LiveStatusBar } from './live/components/LiveStatusBar'
 import StorageLocal from '@/storage/local'
@@ -57,6 +61,7 @@ const THEME_STORAGE_KEY = 'themeMode'
 const GLASS_STYLE_STORAGE_KEY = 'glassStyle'
 const THEME_HARNESS_QUERY_KEY = 'codex-harness'
 const THEME_HARNESS_MODE = 'theme-modes'
+const SAVED_RESTORE_HARNESS_MODE = 'saved-restore'
 const DEFAULT_GLASS_STYLE: GlassStyle = 'frosted-light'
 
 const THEME_OPTIONS: Array<{ value: ThemeMode; label: string }> = [
@@ -140,6 +145,17 @@ declare global {
       }>
       getAddToRulesState: () => Promise<LiveAddToRulesHarnessState>
       showThemeSmokeState: () => Promise<LiveThemeSmokeHarnessState>
+      seedSavedRestoreScenario: (
+        scenario: 'partial' | 'failed' | 'group-setup',
+      ) => Promise<{
+        groupId: string
+        scenario: 'partial' | 'failed' | 'group-setup'
+      }>
+      runSavedRestore: (
+        groupId: string,
+        faultMode?: SavedRestoreHarnessFaultMode,
+      ) => Promise<void>
+      getSavedRestoreState: (groupId: string) => Promise<SavedRestoreHarnessState>
     }
   }
 }
@@ -155,6 +171,7 @@ export const SidePanel = () => {
   const [addToRulesStatus, setAddToRulesStatus] = useState<AutoGroupScanStatus>({ tone: 'idle' })
 
   const liveManagementRef = useRef<LiveManagementHandle | null>(null)
+  const groupManagementRef = useRef<GroupManagementHandle | null>(null)
   const harnessMode = useMemo(() => {
     if (typeof window === 'undefined') return null
     return new URLSearchParams(window.location.search).get(LIVE_HARNESS_QUERY_KEY)
@@ -180,6 +197,8 @@ export const SidePanel = () => {
     const harness = searchParams.get(THEME_HARNESS_QUERY_KEY)
     if (harness === THEME_HARNESS_MODE) {
       setActiveSheet({ kind: 'appearance' })
+    } else if (harness === SAVED_RESTORE_HARNESS_MODE) {
+      setActiveTab(ETabMenu.GROUP)
     }
 
     let isMounted = true
@@ -299,6 +318,124 @@ export const SidePanel = () => {
         requestAnimationFrame(() => resolve())
       })
     })
+
+  const seedSavedRestoreScenario = useCallback(
+    async (scenario: 'partial' | 'failed' | 'group-setup') => {
+      const existingTabs = await chrome.tabs.query({})
+      const tabsToClose = existingTabs
+        .filter((tab) => tab.id && !tab.url?.startsWith('chrome-extension://'))
+        .map((tab) => tab.id as number)
+
+      if (tabsToClose.length > 0) {
+        await chrome.tabs.remove(tabsToClose)
+      }
+
+      await chrome.storage.sync.clear()
+      await chrome.storage.local.clear()
+
+      const now = new Date().toISOString()
+      const groupId = `saved-restore-${scenario}`
+      const group: NStorage.Sync.Schema.Group = {
+        id: groupId,
+        title:
+          scenario === 'partial'
+            ? 'Partial Restore Harness'
+            : scenario === 'failed'
+              ? 'Failed Restore Harness'
+              : 'Group Setup Failure Harness',
+        color: scenario === 'failed' ? 'red' : 'blue',
+        order: 1,
+        createdAt: now,
+        updatedAt: now,
+      }
+
+      const tabsByScenario: Record<typeof scenario, NStorage.Sync.Schema.Tab[]> = {
+        partial: [
+          {
+            id: `${groupId}-tab-1`,
+            title: 'Restorable Example',
+            url: 'https://example.com/',
+            order: 1,
+            groupId,
+            createdAt: now,
+            updatedAt: now,
+          },
+          {
+            id: `${groupId}-tab-2`,
+            title: 'Missing URL Snapshot',
+            order: 2,
+            groupId,
+            createdAt: now,
+            updatedAt: now,
+          },
+          {
+            id: `${groupId}-tab-3`,
+            title: 'Unsupported Internal URL',
+            url: 'chrome://settings',
+            order: 3,
+            groupId,
+            createdAt: now,
+            updatedAt: now,
+          },
+          {
+            id: `${groupId}-tab-4`,
+            title: 'Recovered Blank Tab',
+            url: 'about:blank',
+            isRepaired: true,
+            order: 4,
+            groupId,
+            createdAt: now,
+            updatedAt: now,
+          },
+        ],
+        failed: [
+          {
+            id: `${groupId}-tab-1`,
+            title: 'Missing URL Snapshot',
+            order: 1,
+            groupId,
+            createdAt: now,
+            updatedAt: now,
+          },
+          {
+            id: `${groupId}-tab-2`,
+            title: 'Unsupported Internal URL',
+            url: 'chrome://extensions',
+            order: 2,
+            groupId,
+            createdAt: now,
+            updatedAt: now,
+          },
+        ],
+        'group-setup': [
+          {
+            id: `${groupId}-tab-1`,
+            title: 'Restorable Example',
+            url: 'https://example.org/',
+            order: 1,
+            groupId,
+            createdAt: now,
+            updatedAt: now,
+          },
+        ],
+      }
+
+      await chrome.storage.sync.set({
+        autoGroups: [],
+        groups: [group],
+        tabs: tabsByScenario[scenario],
+      })
+
+      setActiveTab(ETabMenu.GROUP)
+      setActiveSheet(null)
+      setAddToRulesStatus({ tone: 'idle' })
+      await waitForSidePanelCommit()
+      await groupManagementRef.current?.refreshSavedGroups()
+
+      return { groupId, scenario }
+    },
+    [],
+  )
 
   const submitLiveAddToRules = useCallback(async () => {
     if (activeSheet?.kind !== 'live-add-to-rules') return
@@ -490,7 +627,11 @@ export const SidePanel = () => {
   }, [glassStyle, resolvedTheme, themeMode])
 
   useEffect(() => {
-    if (harnessMode !== LIVE_ADD_TO_RULES_HARNESS_MODE) return
+    if (
+      harnessMode !== LIVE_ADD_TO_RULES_HARNESS_MODE &&
+      harnessMode !== SAVED_RESTORE_HARNESS_MODE
+    )
+      return
 
     window.__CRX_TAB_GROUPS_HARNESS__ = {
       seedAddToRulesScenario: async () => {
@@ -686,6 +827,24 @@ export const SidePanel = () => {
           dragOverlayOpen: liveSeed.dragOverlayOpen,
         }
       },
+      seedSavedRestoreScenario,
+      runSavedRestore: async (groupId, faultMode) => {
+        setActiveTab(ETabMenu.GROUP)
+        setActiveSheet(null)
+        setAddToRulesStatus({ tone: 'idle' })
+        await waitForSidePanelCommit()
+        await groupManagementRef.current?.runRestoreHarnessScenario(groupId, faultMode)
+      },
+      getSavedRestoreState: async (groupId) => {
+        setActiveTab(ETabMenu.GROUP)
+        await waitForSidePanelCommit()
+
+        if (!groupManagementRef.current) {
+          throw new Error('Saved restore harness is not ready')
+        }
+
+        return groupManagementRef.current.getRestoreHarnessState(groupId)
+      },
     }
 
     return () => {
@@ -706,6 +865,7 @@ export const SidePanel = () => {
           <Tabs
             tabs={TAB_MENU}
             defaultValue={ETabMenu.TAB_SYNC}
+            value={activeTab}
             onValueChange={(val) => setActiveTab(Number(val) as ETabMenu)}
             className="flex-1 min-h-0"
             rightElement={
@@ -725,7 +885,7 @@ export const SidePanel = () => {
               <AutomationManagement />
             </Tabs.Content>
             <Tabs.Content value={ETabMenu.GROUP}>
-              <GroupManagement />
+              <GroupManagement ref={groupManagementRef} />
             </Tabs.Content>
           </Tabs>
 
