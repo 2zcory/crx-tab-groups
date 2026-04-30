@@ -344,15 +344,15 @@ main {
   opacity: 0;
 }
 
-.sp-rule-card-accent {
-  width: 0.32rem;
-  align-self: stretch;
+.sp-rule-card-dot {
+  width: 0.45rem;
+  height: 0.45rem;
   background: color-mix(
     in srgb,
-    var(--sp-rule-card-accent, var(--sp-tab-pill-active)) 78%,
-    white 10%
+    var(--sp-rule-card-accent, var(--sp-tab-pill-active)) 72%,
+    white 18%
   );
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sp-rule-card-border-accent, transparent) 58%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--sp-rule-card-border-accent, transparent) 48%, transparent);
 }
 
 .sp-rule-card-surface {
@@ -505,10 +505,10 @@ main {
   background: color-mix(in srgb, var(--surface-elevated) 82%, transparent);
 }
 
-[data-theme='glass'] .sp-rule-card-accent {
+[data-theme='glass'] .sp-rule-card-dot {
   background: color-mix(
     in srgb,
-    var(--sp-rule-card-accent, var(--sp-tab-pill-active)) 68%,
+    var(--sp-rule-card-accent, var(--sp-tab-pill-active)) 62%,
     rgba(255, 255, 255, 0.22)
   );
 }

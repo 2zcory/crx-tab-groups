@@ -185,14 +185,14 @@ function SortableRuleCard({
     >
       <div className="flex items-center gap-2">
         <div
-          className="flex min-w-0 flex-1 items-center gap-2 cursor-pointer"
+          className="flex min-w-0 flex-1 items-center gap-1.5 cursor-pointer"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation()
             if (!isEditing) setIsExpanded(!isExpanded)
           }}
         >
-          <div className="sp-rule-card-accent shrink-0 rounded-full" />
+          <div className="sp-rule-card-dot shrink-0 rounded-full" />
 
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-1.5">
