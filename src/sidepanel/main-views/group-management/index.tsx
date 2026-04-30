@@ -26,6 +26,7 @@ interface RestoreStatus {
   openedCount?: number
   failedCount?: number
   groupSetupFailed?: boolean
+  detailLines?: string[]
 }
 
 const STATUS_STYLES: Record<Exclude<RestoreState, 'idle' | 'pending'>, string> = {
@@ -38,8 +39,10 @@ const STATUS_STYLES: Record<Exclude<RestoreState, 'idle' | 'pending'>, string> =
 }
 
 const getStatusDetail = (status: RestoreStatus) => {
+  const detailLines = status.detailLines ?? []
+
   if (typeof status.openedCount !== 'number' && typeof status.failedCount !== 'number') {
-    return status.message
+    return [status.message, ...detailLines].filter(Boolean).join('\n')
   }
 
   const openedCount = status.openedCount ?? 0
@@ -47,7 +50,10 @@ const getStatusDetail = (status: RestoreStatus) => {
 
   const groupDetail = status.groupSetupFailed ? '; group setup did not complete' : ''
 
-  return `${status.message}: ${openedCount} opened, ${failedCount} missed${groupDetail}`
+  return [
+    `${status.message}: ${openedCount} opened, ${failedCount} missed${groupDetail}`,
+    ...detailLines,
+  ].join('\n')
 }
 
 interface LiveTabGroup extends chrome.tabGroups.TabGroup {
@@ -105,14 +111,41 @@ const createRestoredTab = (url: string, windowId?: number) =>
     )
   })
 
-const canRestoreSavedTab = (tab: NStorage.Sync.Schema.Tab) => {
-  if (!tab.url) return false
+type RestoreEligibility =
+  | { canRestore: true; note?: string }
+  | {
+      canRestore: false
+      reason: 'missing_url' | 'unsupported_url'
+      note: string
+    }
+
+const getSavedTabRestoreEligibility = (tab: NStorage.Sync.Schema.Tab): RestoreEligibility => {
+  if (!tab.url) {
+    return {
+      canRestore: false,
+      reason: 'missing_url',
+      note: 'Missing URL in snapshot',
+    }
+  }
 
   // Repaired tabs intentionally keep `about:blank` so restore can degrade gracefully
   // instead of being rejected before the restore attempt begins.
-  if (tab.url === 'about:blank') return true
+  if (tab.url === 'about:blank') {
+    return {
+      canRestore: true,
+      note: tab.isRepaired ? 'Restores as a repaired blank tab' : 'Restores as a blank tab',
+    }
+  }
 
-  return !shouldIgnoreAutoGroupUrl(tab.url)
+  if (shouldIgnoreAutoGroupUrl(tab.url)) {
+    return {
+      canRestore: false,
+      reason: 'unsupported_url',
+      note: 'Chrome cannot restore this internal or unsupported URL',
+    }
+  }
+
+  return { canRestore: true }
 }
 
 function GroupManagement() {
@@ -300,18 +333,40 @@ function GroupManagement() {
     })
 
     const sortedTabs = [...group.tabs].sort((a, b) => a.order - b.order)
-    const restorableTabs = sortedTabs.filter(canRestoreSavedTab)
-    let failedCount = sortedTabs.length - restorableTabs.length
+    const restorePlan = sortedTabs.map((tab) => ({
+      tab,
+      eligibility: getSavedTabRestoreEligibility(tab),
+    }))
+    const restorableTabs = restorePlan.filter(
+      (entry): entry is { tab: NStorage.Sync.Schema.Tab; eligibility: { canRestore: true; note?: string } } =>
+        entry.eligibility.canRestore,
+    )
+    const skippedMissingCount = restorePlan.filter(
+      (entry) => !entry.eligibility.canRestore && entry.eligibility.reason === 'missing_url',
+    ).length
+    const skippedUnsupportedCount = restorePlan.filter(
+      (entry) => !entry.eligibility.canRestore && entry.eligibility.reason === 'unsupported_url',
+    ).length
+    let failedCount = skippedMissingCount + skippedUnsupportedCount
     let openedCount = 0
     let createdGroup = false
     const createdTabIds: number[] = []
+    let tabCreateFailedCount = 0
 
     if (restorableTabs.length === 0) {
+      const detailLines = [
+        skippedMissingCount > 0 ? `${skippedMissingCount} tab(s) had no URL in the snapshot` : null,
+        skippedUnsupportedCount > 0
+          ? `${skippedUnsupportedCount} tab(s) used internal or unsupported URLs`
+          : null,
+      ].filter((line): line is string => Boolean(line))
+
       setRestoreStatus(group.id, {
         state: 'failed',
         message: 'Nothing restorable',
         openedCount: 0,
         failedCount,
+        detailLines,
       })
       return
     }
@@ -325,7 +380,7 @@ function GroupManagement() {
       restoreWindowId = undefined
     }
 
-    for (const tab of restorableTabs) {
+    for (const { tab } of restorableTabs) {
       try {
         const createdTab = await createRestoredTab(tab.url!, restoreWindowId)
 
@@ -334,9 +389,11 @@ function GroupManagement() {
           openedCount += 1
         } else {
           failedCount += 1
+          tabCreateFailedCount += 1
         }
       } catch {
         failedCount += 1
+        tabCreateFailedCount += 1
       }
     }
 
@@ -362,16 +419,33 @@ function GroupManagement() {
     }
 
     if (openedCount === 0) {
+      const detailLines = [
+        skippedMissingCount > 0 ? `${skippedMissingCount} tab(s) had no URL in the snapshot` : null,
+        skippedUnsupportedCount > 0
+          ? `${skippedUnsupportedCount} tab(s) used internal or unsupported URLs`
+          : null,
+        tabCreateFailedCount > 0 ? `${tabCreateFailedCount} tab(s) failed while opening` : null,
+      ].filter((line): line is string => Boolean(line))
+
       setRestoreStatus(group.id, {
         state: 'failed',
         message: 'Restore failed',
         openedCount,
         failedCount,
+        detailLines,
       })
       return
     }
 
     const isFullRestore = failedCount === 0 && createdGroup && !groupSetupFailed
+    const detailLines = [
+      skippedMissingCount > 0 ? `${skippedMissingCount} tab(s) had no URL in the snapshot` : null,
+      skippedUnsupportedCount > 0
+        ? `${skippedUnsupportedCount} tab(s) used internal or unsupported URLs`
+        : null,
+      tabCreateFailedCount > 0 ? `${tabCreateFailedCount} tab(s) failed while opening` : null,
+      groupSetupFailed ? 'Tabs opened, but Chrome group setup failed' : null,
+    ].filter((line): line is string => Boolean(line))
 
     setRestoreStatus(group.id, {
       state: isFullRestore ? 'full' : 'partial',
@@ -379,6 +453,7 @@ function GroupManagement() {
       openedCount,
       failedCount,
       groupSetupFailed,
+      detailLines,
     })
 
     await fetchLiveGroups()
@@ -476,15 +551,21 @@ function GroupManagement() {
 
                   <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                     {status && status.state !== 'idle' && status.state !== 'pending' && (
-                      <div
-                        className={cn(
-                          'flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider shadow-sm',
-                          STATUS_STYLES[status.state],
-                        )}
-                        title={getStatusDetail(status)}
-                      >
-                        {status.message}
-                      </div>
+                      <Tooltip>
+                        <Tooltip.Trigger asChild>
+                          <div
+                            className={cn(
+                              'flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider shadow-sm',
+                              STATUS_STYLES[status.state],
+                            )}
+                          >
+                            {status.message}
+                          </div>
+                        </Tooltip.Trigger>
+                        <Tooltip.Content className="sp-tooltip max-w-52 whitespace-pre-line rounded-lg px-2 py-1 text-[10px]">
+                          {getStatusDetail(status)}
+                        </Tooltip.Content>
+                      </Tooltip>
                     )}
 
                     <div className="flex items-center gap-1">
@@ -584,11 +665,14 @@ function GroupManagement() {
                     <ul className="flex flex-col gap-1">
                       {[...group.tabs]
                         .sort((a, b) => a.order - b.order)
-                        .map((tab) => (
-                          <li
-                            key={tab.id}
-                            className="sp-soft-surface flex items-center gap-2 rounded-lg px-2 py-1"
-                          >
+                        .map((tab) => {
+                          const eligibility = getSavedTabRestoreEligibility(tab)
+
+                          return (
+                            <li
+                              key={tab.id}
+                              className="sp-soft-surface flex items-center gap-2 rounded-lg px-2 py-1"
+                            >
                             {tab.favIconUrl ? (
                               <img src={tab.favIconUrl} className="size-3.5 shrink-0" alt="" />
                             ) : (
@@ -607,8 +691,29 @@ function GroupManagement() {
                                 </Tooltip.Content>
                               </Tooltip>
                             )}
+                            {!eligibility.canRestore && (
+                              <Tooltip>
+                                <Tooltip.Trigger asChild>
+                                  <Info size={10} className="shrink-0 text-rose-500" />
+                                </Tooltip.Trigger>
+                                <Tooltip.Content className="sp-tooltip max-w-48 rounded-lg px-2 py-1 text-[10px]">
+                                  {eligibility.note}
+                                </Tooltip.Content>
+                              </Tooltip>
+                            )}
+                            {eligibility.canRestore && eligibility.note && (
+                              <Tooltip>
+                                <Tooltip.Trigger asChild>
+                                  <Info size={10} className="shrink-0 text-sky-500" />
+                                </Tooltip.Trigger>
+                                <Tooltip.Content className="sp-tooltip max-w-48 rounded-lg px-2 py-1 text-[10px]">
+                                  {eligibility.note}
+                                </Tooltip.Content>
+                              </Tooltip>
+                            )}
                           </li>
-                        ))}{' '}
+                          )
+                        })}{' '}
                     </ul>
                   </div>
                 )}
