@@ -330,6 +330,55 @@ main {
   color: var(--text-primary);
 }
 
+.sp-rule-card-handle {
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--surface-muted) 86%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sp-card-border) 78%, transparent);
+  cursor: grab;
+  transition:
+    transform 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+.sp-rule-card-handle:hover {
+  color: var(--text-primary);
+  background: var(--surface-elevated);
+  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
+  transform: translateY(-1px);
+}
+
+.sp-rule-card-handle:active {
+  cursor: grabbing;
+}
+
+.sp-rule-card-badge {
+  border: 1px solid color-mix(in srgb, var(--sp-card-border) 84%, transparent);
+  background: color-mix(in srgb, var(--surface-muted) 94%, transparent);
+  color: var(--text-muted);
+}
+
+.sp-rule-card-preview {
+  min-height: 1.75rem;
+}
+
+.sp-rule-card-body {
+  animation: sp-rule-card-body-in 220ms ease;
+}
+
+@keyframes sp-rule-card-body-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .sp-divider {
   height: 1px;
   background: color-mix(in srgb, var(--sp-card-border) 88%, transparent);
@@ -413,6 +462,11 @@ main {
   box-shadow: var(--glass-depth-shadow, var(--shadow-sm));
 }
 
+[data-theme='glass'] .sp-rule-card-handle,
+[data-theme='glass'] .sp-rule-card-badge {
+  background: color-mix(in srgb, var(--surface-elevated) 82%, transparent);
+}
+
 [data-theme='glass'] .sp-card,
 [data-theme='glass'] .sp-overlay-panel,
 [data-theme='glass'] .sp-action-rail,
@@ -455,5 +509,21 @@ main {
 
   .sp-glass-style-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sp-card-hover,
+  .sp-glass-style-card,
+  .sp-rule-card-handle,
+  .sp-primary-action,
+  .sp-overlay-item,
+  .sp-icon-button,
+  .sp-tab-card {
+    transition: none;
+  }
+
+  .sp-rule-card-body {
+    animation: none;
   }
 }

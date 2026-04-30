@@ -134,6 +134,9 @@ function SortableRuleCard({
   const [isExpanded, setIsExpanded] = useState(false)
   const isEditing = editingRuleId === rule.id
   const effectiveExpanded = isExpanded || isEditing
+  const rulePatterns = getAutoGroupRulePatterns(rule)
+  const previewPatterns = rulePatterns.slice(0, 2)
+  const hiddenPatternCount = Math.max(rulePatterns.length - previewPatterns.length, 0)
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: rule.id,
@@ -149,17 +152,15 @@ function SortableRuleCard({
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
       className={cn(
-        'group relative flex flex-col gap-3 rounded-2xl border p-3 transition-all cursor-grab active:cursor-grabbing',
+        'group relative flex flex-col gap-3 rounded-2xl border p-3 transition-all',
         rule.isActive ? 'sp-card sp-card-hover' : 'sp-subtle-surface opacity-70',
         isDragging && 'opacity-50 ring-2 ring-[var(--sp-tab-pill-active)] border-transparent shadow-xl scale-[1.02]',
-        isEditing && 'ring-2 ring-[var(--sp-tab-pill-active)] border-transparent shadow-lg scale-[1.01]'
+        isEditing && 'ring-2 ring-[var(--sp-tab-pill-active)] border-transparent shadow-lg scale-[1.01]',
       )}
     >
       <div className="flex items-center justify-between gap-2">
-        <div 
+        <div
           className="flex min-w-0 flex-1 items-center gap-1.5 cursor-pointer"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
@@ -167,37 +168,72 @@ function SortableRuleCard({
             if (!isEditing) setIsExpanded(!isExpanded)
           }}
         >
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--sp-card-hover)] transition-transform duration-200"
-               style={{ transform: effectiveExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>
+          <button
+            type="button"
+            className="sp-rule-card-handle flex size-7 shrink-0 items-center justify-center rounded-full"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            {...attributes}
+            {...listeners}
+            aria-label={`Reorder ${rule.title}`}
+            title="Drag to reorder"
+          >
+            <GripVertical size={12} className="sp-copy-muted" />
+          </button>
+
+          <div
+            className="flex size-7 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--sp-card-hover)] transition-transform duration-200"
+            style={{ transform: effectiveExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
+          >
             <ChevronRight size={14} />
           </div>
-          
-          <div className={cn('size-2.5 shrink-0 rounded-full shadow-sm transition-colors', COLOR_MAP[isEditing ? editingColor : rule.color])} />
-          
-          {isEditing ? (
-            <input
-              autoFocus
-              className="sp-input flex-1 bg-transparent text-[13px] font-bold outline-none border-b border-[var(--sp-tab-pill-active)] py-0"
-              value={editingTitle}
-              onChange={(e) => setEditingTitle(e.target.value)}
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-            />
-          ) : (
-            <h3 className="sp-copy-primary truncate text-[13px] font-bold" title={rule.title}>
-              {rule.title}
-            </h3>
-          )}
 
-          {!rule.isActive && !isEditing && (
-            <span className="sp-chip-muted shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase">
-              Paused
-            </span>
-          )}
+          <div
+            className={cn(
+              'size-2.5 shrink-0 rounded-full shadow-sm transition-colors',
+              COLOR_MAP[isEditing ? editingColor : rule.color],
+            )}
+          />
+
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <div className="flex min-w-0 items-center gap-1.5">
+              {isEditing ? (
+                <input
+                  autoFocus
+                  className="sp-input flex-1 bg-transparent text-[13px] font-bold outline-none border-b border-[var(--sp-tab-pill-active)] py-0"
+                  value={editingTitle}
+                  onChange={(e) => setEditingTitle(e.target.value)}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <h3 className="sp-copy-primary truncate text-[13px] font-bold" title={rule.title}>
+                  {rule.title}
+                </h3>
+              )}
+
+              {!rule.isActive && !isEditing && (
+                <span className="sp-chip-muted shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase">
+                  Paused
+                </span>
+              )}
+            </div>
+
+            {!isEditing && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="sp-rule-card-badge rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
+                  {rule.order === 1 ? 'Top Priority' : `P${rule.order}`}
+                </span>
+                <span className="sp-rule-card-badge rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
+                  {rulePatterns.length} pattern{rulePatterns.length === 1 ? '' : 's'}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         {!isEditing && (
-          <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="sp-action-rail flex shrink-0 items-center gap-1 rounded-full px-1 py-1 opacity-100 md:opacity-0 md:transition-opacity md:group-hover:opacity-100">
             <Tooltip>
               <Tooltip.Trigger asChild>
                 <button
@@ -259,8 +295,29 @@ function SortableRuleCard({
         )}
       </div>
 
+      {!isEditing && previewPatterns.length > 0 && (
+        <div className="sp-rule-card-preview flex flex-wrap items-center gap-1.5 pl-14">
+          {previewPatterns.map((pattern) => (
+            <div
+              key={pattern}
+              className="sp-chip inline-flex max-w-full items-center gap-1 rounded-full px-2 py-1"
+            >
+              <Globe size={9} className="sp-copy-muted shrink-0" />
+              <code className="sp-copy-secondary max-w-28 truncate text-[10px] font-medium" title={pattern}>
+                {pattern}
+              </code>
+            </div>
+          ))}
+          {hiddenPatternCount > 0 && (
+            <span className="sp-chip-muted rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wider">
+              +{hiddenPatternCount} more
+            </span>
+          )}
+        </div>
+      )}
+
       {effectiveExpanded && (
-        <div className="animate-in fade-in slide-in-from-top-1 flex flex-col gap-3 duration-200">
+        <div className="sp-rule-card-body flex flex-col gap-3 border-t border-[var(--sp-card-border)] pt-3">
           {!isEditing && (
             <div className="sp-subtle-surface flex flex-wrap items-center gap-2 rounded-lg px-2.5 py-2">
               <span className="sp-chip-muted shrink-0 rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wider">
@@ -284,7 +341,24 @@ function SortableRuleCard({
           )}
 
           {isEditing && (
-            <div className="sp-subtle-surface flex flex-col gap-4 rounded-xl p-3" onPointerDown={(e) => e.stopPropagation()}>
+            <div
+              className="sp-subtle-surface flex flex-col gap-4 rounded-xl p-3"
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="sp-copy-primary text-[11px] font-bold uppercase tracking-[0.16em]">
+                    Rule Editor
+                  </p>
+                  <p className="sp-copy-muted text-[10px]">
+                    Adjust identity, color, and pattern scope in one place.
+                  </p>
+                </div>
+                <span className="sp-chip-muted rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wider">
+                  {editingPatterns.length} pattern{editingPatterns.length === 1 ? '' : 's'}
+                </span>
+              </div>
+
               <div className="flex flex-col gap-2">
                 <label className="sp-label text-[10px] font-bold uppercase tracking-wider ml-1">
                   Color
@@ -297,7 +371,8 @@ function SortableRuleCard({
                       className={cn(
                         'size-4 rounded-full transition-transform hover:scale-125 cursor-pointer',
                         COLOR_MAP[color],
-                        editingColor === color && 'scale-125 ring-2 ring-[var(--sp-tab-pill-active)] ring-offset-2'
+                        editingColor === color &&
+                          'scale-125 ring-2 ring-[var(--sp-tab-pill-active)] ring-offset-2',
                       )}
                       onClick={() => setEditingColor(color)}
                     />
