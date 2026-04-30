@@ -330,37 +330,16 @@ main {
   color: var(--text-primary);
 }
 
-.sp-rule-card-handle {
-  color: var(--text-muted);
-  background: color-mix(in srgb, var(--surface-muted) 86%, transparent);
-  border: 1px solid color-mix(in srgb, var(--sp-card-border) 78%, transparent);
-  cursor: grab;
-  transition:
-    transform 180ms ease,
-    background-color 180ms ease,
-    border-color 180ms ease,
-    color 180ms ease;
-}
-
-.sp-rule-card-handle:hover {
-  color: var(--text-primary);
-  background: var(--surface-elevated);
-  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
-  transform: translateY(-1px);
-}
-
-.sp-rule-card-handle:active {
-  cursor: grabbing;
+.sp-rule-card-chevron {
+  transition: transform 180ms ease;
 }
 
 .sp-rule-card-badge {
   border: 1px solid color-mix(in srgb, var(--sp-card-border) 84%, transparent);
   background: color-mix(in srgb, var(--surface-muted) 94%, transparent);
   color: var(--text-muted);
-}
-
-.sp-rule-card-preview {
-  min-height: 1.75rem;
+  min-width: 1.5rem;
+  text-align: center;
 }
 
 .sp-rule-card-body {
@@ -462,7 +441,6 @@ main {
   box-shadow: var(--glass-depth-shadow, var(--shadow-sm));
 }
 
-[data-theme='glass'] .sp-rule-card-handle,
 [data-theme='glass'] .sp-rule-card-badge {
   background: color-mix(in srgb, var(--surface-elevated) 82%, transparent);
 }
@@ -515,7 +493,7 @@ main {
 @media (prefers-reduced-motion: reduce) {
   .sp-card-hover,
   .sp-glass-style-card,
-  .sp-rule-card-handle,
+  .sp-rule-card-chevron,
   .sp-primary-action,
   .sp-overlay-item,
   .sp-icon-button,

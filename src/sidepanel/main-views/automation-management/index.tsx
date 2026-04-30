@@ -20,7 +20,6 @@ import {
   Bug,
   RefreshCw,
   Eraser,
-  GripVertical,
   ChevronRight,
 } from 'lucide-react'
 import { useEffect, useState, useCallback } from 'react'
@@ -135,8 +134,6 @@ function SortableRuleCard({
   const isEditing = editingRuleId === rule.id
   const effectiveExpanded = isExpanded || isEditing
   const rulePatterns = getAutoGroupRulePatterns(rule)
-  const previewPatterns = rulePatterns.slice(0, 2)
-  const hiddenPatternCount = Math.max(rulePatterns.length - previewPatterns.length, 0)
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: rule.id,
@@ -152,8 +149,10 @@ function SortableRuleCard({
     <div
       ref={setNodeRef}
       style={style}
+      {...attributes}
+      {...listeners}
       className={cn(
-        'group relative flex flex-col gap-3 rounded-2xl border p-3 transition-all',
+        'group relative flex flex-col gap-3 rounded-2xl border p-3 transition-all cursor-grab active:cursor-grabbing',
         rule.isActive ? 'sp-card sp-card-hover' : 'sp-subtle-surface opacity-70',
         isDragging && 'opacity-50 ring-2 ring-[var(--sp-tab-pill-active)] border-transparent shadow-xl scale-[1.02]',
         isEditing && 'ring-2 ring-[var(--sp-tab-pill-active)] border-transparent shadow-lg scale-[1.01]',
@@ -168,21 +167,8 @@ function SortableRuleCard({
             if (!isEditing) setIsExpanded(!isExpanded)
           }}
         >
-          <button
-            type="button"
-            className="sp-rule-card-handle flex size-7 shrink-0 items-center justify-center rounded-full"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => e.stopPropagation()}
-            {...attributes}
-            {...listeners}
-            aria-label={`Reorder ${rule.title}`}
-            title="Drag to reorder"
-          >
-            <GripVertical size={12} className="sp-copy-muted" />
-          </button>
-
           <div
-            className="flex size-7 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--sp-card-hover)] transition-transform duration-200"
+            className="sp-rule-card-chevron flex size-7 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--sp-card-hover)]"
             style={{ transform: effectiveExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
           >
             <ChevronRight size={14} />
@@ -225,7 +211,7 @@ function SortableRuleCard({
                   {rule.order === 1 ? 'Top Priority' : `P${rule.order}`}
                 </span>
                 <span className="sp-rule-card-badge rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
-                  {rulePatterns.length} pattern{rulePatterns.length === 1 ? '' : 's'}
+                  {rulePatterns.length}
                 </span>
               </div>
             )}
@@ -233,7 +219,7 @@ function SortableRuleCard({
         </div>
 
         {!isEditing && (
-          <div className="sp-action-rail flex shrink-0 items-center gap-1 rounded-full px-1 py-1 opacity-100 md:opacity-0 md:transition-opacity md:group-hover:opacity-100">
+          <div className="sp-action-rail flex shrink-0 items-center gap-1 rounded-full px-1 py-1 opacity-0 transition-opacity group-hover:opacity-100">
             <Tooltip>
               <Tooltip.Trigger asChild>
                 <button
@@ -294,27 +280,6 @@ function SortableRuleCard({
           </div>
         )}
       </div>
-
-      {!isEditing && previewPatterns.length > 0 && (
-        <div className="sp-rule-card-preview flex flex-wrap items-center gap-1.5 pl-14">
-          {previewPatterns.map((pattern) => (
-            <div
-              key={pattern}
-              className="sp-chip inline-flex max-w-full items-center gap-1 rounded-full px-2 py-1"
-            >
-              <Globe size={9} className="sp-copy-muted shrink-0" />
-              <code className="sp-copy-secondary max-w-28 truncate text-[10px] font-medium" title={pattern}>
-                {pattern}
-              </code>
-            </div>
-          ))}
-          {hiddenPatternCount > 0 && (
-            <span className="sp-chip-muted rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wider">
-              +{hiddenPatternCount} more
-            </span>
-          )}
-        </div>
-      )}
 
       {effectiveExpanded && (
         <div className="sp-rule-card-body flex flex-col gap-3 border-t border-[var(--sp-card-border)] pt-3">
