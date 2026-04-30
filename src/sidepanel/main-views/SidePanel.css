@@ -368,6 +368,16 @@ main {
   text-align: center;
 }
 
+.sp-rule-card-meta {
+  color: color-mix(in srgb, var(--sp-rule-card-accent, var(--text-muted)) 38%, var(--text-muted));
+  transition: opacity 160ms ease;
+}
+
+.sp-rule-card-surface:hover .sp-rule-card-meta,
+.sp-rule-card-surface:focus-within .sp-rule-card-meta {
+  opacity: 0;
+}
+
 .sp-rule-card-body {
   animation: sp-rule-card-body-in 220ms ease;
 }
