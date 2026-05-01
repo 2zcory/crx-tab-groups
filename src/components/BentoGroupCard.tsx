@@ -96,7 +96,7 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
           <div
             className={cn('h-2 w-2 shrink-0 rounded-full', color ? `bg-${color}-500` : 'bg-slate-400')}
           />
-          <h3 className="sp-copy-primary min-w-0 flex-1 truncate font-bold text-[12px] uppercase tracking-tight">
+          <h3 className="sp-copy-primary min-w-0 flex-1 truncate font-bold text-[13px] tracking-tight">
             {title}
           </h3>
           <span className="sp-chip shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold">

@@ -80,23 +80,35 @@ const handleAutoGrouping = async (
   windowId: number, 
   activeRules: NStorage.Sync.Schema.AutoGroupRule[]
 ) => {
-  if (shouldIgnoreAutoGroupUrl(url)) return { kind: 'ignored' }
+  if (!url || shouldIgnoreAutoGroupUrl(url)) return { kind: 'ignored' }
   
   try {
+    const tab = await chrome.tabs.get(tabId)
+    
     for (const rule of activeRules) {
       const patterns = getAutoGroupRulePatterns(rule)
-      const matchedPattern = url ? patterns.find((p) => matchesAutoGroupRule(url, p)) : undefined
+      const isMatch = patterns.some((p) => matchesAutoGroupRule(url, p))
       
-      if (url && matchedPattern) {
+      if (isMatch) {
+        console.log(`[Automation] Match found for tab ${tabId}: "${rule.title}" (Pattern matched)`)
+        
         const groups = await chrome.tabGroups.query({ windowId })
-        const targetGroup = groups.find((g) => g.title?.trim().toLowerCase() === rule.title.trim().toLowerCase())
+        const targetGroup = groups.find((g) => 
+          g.title?.trim().toLowerCase() === rule.title.trim().toLowerCase()
+        )
         
         if (targetGroup) {
+          if (tab.groupId === targetGroup.id) {
+            console.log(`[Automation] Tab ${tabId} already in target group: ${rule.title}`)
+            return { kind: 'already_grouped' }
+          }
           await chrome.tabs.group({ tabIds: [tabId], groupId: targetGroup.id })
+          console.log(`[Automation] Grouped tab ${tabId} into existing group: ${rule.title}`)
           return { kind: 'grouped' }
         } else {
           const gid = await chrome.tabs.group({ tabIds: [tabId] })
           await chrome.tabGroups.update(gid, { title: rule.title, color: rule.color })
+          console.log(`[Automation] Created new group "${rule.title}" for tab ${tabId}`)
           return { kind: 'grouped' }
         }
       }
@@ -108,6 +120,7 @@ const handleAutoGrouping = async (
 }
 
 const scanTabs = async (tabs: chrome.tabs.Tab[]) => {
+  console.log(`[Background] Manual scan triggered for ${tabs.length} tabs`)
   const summary = { scanned: 0, matched: 0, grouped: 0, created: 0, alreadyGrouped: 0, errors: 0 }
   
   try {
@@ -121,6 +134,7 @@ const scanTabs = async (tabs: chrome.tabs.Tab[]) => {
       
       const res = await handleAutoGrouping(tab.id, tab.url, tab.windowId, activeRules)
       if (res.kind === 'grouped') summary.grouped++
+      if (res.kind === 'already_grouped') summary.alreadyGrouped++
     }
   } catch (e) {
     console.error('[Background] Scan tabs error:', e)
@@ -145,7 +159,39 @@ const trackCurrentSession = async () => {
   } catch (e) {}
 }
 
-chrome.tabs.onUpdated.addListener((_id, change) => { if (change.url || change.status === 'complete') trackCurrentSession() })
+// --- EVENT LISTENERS ---
+const handleTabUpdate = async (tabId: number, windowId: number, url?: string) => {
+  if (!url || shouldIgnoreAutoGroupUrl(url)) return
+
+  try {
+    const data = await chrome.storage.sync.get('autoGroups')
+    const rules = (data.autoGroups || []) as NStorage.Sync.Schema.AutoGroupRule[]
+    const activeRules = sortAutoGroupRules(rules.filter((r) => r.isActive))
+    
+    if (activeRules.length > 0) {
+      await handleAutoGrouping(tabId, url, windowId, activeRules)
+    }
+  } catch (e) {
+    console.error('[Background] Automation error:', e)
+  }
+}
+
+chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
+  const targetUrl = change.url || tab.url
+  if (targetUrl || change.status === 'complete') {
+    void handleTabUpdate(tabId, tab.windowId, targetUrl)
+    void trackCurrentSession()
+  }
+})
+
+chrome.tabs.onCreated.addListener((tab) => {
+  if (tab.id) {
+    // Note: onCreated might not have URL yet, handleTabUpdate will skip if url is missing
+    void handleTabUpdate(tab.id, tab.windowId, tab.url)
+  }
+  void trackCurrentSession()
+})
+
 chrome.tabs.onRemoved.addListener(trackCurrentSession)
 chrome.windows.onCreated.addListener(trackCurrentSession)
 chrome.windows.onRemoved.addListener(trackCurrentSession)
