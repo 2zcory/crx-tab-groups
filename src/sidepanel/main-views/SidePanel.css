@@ -344,64 +344,210 @@ main {
   opacity: 0;
 }
 
-.sp-rule-card-dot {
-  width: 0.45rem;
-  height: 0.45rem;
-  background: color-mix(
-    in srgb,
-    var(--sp-rule-card-accent, var(--sp-tab-pill-active)) 72%,
-    white 18%
-  );
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--sp-rule-card-border-accent, transparent) 48%, transparent);
+.sp-rule-card-surface {
+  position: relative;
+  background: var(--sp-card-bg);
+  backdrop-filter: var(--glass-backdrop-blur, blur(12px));
+  border: 1px solid var(--sp-card-border);
+  border-radius: 12px;
+  padding: 12px;
+  transition: all 250ms cubic-bezier(0.23, 1, 0.32, 1);
+  overflow: hidden;
+  cursor: grab;
+  user-select: none; /* Prevent accidental text selection */
 }
 
-.sp-rule-card-surface {
-  border-color: color-mix(
-    in srgb,
-    var(--sp-rule-card-border-accent, var(--sp-card-border)) 52%,
-    var(--sp-card-border)
-  );
-  background: color-mix(
-    in srgb,
-    var(--sp-rule-card-tint, transparent) 78%,
-    var(--sp-card-bg)
-  );
+.sp-rule-card-surface.is-editing {
+  user-select: text; /* Re-enable selection when editing */
+  cursor: default;
+}
+
+.sp-rule-card-surface:active {
+  cursor: grabbing;
+}
+
+/* Neon Top Border Accent - The precision line */
+.sp-rule-card-surface::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--sp-rule-card-accent, var(--sp-tab-pill-active));
+  opacity: 0.5;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--sp-rule-card-accent) 40%, transparent);
+  transition: opacity 250ms ease, height 200ms ease;
 }
 
 .sp-rule-card-surface:hover {
-  border-color: color-mix(
-    in srgb,
-    var(--sp-rule-card-border-accent, var(--border-strong)) 72%,
-    var(--border-strong)
-  );
-  background: color-mix(
-    in srgb,
-    var(--sp-rule-card-tint, transparent) 90%,
-    var(--sp-card-hover)
-  );
+  border-color: color-mix(in srgb, var(--sp-rule-card-accent) 25%, var(--border-strong));
+  box-shadow: 0 8px 20px -6px rgb(0 0 0 / 0.5);
+  background: var(--sp-card-hover);
 }
 
-.sp-rule-card-badge {
-  border: 1px solid color-mix(in srgb, var(--sp-rule-card-border-accent, var(--sp-card-border)) 62%, transparent);
-  background: color-mix(in srgb, var(--sp-rule-card-tint, transparent) 88%, var(--surface-elevated));
-  color: color-mix(in srgb, var(--sp-rule-card-accent, var(--text-secondary)) 58%, var(--text-secondary));
-  min-width: 1.25rem;
-  text-align: center;
+.sp-rule-card-surface:hover::after {
+  opacity: 1;
+  height: 3px;
 }
 
-.sp-rule-card-body {
-  animation: sp-rule-card-body-in 220ms ease;
+/* Placeholder State - When card is picked up */
+.sp-rule-card-surface.is-placeholder {
+  opacity: 0.2;
+  border-style: dashed;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+  transform: scale(0.98);
 }
 
-@keyframes sp-rule-card-body-in {
+.sp-rule-card-surface.is-placeholder::after {
+  display: none;
+}
+
+/* Lifted State - The floating card in DragOverlay */
+.sp-rule-card-surface.is-lifted {
+  cursor: grabbing;
+  z-index: 1000;
+  transform: scale(1.04) rotate(1deg);
+  border-color: var(--sp-rule-card-accent) !important;
+  background: color-mix(in srgb, var(--sp-card-bg) 95%, white 5%);
+  box-shadow: 
+    0 20px 40px -10px rgb(0 0 0 / 0.6),
+    0 0 25px color-mix(in srgb, var(--sp-rule-card-accent) 20%, transparent);
+  opacity: 0.95;
+  pointer-events: none;
+}
+
+.sp-rule-card-surface.is-lifted::after {
+  opacity: 1;
+  height: 3px;
+}
+
+/* Paused State */
+.sp-rule-card-surface.is-paused {
+  background: color-mix(in srgb, var(--sp-card-bg) 60%, transparent);
+  opacity: 0.8;
+}
+
+.sp-rule-card-surface.is-paused::after {
+  opacity: 0.2;
+  background: var(--text-muted);
+}
+
+/* Typography */
+.sp-rule-card-title {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+  line-height: 1.2;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+}
+
+.is-paused .sp-rule-card-title {
+  color: var(--text-muted);
+}
+
+/* Precision Metrics */
+.sp-rule-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--sp-card-border);
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  transition: all 200ms ease;
+}
+
+.sp-rule-card-surface:hover .sp-rule-metric {
+  border-color: color-mix(in srgb, var(--sp-rule-card-accent) 30%, var(--sp-card-border));
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+/* Tech Tags */
+.sp-rule-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--sp-card-border);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: all 200ms ease;
+}
+
+.sp-rule-tag:hover {
+  border-color: var(--sp-rule-card-accent);
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Floating Actions Rail */
+.sp-rule-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px;
+  background: var(--surface-elevated);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--sp-card-border);
+  border-radius: 12px;
+  opacity: 0;
+  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.5);
+  transform: scale(0.9) translateX(10px);
+  transition: all 220ms cubic-bezier(0.23, 1, 0.32, 1);
+  pointer-events: none;
+}
+
+.sp-rule-card-surface:hover .sp-rule-actions {
+  opacity: 1;
+  transform: scale(1) translateX(0);
+  pointer-events: auto;
+}
+
+.sp-rule-card-body-wrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 300ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.sp-rule-card-body-wrapper[data-expanded='true'] {
+  grid-template-rows: 1fr;
+}
+
+.sp-rule-card-body-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.sp-rule-card-chip {
+  animation: sp-rule-card-chip-in 450ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  animation-delay: calc(var(--stagger-idx, 0) * 45ms + 120ms);
+}
+
+.sp-rule-card-body-wrapper[data-expanded='false'] .sp-rule-card-chip {
+  animation: none;
+  opacity: 0;
+}
+
+@keyframes sp-rule-card-chip-in {
   from {
     opacity: 0;
-    transform: translateY(-4px);
+    transform: translateX(-8px);
   }
-
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(0);
   }
 }
 
@@ -565,11 +711,16 @@ main {
   .sp-primary-action,
   .sp-overlay-item,
   .sp-icon-button,
-  .sp-tab-card {
-    transition: none;
+  .sp-tab-card,
+  .sp-rule-card-surface,
+  .sp-rule-card-body-wrapper,
+  .sp-rule-card-dot,
+  .sp-rule-card-badge {
+    transition: none !important;
   }
 
-  .sp-rule-card-body {
-    animation: none;
+  .sp-rule-card-body,
+  .sp-rule-card-chip {
+    animation: none !important;
   }
 }
