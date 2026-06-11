@@ -611,6 +611,15 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(fun
       throw new Error('No grouped tab card available for theme smoke harness')
     }
 
+    console.log('[ThemeSmoke] firstGroup:', firstGroup.id, firstGroup.title)
+    const groupEl = document.getElementById(`group-${firstGroup.id}`)
+    console.log('[ThemeSmoke] groupEl:', groupEl ? 'found' : 'null')
+    const buttonEl = groupEl?.querySelector('button')
+    console.log('[ThemeSmoke] buttonEl:', buttonEl ? 'found' : 'null')
+    if (buttonEl) {
+      saveMenuTriggerRef.current = buttonEl as HTMLButtonElement
+    }
+
     openSaveMenu(firstGroup)
     setIsNamingNewSnapshot(true)
     setNewSnapshotTitle(firstGroup.title || 'Untitled Group')

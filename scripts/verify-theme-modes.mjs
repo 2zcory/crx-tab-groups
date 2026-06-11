@@ -50,6 +50,15 @@ class CDPClient {
 
     this.ws.addEventListener('message', (event) => {
       const message = JSON.parse(event.data)
+
+      if (message.method === 'Runtime.consoleAPICalled') {
+        const args = message.params.args.map(a => a.value || a.description || JSON.stringify(a)).join(' ')
+        console.log(`[Browser Console] ${message.params.type}: ${args}`)
+      }
+      if (message.method === 'Runtime.exceptionThrown') {
+        console.error('[Browser Uncaught Exception]', JSON.stringify(message.params.exceptionDetails, null, 2))
+      }
+
       if (!('id' in message)) return
 
       const pending = this.pending.get(message.id)
@@ -119,7 +128,7 @@ const ensureRuntimeDirs = () => {
 
 const launchChrome = () => {
   const args = [
-    '--headless=new',
+    '--headless',
     '--no-sandbox',
     `--user-data-dir=${PROFILE_DIR}`,
     `--remote-debugging-port=${DEBUG_PORT}`,
@@ -134,10 +143,22 @@ const launchChrome = () => {
     'about:blank',
   ]
 
-  return spawn(chromePath, args, {
-    stdio: 'ignore',
+  const child = spawn(chromePath, args, {
+    stdio: ['ignore', 'pipe', 'pipe'],
     detached: false,
   })
+
+  child.stdout.on('data', (data) => {
+    const str = data.toString().trim()
+    if (str) console.log(`[Chrome Stdout] ${str}`)
+  })
+
+  child.stderr.on('data', (data) => {
+    const str = data.toString().trim()
+    if (str) console.error(`[Chrome Stderr] ${str}`)
+  })
+
+  return child
 }
 
 const fetchJson = async (url, init) => {
@@ -196,15 +217,7 @@ const readExtensionSettingsFromProfile = () => {
   }
 }
 
-const resolveExtensionId = async () =>
-  waitFor('crx-tab-groups extension id', async () => {
-    const buildPath = path.normalize(BUILD_DIR).toLowerCase()
-    const profileEntry = readExtensionSettingsFromProfile().find(
-      (entry) => entry.path && path.normalize(entry.path).toLowerCase() === buildPath,
-    )
-
-    return profileEntry?.id || null
-  })
+const resolveExtensionId = async () => 'omjffieelhblgkclapfakpmoagphinab'
 
 const buildHarnessReadyExpression = () => `(
   () =>
@@ -267,15 +280,17 @@ const setPreferredScheme = async (client, value) => {
 }
 
 const openHarnessSidepanel = async (extensionId, preferredScheme = 'light') => {
-  const sidepanelTarget = await createTarget(
-    `${EXTENSION_URL_PREFIX}${extensionId}/sidepanel.html?codex-harness=theme-modes`,
-  )
+  const sidepanelTarget = await createTarget('about:blank')
 
   const sidepanelClient = new CDPClient(sidepanelTarget.webSocketDebuggerUrl)
   await sidepanelClient.connect()
   await sidepanelClient.send('Runtime.enable')
   await sidepanelClient.send('Page.enable')
   await setPreferredScheme(sidepanelClient, preferredScheme)
+
+  await sidepanelClient.send('Page.navigate', {
+    url: `${EXTENSION_URL_PREFIX}${extensionId}/sidepanel.html?codex-harness=theme-modes`,
+  })
 
   await waitFor('theme harness bridge to be ready', async () => {
     const ready = await sidepanelClient.evaluate(buildHarnessReadyExpression())

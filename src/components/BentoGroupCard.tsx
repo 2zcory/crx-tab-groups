@@ -57,6 +57,7 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
 
   return (
     <div
+      id={id}
       ref={setNodeRef}
       className={cn(
         'p-2.5 rounded-2xl border transition-all duration-300',

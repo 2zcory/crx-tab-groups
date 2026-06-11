@@ -195,3 +195,44 @@ chrome.tabs.onCreated.addListener((tab) => {
 chrome.tabs.onRemoved.addListener(trackCurrentSession)
 chrome.windows.onCreated.addListener(trackCurrentSession)
 chrome.windows.onRemoved.addListener(trackCurrentSession)
+
+// --- STORAGE SYNC MUTEX LOCK ---
+interface LockRequest {
+  port: chrome.runtime.Port
+  id: string
+}
+
+let lockQueue: LockRequest[] = []
+let currentLock: LockRequest | null = null
+
+function processLockQueue() {
+  if (currentLock) return
+  if (lockQueue.length === 0) return
+
+  currentLock = lockQueue.shift()!
+  try {
+    currentLock.port.postMessage({ action: 'LOCK_ACQUIRED' })
+  } catch (e) {
+    currentLock = null
+    processLockQueue()
+  }
+}
+
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name === 'STORAGE_SYNC_LOCK') {
+    const lockId = Math.random().toString(36).substring(7)
+    const request: LockRequest = { port, id: lockId }
+
+    lockQueue.push(request)
+    processLockQueue()
+
+    port.onDisconnect.addListener(() => {
+      if (currentLock && currentLock.id === lockId) {
+        currentLock = null
+      } else {
+        lockQueue = lockQueue.filter((r) => r.id !== lockId)
+      }
+      processLockQueue()
+    })
+  }
+})

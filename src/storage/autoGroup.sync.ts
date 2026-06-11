@@ -11,39 +11,47 @@ class StorageSyncAutoGroup {
   }
 
   static async create(...rules: NStorage.Sync.Schema.AutoGroupRule[]) {
-    const currentRules = await StorageSyncAutoGroup.getList()
-    const params: Pick<NStorage.Sync.Schema.Database, 'autoGroups'> = {
-      autoGroups: [...currentRules, ...rules],
-    }
-    await StorageSync.set(params)
+    await StorageSync.runExclusive(async () => {
+      const currentRules = await StorageSyncAutoGroup.getList()
+      const params: Pick<NStorage.Sync.Schema.Database, 'autoGroups'> = {
+        autoGroups: [...currentRules, ...rules],
+      }
+      await StorageSync.set(params)
+    })
   }
 
   static async update(...rules: NStorage.Sync.Schema.AutoGroupRule[]) {
-    const currentRules = await StorageSyncAutoGroup.getList()
-    const updatedRules = currentRules.map((rule) => {
-      const matchingNewRule = rules.find((newR) => newR.id === rule.id)
-      return matchingNewRule ? { ...rule, ...matchingNewRule } : rule
-    })
+    await StorageSync.runExclusive(async () => {
+      const currentRules = await StorageSyncAutoGroup.getList()
+      const updatedRules = currentRules.map((rule) => {
+        const matchingNewRule = rules.find((newR) => newR.id === rule.id)
+        return matchingNewRule ? { ...rule, ...matchingNewRule } : rule
+      })
 
-    const params: Pick<NStorage.Sync.Schema.Database, 'autoGroups'> = {
-      autoGroups: updatedRules,
-    }
-    await StorageSync.set(params)
+      const params: Pick<NStorage.Sync.Schema.Database, 'autoGroups'> = {
+        autoGroups: updatedRules,
+      }
+      await StorageSync.set(params)
+    })
   }
 
   static async deleteById(id: string) {
-    const currentRules = await StorageSyncAutoGroup.getList()
-    const params: Pick<NStorage.Sync.Schema.Database, 'autoGroups'> = {
-      autoGroups: currentRules.filter((rule) => rule.id !== id),
-    }
-    await StorageSync.set(params)
+    await StorageSync.runExclusive(async () => {
+      const currentRules = await StorageSyncAutoGroup.getList()
+      const params: Pick<NStorage.Sync.Schema.Database, 'autoGroups'> = {
+        autoGroups: currentRules.filter((rule) => rule.id !== id),
+      }
+      await StorageSync.set(params)
+    })
   }
 
   static async replaceAll(rules: NStorage.Sync.Schema.AutoGroupRule[]) {
-    const params: Pick<NStorage.Sync.Schema.Database, 'autoGroups'> = {
-      autoGroups: rules,
-    }
-    await StorageSync.set(params)
+    await StorageSync.runExclusive(async () => {
+      const params: Pick<NStorage.Sync.Schema.Database, 'autoGroups'> = {
+        autoGroups: rules,
+      }
+      await StorageSync.set(params)
+    })
   }
 }
 

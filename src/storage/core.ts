@@ -4,9 +4,28 @@ class StorageSync {
    * Note: Mutations are delegated to the Background Service Worker.
    */
   static async runExclusive<T>(operation: () => Promise<T>): Promise<T> {
-    // In Sidepanel, we just execute the operation.
-    // Serialization is handled by the Background Service Worker queue.
-    return operation()
+    // Connect to the background lock channel
+    const port = chrome.runtime.connect({ name: 'STORAGE_SYNC_LOCK' })
+
+    await new Promise<void>((resolve, reject) => {
+      const onMessage = (msg: any) => {
+        if (msg.action === 'LOCK_ACQUIRED') {
+          port.onMessage.removeListener(onMessage)
+          resolve()
+        }
+      }
+      port.onMessage.addListener(onMessage)
+      port.onDisconnect.addListener(() => {
+        reject(new Error('[StorageSync] Lock port disconnected unexpectedly.'))
+      })
+    })
+
+    try {
+      const result = await operation()
+      return result
+    } finally {
+      port.disconnect()
+    }
   }
 
   static async get<TReturn = Partial<NStorage.Sync.Schema.Database>>(
