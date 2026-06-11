@@ -111,6 +111,8 @@ const ensureRuntimeDirs = () => {
 
 const launchChrome = () => {
   const args = [
+    '--headless=new',
+    '--no-sandbox',
     `--user-data-dir=${PROFILE_DIR}`,
     `--remote-debugging-port=${DEBUG_PORT}`,
     `--remote-debugging-address=${DEBUG_HOST}`,
