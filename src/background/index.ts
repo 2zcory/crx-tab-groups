@@ -236,3 +236,17 @@ chrome.runtime.onConnect.addListener((port) => {
     })
   }
 })
+
+// --- SIDE PANEL BEHAVIOR ---
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.sidePanel
+    .setPanelBehavior({ openPanelOnActionClick: true })
+    .catch((error) => console.error('[Background] Failed to set side panel behavior:', error))
+})
+
+// Also run at top level to ensure behavior is set immediately on service worker startup/reloads
+chrome.sidePanel
+  ?.setPanelBehavior?.({ openPanelOnActionClick: true })
+  .catch((error) => console.error('[Background] Failed to set side panel behavior at top level:', error))
+
+
