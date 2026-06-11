@@ -860,7 +860,7 @@ export const SidePanel = () => {
 
   return (
     <Layout>
-      <div className="sp-shell flex h-full w-full overflow-hidden rounded-[1.4rem] border border-[var(--sp-card-border)]">
+      <div className="sp-shell flex h-full w-full overflow-hidden">
         <div className="sp-shell-content flex h-full w-full flex-col overflow-hidden">
           <Tabs
             tabs={TAB_MENU}

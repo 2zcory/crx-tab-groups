@@ -1,5 +1,5 @@
 main {
-  padding: 0.5rem 0.25rem;
+  padding: 0;
   height: 100svh;
 }
 
@@ -21,7 +21,7 @@ main {
   content: '';
   position: absolute;
   inset: 1px;
-  border-radius: calc(1.4rem - 1px);
+  border-radius: 0;
   border: 1px solid transparent;
   background: var(--sp-shell-sheen, transparent);
   opacity: var(--sp-shell-sheen-opacity, 0);
