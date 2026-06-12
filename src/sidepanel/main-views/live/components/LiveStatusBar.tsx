@@ -38,7 +38,7 @@ export function LiveStatusBar() {
             <Tooltip.Trigger asChild>
               <button
                 onClick={runAutoGroupScan}
-                className="inline-flex size-5 cursor-pointer items-center justify-center rounded-full border text-[var(--success)] transition-colors border-emerald-200/60 bg-emerald-50/80 hover:bg-emerald-100/90"
+                className="inline-flex size-5 cursor-pointer items-center justify-center rounded-full border text-[var(--sp-tab-pill-active)] transition-all duration-200 border-[var(--sp-card-border)] bg-[var(--surface)] hover:bg-[var(--sp-card-hover)] hover:scale-110 active:scale-95"
               >
                 <Sparkles size={11} />
               </button>
