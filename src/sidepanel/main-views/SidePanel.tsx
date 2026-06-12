@@ -27,6 +27,7 @@ import GroupManagement, {
   SavedRestoreHarnessState,
 } from './group-management'
 import AutomationManagement from './automation-management'
+import { RulesStatusBar } from './automation-management/RulesStatusBar'
 import { LiveStatusBar } from './live/components/LiveStatusBar'
 import StorageLocal from '@/storage/local'
 import StorageSyncAutoGroup from '@/storage/autoGroup.sync'
@@ -1052,9 +1053,7 @@ export const SidePanel = () => {
               </footer>
             )}
             {activeTab === ETabMenu.AUTOMATION && (
-              <footer className="px-3 py-3 text-center text-[10px] font-bold uppercase tracking-wider sp-footer-label">
-                Automation Rules Management
-              </footer>
+              <RulesStatusBar rules={autoGroupRules} />
             )}
           </div>
         </div>
