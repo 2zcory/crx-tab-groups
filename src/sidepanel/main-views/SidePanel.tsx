@@ -26,6 +26,7 @@ import GroupManagement, {
   SavedRestoreHarnessFaultMode,
   SavedRestoreHarnessState,
 } from './group-management'
+import { SavedStatusBar } from './group-management/SavedStatusBar'
 import AutomationManagement from './automation-management'
 import { RulesStatusBar } from './automation-management/RulesStatusBar'
 import { LiveStatusBar } from './live/components/LiveStatusBar'
@@ -237,6 +238,7 @@ export const SidePanel = () => {
   }
   const [autoGroupRules, setAutoGroupRules] = useState<NStorage.Sync.Schema.AutoGroupRule[]>([])
   const [addToRulesStatus, setAddToRulesStatus] = useState<AutoGroupScanStatus>({ tone: 'idle' })
+  const [savedStats, setSavedStats] = useState({ totalGroups: 0, totalTabs: 0 })
 
   const liveManagementRef = useRef<LiveManagementHandle | null>(null)
   const groupManagementRef = useRef<GroupManagementHandle | null>(null)
@@ -1041,16 +1043,14 @@ export const SidePanel = () => {
               <AutomationManagement developerMode={settings.developerMode} />
             </Tabs.Content>
             <Tabs.Content value={ETabMenu.GROUP}>
-              <GroupManagement ref={groupManagementRef} />
+              <GroupManagement ref={groupManagementRef} onStatsChange={setSavedStats} />
             </Tabs.Content>
           </Tabs>
 
           <div className="sp-footer shrink-0">
             {activeTab === ETabMenu.TAB_SYNC && <LiveStatusBar />}
             {activeTab === ETabMenu.GROUP && (
-              <footer className="px-3 py-3 text-center text-[10px] font-bold uppercase tracking-wider sp-footer-label">
-                Saved Snapshots Management
-              </footer>
+              <SavedStatusBar totalGroups={savedStats.totalGroups} totalTabs={savedStats.totalTabs} />
             )}
             {activeTab === ETabMenu.AUTOMATION && (
               <RulesStatusBar rules={autoGroupRules} />

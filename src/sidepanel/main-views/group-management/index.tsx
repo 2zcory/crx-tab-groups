@@ -189,7 +189,11 @@ const getSavedTabRestoreEligibility = (tab: NStorage.Sync.Schema.Tab): RestoreEl
   return { canRestore: true }
 }
 
-const GroupManagement = forwardRef<GroupManagementHandle>(function GroupManagement(_, ref) {
+interface GroupManagementProps {
+  onStatsChange?: (stats: { totalGroups: number; totalTabs: number }) => void
+}
+
+const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(function GroupManagement({ onStatsChange }, ref) {
   const [groups, setGroups] = useState<NStorage.Sync.Response.Group[]>([])
   const [liveGroups, setLiveGroups] = useState<LiveTabGroup[]>([])
   const [restoreStatuses, setRestoreStatuses] = useState<Record<string, RestoreStatus>>({})
@@ -235,6 +239,13 @@ const GroupManagement = forwardRef<GroupManagementHandle>(function GroupManageme
   useEffect(() => {
     groupsRef.current = groups
   }, [groups])
+
+  useEffect(() => {
+    if (onStatsChange) {
+      const totalTabs = groups.reduce((acc, g) => acc + (g.tabs?.length || 0), 0)
+      onStatsChange({ totalGroups: groups.length, totalTabs })
+    }
+  }, [groups, onStatsChange])
 
   useEffect(() => {
     restoreStatusesRef.current = restoreStatuses
