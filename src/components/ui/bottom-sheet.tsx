@@ -79,7 +79,7 @@ export const BottomSheet = ({
               hasAppliedInitialFocusRef.current = true
             }}
             drag="y"
-            dragConstraints={{ top: 0 }}
+            dragConstraints={{ top: 0, bottom: typeof window !== 'undefined' ? window.innerHeight : 1000 }}
             dragElastic={0.2}
             onDragEnd={(_, info) => {
               // If dragged down by more than 100px or with a fast swipe, close the sheet
@@ -100,6 +100,7 @@ export const BottomSheet = ({
             {/* Handle / Header Area */}
             <div
               className="flex w-full cursor-grab flex-col items-center pt-3 pb-2 active:cursor-grabbing"
+              style={{ touchAction: 'none' }}
             >
               <div className="h-1.5 w-12 rounded-full bg-[var(--sp-card-border)] opacity-50" />
 
