@@ -89,7 +89,7 @@ export const BottomSheet = ({
             dragControls={dragControls}
             dragListener={false}
             dragConstraints={{ top: 0, bottom: typeof window !== 'undefined' ? window.innerHeight : 1000 }}
-            dragElastic={0.2}
+            dragElastic={{ top: 0, bottom: 0.2 }}
             onDragEnd={(_, info) => {
               // If dragged down by more than 100px or with a fast swipe, close the sheet
               if (info.offset.y > 100 || info.velocity.y > 500) {
