@@ -727,3 +727,141 @@ main {
     animation: none !important;
   }
 }
+
+/* --- REDESIGNED SETTINGS UI --- */
+
+.sp-settings-group {
+  box-shadow: var(--shadow-sm);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.sp-settings-group:hover {
+  border-color: color-mix(in srgb, var(--sp-tab-pill-active) 30%, var(--sp-card-border));
+  box-shadow: var(--shadow-md);
+}
+
+/* Toggle Switch */
+.sp-toggle-switch {
+  position: relative;
+  width: 2.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  background-color: var(--surface-elevated);
+  border: 1px solid var(--sp-card-border);
+  cursor: pointer;
+  transition: background-color 200ms ease, border-color 200ms ease;
+}
+
+.sp-toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 9999px;
+  background-color: var(--text-muted);
+  transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1), background-color 200ms ease;
+}
+
+.sp-toggle-switch.is-active {
+  background-color: color-mix(in srgb, var(--sp-tab-pill-active) 15%, var(--surface-elevated));
+  border-color: var(--sp-tab-pill-active);
+}
+
+.sp-toggle-switch.is-active::after {
+  transform: translateX(1rem);
+  background-color: var(--sp-tab-pill-active);
+}
+
+.sp-toggle-switch:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Custom Select Selectors */
+.sp-select {
+  padding: 0.35rem 1.5rem 0.35rem 0.65rem;
+  border-radius: 0.75rem;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--sp-card-border);
+  color: var(--text-primary);
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(128,128,128,0.7)' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.sp-select:hover:not(:disabled) {
+  background-color: var(--sp-card-hover);
+  border-color: var(--border-strong);
+}
+
+.sp-select:focus:not(:disabled) {
+  border-color: var(--sp-tab-pill-active);
+}
+
+.sp-select:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Backup and Reset Buttons */
+.sp-btn-backup {
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--sp-card-border);
+  background-color: var(--surface-elevated);
+  color: var(--text-secondary);
+  transition: all 180ms ease;
+}
+
+.sp-btn-backup:hover {
+  background-color: var(--sp-card-hover);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+  transform: translateY(-0.5px);
+}
+
+.sp-btn-backup:active {
+  transform: translateY(0);
+}
+
+.sp-btn-reset {
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--danger) 20%, transparent);
+  background-color: color-mix(in srgb, var(--danger) 5%, transparent);
+  color: var(--danger);
+  transition: all 180ms ease;
+}
+
+.sp-btn-reset:hover {
+  background-color: color-mix(in srgb, var(--danger) 12%, transparent);
+  border-color: var(--danger);
+  transform: translateY(-0.5px);
+}
+
+.sp-btn-reset:active {
+  transform: translateY(0);
+}
+
+/* Accordion Fade In Anim */
+@keyframes sp-settings-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in.fade-in {
+  animation: sp-settings-fade-in 200ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}

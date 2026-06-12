@@ -19,15 +19,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         throw new Error('Invalid mutation params')
       }
 
-      chrome.storage.sync.set(request.params, () => {
-        const err = chrome.runtime.lastError
-        if (err) {
-          console.error('[Background] Mutation error:', err.message)
-          sendResponse({ success: false, error: err.message })
-        } else {
-          console.log('[Background] Mutation success')
-          sendResponse({ success: true })
-        }
+      chrome.storage.local.get('extensionSettings', (data) => {
+        const settings = data.extensionSettings as NStorage.Local.ExtensionSettings | undefined
+        const storageArea = settings?.storageEngine === 'local' ? chrome.storage.local : chrome.storage.sync
+
+        storageArea.set(request.params, () => {
+          const err = chrome.runtime.lastError
+          if (err) {
+            console.error('[Background] Mutation error:', err.message)
+            sendResponse({ success: false, error: err.message })
+          } else {
+            console.log('[Background] Mutation success')
+            sendResponse({ success: true })
+          }
+        })
       })
     } catch (e) {
       console.error('[Background] Mutation sync error:', e)
@@ -124,7 +129,11 @@ const scanTabs = async (tabs: chrome.tabs.Tab[]) => {
   const summary = { scanned: 0, matched: 0, grouped: 0, created: 0, alreadyGrouped: 0, errors: 0 }
   
   try {
-    const data = await chrome.storage.sync.get('autoGroups')
+    const settingsData = await chrome.storage.local.get('extensionSettings')
+    const settings = settingsData.extensionSettings as NStorage.Local.ExtensionSettings | undefined
+    const storageArea = settings?.storageEngine === 'local' ? chrome.storage.local : chrome.storage.sync
+
+    const data = await storageArea.get('autoGroups')
     const rules = (data.autoGroups || []) as NStorage.Sync.Schema.AutoGroupRule[]
     const activeRules = sortAutoGroupRules(rules.filter((r) => r.isActive))
 
@@ -164,11 +173,31 @@ const handleTabUpdate = async (tabId: number, windowId: number, url?: string) =>
   if (!url || shouldIgnoreAutoGroupUrl(url)) return
 
   try {
-    const data = await chrome.storage.sync.get('autoGroups')
+    const settingsData = await chrome.storage.local.get('extensionSettings')
+    const settings = settingsData.extensionSettings as NStorage.Local.ExtensionSettings | undefined
+    
+    // Check global enable switch
+    const autoGroupingEnabled = settings?.autoGroupingEnabled ?? true
+    if (!autoGroupingEnabled) return
+
+    const storageArea = settings?.storageEngine === 'local' ? chrome.storage.local : chrome.storage.sync
+    const data = await storageArea.get('autoGroups')
     const rules = (data.autoGroups || []) as NStorage.Sync.Schema.AutoGroupRule[]
     const activeRules = sortAutoGroupRules(rules.filter((r) => r.isActive))
     
     if (activeRules.length > 0) {
+      // Support scan delay if scanDebounceTime is set
+      const debounceTime = settings?.scanDebounceTime ?? 0
+      if (debounceTime > 0) {
+        await new Promise((resolve) => setTimeout(resolve, debounceTime))
+        // Verify tab is still open and has same URL after delay
+        try {
+          const currentTab = await chrome.tabs.get(tabId)
+          if (!currentTab || currentTab.url !== url) return
+        } catch {
+          return // Tab was closed during delay
+        }
+      }
       await handleAutoGrouping(tabId, url, windowId, activeRules)
     }
   } catch (e) {
@@ -178,16 +207,31 @@ const handleTabUpdate = async (tabId: number, windowId: number, url?: string) =>
 
 chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
   const targetUrl = change.url || tab.url
-  if (targetUrl || change.status === 'complete') {
-    void handleTabUpdate(tabId, tab.windowId, targetUrl)
+  const windowId = tab.windowId
+  if ((targetUrl || change.status === 'complete') && windowId !== undefined) {
+    chrome.storage.local.get('extensionSettings').then((data) => {
+      const settings = data.extensionSettings as NStorage.Local.ExtensionSettings | undefined
+      const groupOnTabUpdated = settings?.groupOnTabUpdated ?? true
+      if (groupOnTabUpdated) {
+        void handleTabUpdate(tabId, windowId, targetUrl)
+      }
+    })
     void trackCurrentSession()
   }
 })
 
 chrome.tabs.onCreated.addListener((tab) => {
-  if (tab.id) {
-    // Note: onCreated might not have URL yet, handleTabUpdate will skip if url is missing
-    void handleTabUpdate(tab.id, tab.windowId, tab.url)
+  const tabId = tab.id
+  const windowId = tab.windowId
+  if (tabId !== undefined && windowId !== undefined) {
+    chrome.storage.local.get('extensionSettings').then((data) => {
+      const settings = data.extensionSettings as NStorage.Local.ExtensionSettings | undefined
+      const groupOnTabCreated = settings?.groupOnTabCreated ?? true
+      if (groupOnTabCreated) {
+        // Note: onCreated might not have URL yet, handleTabUpdate will skip if url is missing
+        void handleTabUpdate(tabId, windowId, tab.url)
+      }
+    })
   }
   void trackCurrentSession()
 })

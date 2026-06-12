@@ -28,10 +28,24 @@ class StorageSync {
     }
   }
 
+  static async getStorageArea(): Promise<chrome.storage.StorageArea> {
+    try {
+      const data = await chrome.storage.local.get('extensionSettings')
+      const settings = data.extensionSettings as NStorage.Local.ExtensionSettings | undefined
+      if (settings?.storageEngine === 'local') {
+        return chrome.storage.local
+      }
+    } catch (e) {
+      console.warn('[StorageSync] Failed to read storageEngine setting, defaulting to sync:', e)
+    }
+    return chrome.storage.sync
+  }
+
   static async get<TReturn = Partial<NStorage.Sync.Schema.Database>>(
     key: NStorage.Sync.GetKey,
   ): Promise<TReturn> {
-    return (await chrome.storage.sync.get(key as any)) as TReturn
+    const storageArea = await StorageSync.getStorageArea()
+    return (await storageArea.get(key as any)) as TReturn
   }
 
   static async set<TParams extends object = Partial<NStorage.Sync.Schema.Database>>(
@@ -83,7 +97,8 @@ class StorageSync {
     console.error('[StorageSync] Centralized mutation failed after max retries. Falling back to direct mutation.', lastError)
     
     // Fallback to direct mutation if messaging bridge is completely broken
-    await chrome.storage.sync.set(params as any)
+    const storageArea = await StorageSync.getStorageArea()
+    await storageArea.set(params as any)
     if (chrome.runtime.lastError) {
       throw new Error(chrome.runtime.lastError.message)
     }

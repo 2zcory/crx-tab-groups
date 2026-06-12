@@ -106,5 +106,15 @@ namespace NStorage {
       matchedPattern?: string
       message?: string
     }
+
+    interface ExtensionSettings {
+      autoGroupingEnabled: boolean
+      groupOnTabCreated: boolean
+      groupOnTabUpdated: boolean
+      scanDebounceTime: number
+      storageEngine: 'sync' | 'local'
+      autoCleanupEmptyGroups: boolean
+      developerMode: boolean
+    }
   }
 }

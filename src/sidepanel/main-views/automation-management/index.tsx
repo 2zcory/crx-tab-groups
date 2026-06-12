@@ -484,7 +484,7 @@ function SortableRuleCard(props: SortableRuleCardProps) {
   )
 }
 
-function AutomationManagement() {
+function AutomationManagement({ developerMode = false }: { developerMode?: boolean }) {
   const [rules, setRules] = useState<NStorage.Sync.Schema.AutoGroupRule[]>([])
   const [isAdding, setIsAdding] = useState(false)
   const [newRuleTitle, setNewRuleTitle] = useState('')
@@ -502,6 +502,7 @@ function AutomationManagement() {
   const activeRule = rules.find((r) => r.id === activeId)
   
   const [showDebug, setShowDebug] = useState(false)
+  const effectiveShowDebug = developerMode && showDebug
   const [debugState, setDebugState] = useState<DebugState | null>(null)
 
   const sensors = useSensors(
@@ -693,12 +694,12 @@ function AutomationManagement() {
   }
 
   useEffect(() => {
-    if (showDebug) {
+    if (effectiveShowDebug) {
       fetchDebugState()
       const interval = setInterval(fetchDebugState, 3000)
       return () => clearInterval(interval)
     }
-  }, [showDebug])
+  }, [effectiveShowDebug])
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string)
@@ -730,22 +731,24 @@ function AutomationManagement() {
           <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-[var(--text-primary)]">
             Rules
           </h2>
-          <Tooltip>
-            <Tooltip.Trigger asChild>
-              <button
-                onClick={() => setShowDebug(!showDebug)}
-                className={cn(
-                  'sp-icon-button flex size-6 items-center justify-center rounded-full cursor-pointer',
-                  showDebug && 'bg-amber-100 text-amber-600',
-                )}
-              >
-                <Bug size={12} />
-              </button>
-            </Tooltip.Trigger>
-            <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
-              {showDebug ? 'Hide Automation Debugger' : 'Show Automation Debugger'}
-            </Tooltip.Content>
-          </Tooltip>
+          {developerMode && (
+            <Tooltip>
+              <Tooltip.Trigger asChild>
+                <button
+                  onClick={() => setShowDebug(!showDebug)}
+                  className={cn(
+                    'sp-icon-button flex size-6 items-center justify-center rounded-full cursor-pointer',
+                    showDebug && 'bg-amber-100 text-amber-600',
+                  )}
+                >
+                  <Bug size={12} />
+                </button>
+              </Tooltip.Trigger>
+              <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
+                {showDebug ? 'Hide Automation Debugger' : 'Show Automation Debugger'}
+              </Tooltip.Content>
+            </Tooltip>
+          )}
         </div>
         <button
           onClick={() => setIsAdding(!isAdding)}
@@ -900,7 +903,7 @@ function AutomationManagement() {
         </DragOverlay>
       </DndContext>
 
-      {showDebug && debugState && (
+      {effectiveShowDebug && debugState && (
         <div className="animate-in fade-in slide-in-from-bottom-2 flex flex-col gap-4 duration-300">
           <div className="flex items-center justify-between">
             <h3 className="sp-copy-primary text-[11px] font-bold uppercase tracking-widest">
