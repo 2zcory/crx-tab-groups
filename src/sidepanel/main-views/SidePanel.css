@@ -1,12 +1,15 @@
 main {
   padding: 0;
+  margin: 0;
+  width: 100%;
   height: 100svh;
+  overflow: hidden;
 }
 
 .sp-shell {
   position: relative;
   background: var(--sp-shell-bg);
-  box-shadow: var(--shadow-md);
+  box-shadow: none;
 }
 
 .sp-shell::before {

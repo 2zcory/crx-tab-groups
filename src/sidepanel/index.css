@@ -109,16 +109,18 @@
   --sp-style-preview-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
-body {
-  min-width: 20rem;
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
   margin: 0;
-  height: 100vh;
+  padding: 0;
   overflow: hidden;
 }
 
-html {
-  height: 100vh;
-  overflow: hidden;
+body {
+  min-width: 20rem;
 }
 
 @theme inline {
