@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useMotionValue, useDragControls } from 'framer-motion'
 import { ReactNode, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -27,6 +27,8 @@ export const BottomSheet = ({
 }: BottomSheetProps) => {
   const sheetRef = useRef<HTMLDivElement | null>(null)
   const hasAppliedInitialFocusRef = useRef(false)
+  const y = useMotionValue(1000)
+  const dragControls = useDragControls()
 
   // Prevent scrolling when open
   useEffect(() => {
@@ -48,9 +50,13 @@ export const BottomSheet = ({
   return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-end overflow-hidden">
+        <motion.div
+          key="bottom-sheet-wrapper"
+          className="fixed inset-0 z-50 flex items-end overflow-hidden"
+        >
           {/* Backdrop */}
           <motion.div
+            key="bottom-sheet-backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -61,10 +67,11 @@ export const BottomSheet = ({
 
           {/* Sheet */}
           <motion.div
+            key="bottom-sheet-content"
             ref={sheetRef}
-            initial={{ y: '100vh' }}
+            initial={{ y: 1000 }}
             animate={{ y: 0 }}
-            exit={{ y: '100vh' }}
+            exit={{ y: 1000 }}
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             onAnimationComplete={() => {
               if (!isOpen || hasAppliedInitialFocusRef.current === true) {
@@ -79,6 +86,8 @@ export const BottomSheet = ({
               hasAppliedInitialFocusRef.current = true
             }}
             drag="y"
+            dragControls={dragControls}
+            dragListener={false}
             dragConstraints={{ top: 0, bottom: typeof window !== 'undefined' ? window.innerHeight : 1000 }}
             dragElastic={0.2}
             onDragEnd={(_, info) => {
@@ -93,6 +102,7 @@ export const BottomSheet = ({
               sheetClassName,
             )}
             style={{
+              y,
               background: 'var(--sp-shell-bg)',
               backdropFilter: 'var(--sp-shell-blur)',
             }}
@@ -101,6 +111,9 @@ export const BottomSheet = ({
             <div
               className="flex w-full cursor-grab flex-col items-center pt-3 pb-2 active:cursor-grabbing"
               style={{ touchAction: 'none' }}
+              onPointerDown={(e) => {
+                dragControls.start(e)
+              }}
             >
               <div className="h-1.5 w-12 rounded-full bg-[var(--sp-card-border)] opacity-50" />
 
@@ -126,9 +139,10 @@ export const BottomSheet = ({
               {children}
             </div>
           </motion.div>
-        </div>
+        </motion.div>
       )}
     </AnimatePresence>,
     document.body,
   )
 }
+
