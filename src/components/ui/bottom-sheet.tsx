@@ -95,7 +95,6 @@ export const BottomSheet = ({
             style={{
               background: 'var(--sp-shell-bg)',
               backdropFilter: 'var(--sp-shell-blur)',
-              transform: 'translateZ(0)',
             }}
           >
             {/* Handle / Header Area */}
