@@ -82,7 +82,6 @@ const THEME_OPTIONS: Array<{ value: ThemeMode; label: string }> = [
   { value: 'light', label: 'Light' },
   { value: 'dark', label: 'Dark' },
   { value: 'system', label: 'System' },
-  { value: 'glass', label: 'Glass' },
 ]
 
 const GLASS_STYLE_OPTIONS: Array<{
@@ -1085,7 +1084,7 @@ export const SidePanel = () => {
                 <div className="p-4 border-t border-[var(--sp-card-border)] flex flex-col gap-4 animate-in fade-in duration-200">
                   <div className="flex flex-col gap-2">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Theme Mode</p>
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                       {THEME_OPTIONS.map((option) => (
                         <button
                           key={option.value}
