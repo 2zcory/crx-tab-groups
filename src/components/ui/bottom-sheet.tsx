@@ -1,4 +1,4 @@
-import { motion, AnimatePresence, useDragControls } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { ReactNode, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -25,7 +25,6 @@ export const BottomSheet = ({
   contentClassName,
   sheetDataAttributes,
 }: BottomSheetProps) => {
-  const dragControls = useDragControls()
   const sheetRef = useRef<HTMLDivElement | null>(null)
   const hasAppliedInitialFocusRef = useRef(false)
 
@@ -80,18 +79,17 @@ export const BottomSheet = ({
               hasAppliedInitialFocusRef.current = true
             }}
             drag="y"
-            dragControls={dragControls}
-            dragListener={false}
             dragConstraints={{ top: 0 }}
             dragElastic={0.2}
             onDragEnd={(_, info) => {
+              // If dragged down by more than 100px or with a fast swipe, close the sheet
               if (info.offset.y > 100 || info.velocity.y > 500) {
                 onClose()
               }
             }}
             {...sheetDataAttributes}
             className={cn(
-              'relative z-10 flex max-h-[90vh] w-full flex-col rounded-t-[2rem] border-t border-[var(--sp-card-border)] bg-[var(--sp-shell-bg)] shadow-2xl will-change-transform',
+              'relative z-10 flex max-h-[90vh] w-full flex-col rounded-t-[2rem] border-t border-[var(--sp-card-border)] bg-[var(--sp-shell-bg)] shadow-2xl will-change-transform select-none',
               sheetClassName,
             )}
             style={{
@@ -103,7 +101,6 @@ export const BottomSheet = ({
             {/* Handle / Header Area */}
             <div
               className="flex w-full cursor-grab flex-col items-center pt-3 pb-2 active:cursor-grabbing"
-              onPointerDown={(e) => dragControls.start(e)}
             >
               <div className="h-1.5 w-12 rounded-full bg-[var(--sp-card-border)] opacity-50" />
 
@@ -122,7 +119,10 @@ export const BottomSheet = ({
             </div>
 
             {/* Content Area */}
-            <div className={cn('flex-1 overflow-y-auto px-6 pb-8 custom-scrollbar', contentClassName)}>
+            <div 
+              className={cn('flex-1 overflow-y-auto px-6 pb-8 custom-scrollbar select-text', contentClassName)}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
               {children}
             </div>
           </motion.div>
