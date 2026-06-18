@@ -3,6 +3,7 @@ import { shouldIgnoreAutoGroupUrl } from '@/helpers'
 import { cn } from '@/lib/utils'
 import StorageSyncGroup from '@/storage/group.sync'
 import StorageSyncTab from '@/storage/tab.sync'
+import StorageSync from '@/storage/core'
 import {
   AlertCircle,
   Check,
@@ -423,8 +424,7 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
       })
 
       try {
-        await StorageSyncGroup.deleteGroupById(groupId)
-        await StorageSyncTab.deleteTabsByGroupId(groupId)
+        await StorageSync.deleteSnapshot(groupId)
 
         setRestoreStatus(groupId, {
           state: 'deleted',

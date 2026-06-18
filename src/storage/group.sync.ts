@@ -30,37 +30,17 @@ class StorageSyncGroup {
   }
 
   static async create(...groups: NStorage.Sync.Schema.Group[]) {
-    await StorageSync.runExclusive(async () => {
-      const currentGroups = await StorageSyncGroup.getList()
-      const params: Pick<NStorage.Sync.Schema.Database, 'groups'> = {
-        groups: [...currentGroups, ...groups],
-      }
-      await StorageSync.set(params)
-    })
+    await StorageSync.mutateGroups(groups)
   }
 
   static async update(...groups: NStorage.Sync.Schema.Group[]) {
-    await StorageSync.runExclusive(async () => {
-      const currentGroups = await StorageSyncGroup.getList()
-      const updatedGroups = currentGroups.map((group) => {
-        const matchingNewGroup = groups.find((newG) => newG.id === group.id)
-        return matchingNewGroup ? { ...group, ...matchingNewGroup } : group
-      })
-
-      const params: Pick<NStorage.Sync.Schema.Database, 'groups'> = {
-        groups: updatedGroups,
-      }
-      await StorageSync.set(params)
-    })
+    await StorageSync.mutateGroups(groups)
   }
 
   static async deleteGroupById(id: string) {
-    await StorageSync.runExclusive(async () => {
-      const currentGroups = await StorageSyncGroup.getList()
-      const params: Pick<NStorage.Sync.Schema.Database, 'groups'> = {
-        groups: currentGroups.filter((group) => group.id !== id),
-      }
-      await StorageSync.set(params)
+    const currentGroups = await StorageSyncGroup.getList()
+    await StorageSync.set({
+      groups: currentGroups.filter((group) => group.id !== id)
     })
   }
 }

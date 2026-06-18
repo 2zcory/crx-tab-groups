@@ -11,37 +11,17 @@ class StorageSyncTab {
   }
 
   static async create(...tabs: NStorage.Sync.Schema.Tab[]) {
-    await StorageSync.runExclusive(async () => {
-      const currentTabs = await StorageSyncTab.getList()
-      const params: Pick<NStorage.Sync.Schema.Database, 'tabs'> = {
-        tabs: [...currentTabs, ...tabs],
-      }
-      await StorageSync.set(params)
-    })
+    await StorageSync.mutateTabs(tabs)
   }
 
   static async update(...tabs: NStorage.Sync.Schema.Tab[]) {
-    await StorageSync.runExclusive(async () => {
-      const currentTabs = await StorageSyncTab.getList()
-      const updatedTabs = currentTabs.map((tab) => {
-        const matchingNewTab = tabs.find((newT) => newT.id === tab.id)
-        return matchingNewTab ? { ...tab, ...matchingNewTab } : tab
-      })
-
-      const params: Pick<NStorage.Sync.Schema.Database, 'tabs'> = {
-        tabs: updatedTabs,
-      }
-      await StorageSync.set(params)
-    })
+    await StorageSync.mutateTabs(tabs)
   }
 
   static async deleteTabsByGroupId(groupId: string) {
-    await StorageSync.runExclusive(async () => {
-      const currentTabs = await StorageSyncTab.getList()
-      const params: Pick<NStorage.Sync.Schema.Database, 'tabs'> = {
-        tabs: currentTabs.filter((tab) => tab.groupId !== groupId),
-      }
-      await StorageSync.set(params)
+    const currentTabs = await StorageSyncTab.getList()
+    await StorageSync.set({
+      tabs: currentTabs.filter((tab) => tab.groupId !== groupId)
     })
   }
 }

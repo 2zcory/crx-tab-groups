@@ -9,36 +9,161 @@ import StorageLocalAutoGroup from '@/storage/autoGroup.local'
 
 console.log('[CrxTabGroups] Background Service Worker active.')
 
+// --- STORAGE MUTATE QUEUE & HELPERS ---
+let mutationQueue: Promise<any> = Promise.resolve()
+
+function enqueueMutation<T>(op: () => Promise<T>): Promise<T> {
+  const res = mutationQueue.then(op)
+  mutationQueue = res.catch(() => {})
+  return res
+}
+
+const readStorage = (storageArea: chrome.storage.StorageArea, keys: string | string[] | null): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    storageArea.get(keys, (data) => {
+      const err = chrome.runtime.lastError
+      if (err) reject(new Error(err.message))
+      else resolve(data)
+    })
+  })
+}
+
+const writeStorage = (storageArea: chrome.storage.StorageArea, data: object): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    storageArea.set(data, () => {
+      const err = chrome.runtime.lastError
+      if (err) reject(new Error(err.message))
+      else resolve()
+    })
+  })
+}
+
 // --- MESSAGE ROUTER ---
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('[Background] Received message:', request.action)
 
-  if (request.action === 'STORAGE_SYNC_MUTATE') {
-    try {
-      if (!request.params || typeof request.params !== 'object') {
-        throw new Error('Invalid mutation params')
-      }
+  if (request.action === 'STORAGE_MUTATE') {
+    enqueueMutation(async () => {
+      const { type } = request.mutation
+      const settingsData = await readStorage(chrome.storage.local, 'extensionSettings')
+      const settings = settingsData.extensionSettings as NStorage.Local.ExtensionSettings | undefined
+      const storageArea = settings?.storageEngine === 'local' ? chrome.storage.local : chrome.storage.sync
 
-      chrome.storage.local.get('extensionSettings', (data) => {
-        const settings = data.extensionSettings as NStorage.Local.ExtensionSettings | undefined
-        const storageArea =
-          settings?.storageEngine === 'local' ? chrome.storage.local : chrome.storage.sync
+      switch (type) {
+        case 'SAVE_SNAPSHOT': {
+          const { group, tabs } = request.mutation
+          const db = await readStorage(storageArea, ['groups', 'tabs'])
+          const currentGroups = db.groups || []
+          const currentTabs = db.tabs || []
 
-        storageArea.set(request.params, () => {
-          const err = chrome.runtime.lastError
-          if (err) {
-            console.error('[Background] Mutation error:', err.message)
-            sendResponse({ success: false, error: err.message })
-          } else {
-            console.log('[Background] Mutation success')
-            sendResponse({ success: true })
+          await writeStorage(storageArea, {
+            groups: [...currentGroups, group],
+            tabs: [...currentTabs, ...tabs],
+          })
+          break
+        }
+        case 'UPDATE_SNAPSHOT': {
+          const { group, tabs } = request.mutation
+          const db = await readStorage(storageArea, ['groups', 'tabs'])
+          const currentGroups = db.groups || []
+          const currentTabs = db.tabs || []
+
+          const updatedGroups = currentGroups.map((g: any) => (g.id === group.id ? { ...g, ...group } : g))
+          const filteredTabs = currentTabs.filter((t: any) => t.groupId !== group.id)
+
+          await writeStorage(storageArea, {
+            groups: updatedGroups,
+            tabs: [...filteredTabs, ...tabs],
+          })
+          break
+        }
+        case 'DELETE_SNAPSHOT': {
+          const { groupId } = request.mutation
+          const db = await readStorage(storageArea, ['groups', 'tabs'])
+          const currentGroups = db.groups || []
+          const currentTabs = db.tabs || []
+
+          await writeStorage(storageArea, {
+            groups: currentGroups.filter((g: any) => g.id !== groupId),
+            tabs: currentTabs.filter((t: any) => t.groupId !== groupId),
+          })
+          break
+        }
+        case 'MUTATE_GROUPS': {
+          const { groups } = request.mutation
+          const db = await readStorage(storageArea, 'groups')
+          const currentGroups = db.groups || []
+
+          const updatedGroups = [...currentGroups]
+          for (const newG of groups) {
+            const index = updatedGroups.findIndex((g: any) => g.id === newG.id)
+            if (index !== -1) {
+              updatedGroups[index] = { ...updatedGroups[index], ...newG }
+            } else {
+              updatedGroups.push(newG)
+            }
           }
-        })
+
+          await writeStorage(storageArea, { groups: updatedGroups })
+          break
+        }
+        case 'MUTATE_TABS': {
+          const { tabs } = request.mutation
+          const db = await readStorage(storageArea, 'tabs')
+          const currentTabs = db.tabs || []
+
+          const updatedTabs = [...currentTabs]
+          for (const newT of tabs) {
+            const index = updatedTabs.findIndex((t: any) => t.id === newT.id)
+            if (index !== -1) {
+              updatedTabs[index] = { ...updatedTabs[index], ...newT }
+            } else {
+              updatedTabs.push(newT)
+            }
+          }
+
+          await writeStorage(storageArea, { tabs: updatedTabs })
+          break
+        }
+        case 'MUTATE_AUTOGROUPS': {
+          const { autoGroups } = request.mutation
+          const db = await readStorage(storageArea, 'autoGroups')
+          const currentRules = db.autoGroups || []
+
+          const updatedRules = [...currentRules]
+          for (const newR of autoGroups) {
+            const index = updatedRules.findIndex((r: any) => r.id === newR.id)
+            if (index !== -1) {
+              updatedRules[index] = { ...updatedRules[index], ...newR }
+            } else {
+              updatedRules.push(newR)
+            }
+          }
+
+          await writeStorage(storageArea, { autoGroups: updatedRules })
+          break
+        }
+        case 'REPLACE_AUTOGROUPS': {
+          const { autoGroups } = request.mutation
+          await writeStorage(storageArea, { autoGroups })
+          break
+        }
+        case 'SET': {
+          const { params } = request.mutation
+          await writeStorage(storageArea, params)
+          break
+        }
+        default:
+          throw new Error(`Unknown mutation type: ${type}`)
+      }
+    })
+      .then(() => {
+        sendResponse({ success: true })
       })
-    } catch (e) {
-      console.error('[Background] Mutation sync error:', e)
-      sendResponse({ success: false, error: String(e) })
-    }
+      .catch((err) => {
+        console.error('[Background] Mutation error:', err)
+        sendResponse({ success: false, error: err.message || String(err) })
+      })
     return true
   }
 
@@ -255,46 +380,7 @@ chrome.tabs.onRemoved.addListener(trackCurrentSession)
 chrome.windows.onCreated.addListener(trackCurrentSession)
 chrome.windows.onRemoved.addListener(trackCurrentSession)
 
-// --- STORAGE SYNC MUTEX LOCK ---
-interface LockRequest {
-  port: chrome.runtime.Port
-  id: string
-}
-
-let lockQueue: LockRequest[] = []
-let currentLock: LockRequest | null = null
-
-function processLockQueue() {
-  if (currentLock) return
-  if (lockQueue.length === 0) return
-
-  currentLock = lockQueue.shift()!
-  try {
-    currentLock.port.postMessage({ action: 'LOCK_ACQUIRED' })
-  } catch (e) {
-    currentLock = null
-    processLockQueue()
-  }
-}
-
-chrome.runtime.onConnect.addListener((port) => {
-  if (port.name === 'STORAGE_SYNC_LOCK') {
-    const lockId = Math.random().toString(36).substring(7)
-    const request: LockRequest = { port, id: lockId }
-
-    lockQueue.push(request)
-    processLockQueue()
-
-    port.onDisconnect.addListener(() => {
-      if (currentLock && currentLock.id === lockId) {
-        currentLock = null
-      } else {
-        lockQueue = lockQueue.filter((r) => r.id !== lockId)
-      }
-      processLockQueue()
-    })
-  }
-})
+// Note: STORAGE_SYNC_LOCK port listener removed as mutations are now centralized in the background worker promise queue.
 
 // --- SIDE PANEL BEHAVIOR ---
 chrome.runtime.onInstalled.addListener(() => {

@@ -3,6 +3,7 @@ import { EMockGroup } from '@/enums'
 import onTabUpdated from '@/listeners/onTabUpdated'
 import StorageSyncGroup from '@/storage/group.sync'
 import StorageSyncTab from '@/storage/tab.sync'
+import StorageSync from '@/storage/core'
 import {
   forwardRef,
   useEffect,
@@ -469,8 +470,7 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(
       )
 
       try {
-        await StorageSyncGroup.create(snapshotGroup)
-        await StorageSyncTab.create(...snapshotTabs)
+        await StorageSync.saveSnapshot(snapshotGroup, snapshotTabs)
         await fetchSavedSnapshots()
         setSaveStatus(group.id, {
           state: 'saved',
@@ -512,9 +512,7 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(
       )
 
       try {
-        await StorageSyncGroup.update(updatedGroup)
-        await StorageSyncTab.deleteTabsByGroupId(savedSnapshot.id)
-        await StorageSyncTab.create(...newTabs)
+        await StorageSync.updateSnapshot(updatedGroup, newTabs)
         await fetchSavedSnapshots()
         setSaveStatus(liveGroup.id, {
           state: 'saved',
