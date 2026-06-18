@@ -56,19 +56,18 @@ class StorageSync {
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        const response = await new Promise<{ success: boolean; error?: string }>((resolve, reject) => {
-          chrome.runtime.sendMessage(
-            { action: 'STORAGE_SYNC_MUTATE', params },
-            (res) => {
+        const response = await new Promise<{ success: boolean; error?: string }>(
+          (resolve, reject) => {
+            chrome.runtime.sendMessage({ action: 'STORAGE_SYNC_MUTATE', params }, (res) => {
               const err = chrome.runtime.lastError
               if (err) {
                 reject(new Error(err.message))
               } else {
                 resolve(res)
               }
-            }
-          )
-        })
+            })
+          },
+        )
 
         if (response.success) {
           return
@@ -78,24 +77,27 @@ class StorageSync {
       } catch (e: any) {
         lastError = e
         console.warn(`[StorageSync] Mutation attempt ${attempt} failed:`, e.message)
-        
+
         // If it's a message port error or connection error, wait before retrying
         if (
-          e.message.includes('message port closed') || 
+          e.message.includes('message port closed') ||
           e.message.includes('Could not establish connection') ||
           e.message.includes('connection attempt failed')
         ) {
-          await new Promise(r => setTimeout(r, 200 * attempt))
+          await new Promise((r) => setTimeout(r, 200 * attempt))
           continue
         }
-        
+
         // For other errors (like quota), fail immediately
         throw e
       }
     }
 
-    console.error('[StorageSync] Centralized mutation failed after max retries. Falling back to direct mutation.', lastError)
-    
+    console.error(
+      '[StorageSync] Centralized mutation failed after max retries. Falling back to direct mutation.',
+      lastError,
+    )
+
     // Fallback to direct mutation if messaging bridge is completely broken
     const storageArea = await StorageSync.getStorageArea()
     await storageArea.set(params as any)

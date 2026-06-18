@@ -9,7 +9,7 @@ export default defineManifest({
   description: packageData.description,
   version: packageData.version,
   manifest_version: 3,
-  key: "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3iZe9suKhK7iBpT5Do1TtZEy5mItfbWXLSsY5bj54tI9CFf15DZYynLHv73IqjqI71FkG9gX8f7oeNko+lHTNMMRnKG2smQjYEaBv0gw0p46CUQ0dWOlhbqytnXH3tanIjSKvVhNAZUleuEFFR3oN0ZswMvEAlOCIqqYxapx6mt7d2ujxWtwIhDTWrY7FqPs6nk3HaA2fV0xEfw6FI4aaGo2mMsecGC1OXqf2DRtL/bzHfH7rI25T97fKSf68JoxK42tf/TmLMRBsqDAbt/LSQi3I+sYRLtDS0a3UUPHt0ZubsIByioy9+3da5exCCJsauotBL4bomJV65ZwApCuFwIDAQAB",
+  key: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3iZe9suKhK7iBpT5Do1TtZEy5mItfbWXLSsY5bj54tI9CFf15DZYynLHv73IqjqI71FkG9gX8f7oeNko+lHTNMMRnKG2smQjYEaBv0gw0p46CUQ0dWOlhbqytnXH3tanIjSKvVhNAZUleuEFFR3oN0ZswMvEAlOCIqqYxapx6mt7d2ujxWtwIhDTWrY7FqPs6nk3HaA2fV0xEfw6FI4aaGo2mMsecGC1OXqf2DRtL/bzHfH7rI25T97fKSf68JoxK42tf/TmLMRBsqDAbt/LSQi3I+sYRLtDS0a3UUPHt0ZubsIByioy9+3da5exCCJsauotBL4bomJV65ZwApCuFwIDAQAB',
   icons: {
     16: 'img/logo-16.png',
     32: 'img/logo-32.png',
@@ -33,13 +33,6 @@ export default defineManifest({
       matches: [],
     },
   ],
-  permissions: [
-    'sidePanel',
-    'tabs',
-    'tabGroups',
-    'storage',
-    'topSites',
-    'webNavigation',
-  ],
+  permissions: ['sidePanel', 'tabs', 'tabGroups', 'storage', 'topSites', 'webNavigation'],
   host_permissions: ['<all_urls>'],
 })

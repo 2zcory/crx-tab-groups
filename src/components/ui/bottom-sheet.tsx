@@ -88,7 +88,10 @@ export const BottomSheet = ({
             drag="y"
             dragControls={dragControls}
             dragListener={false}
-            dragConstraints={{ top: 0, bottom: typeof window !== 'undefined' ? window.innerHeight : 1000 }}
+            dragConstraints={{
+              top: 0,
+              bottom: typeof window !== 'undefined' ? window.innerHeight : 1000,
+            }}
             dragElastic={{ top: 0, bottom: 0.2 }}
             onDragEnd={(_, info) => {
               // If dragged down by more than 100px or with a fast swipe, close the sheet
@@ -132,8 +135,11 @@ export const BottomSheet = ({
             </div>
 
             {/* Content Area */}
-            <div 
-              className={cn('flex-1 overflow-y-auto px-6 pb-8 custom-scrollbar select-text', contentClassName)}
+            <div
+              className={cn(
+                'flex-1 overflow-y-auto px-6 pb-8 custom-scrollbar select-text',
+                contentClassName,
+              )}
               onPointerDown={(e) => e.stopPropagation()}
             >
               {children}
@@ -145,4 +151,3 @@ export const BottomSheet = ({
     document.body,
   )
 }
-

@@ -1,6 +1,6 @@
-# Crx Tab Groups
+# Groupify: Auto Tab Organizer
 
-A Chrome extension for inspecting live browser tab groups and managing saved-group snapshots with React, TypeScript, Vite, and Manifest V3.
+A Chrome extension for auto-organizing tab groups with rules, inspecting live tabs, and managing saved snapshots in a side panel (built with React, TypeScript, Vite, and Manifest V3).
 
 ## Product Shape
 

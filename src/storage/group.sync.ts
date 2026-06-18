@@ -46,7 +46,7 @@ class StorageSyncGroup {
         const matchingNewGroup = groups.find((newG) => newG.id === group.id)
         return matchingNewGroup ? { ...group, ...matchingNewGroup } : group
       })
-      
+
       const params: Pick<NStorage.Sync.Schema.Database, 'groups'> = {
         groups: updatedGroups,
       }

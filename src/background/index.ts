@@ -21,7 +21,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
       chrome.storage.local.get('extensionSettings', (data) => {
         const settings = data.extensionSettings as NStorage.Local.ExtensionSettings | undefined
-        const storageArea = settings?.storageEngine === 'local' ? chrome.storage.local : chrome.storage.sync
+        const storageArea =
+          settings?.storageEngine === 'local' ? chrome.storage.local : chrome.storage.sync
 
         storageArea.set(request.params, () => {
           const err = chrome.runtime.lastError
@@ -49,20 +50,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return
       }
 
-      scanTabs(tabs).then(summary => {
-        console.log('[Background] Scan success:', summary)
-        sendResponse({ success: true, summary })
-      }).catch(e => {
-        console.error('[Background] Scan error:', e)
-        sendResponse({ success: false, error: String(e) })
-      })
+      scanTabs(tabs)
+        .then((summary) => {
+          console.log('[Background] Scan success:', summary)
+          sendResponse({ success: true, summary })
+        })
+        .catch((e) => {
+          console.error('[Background] Scan error:', e)
+          sendResponse({ success: false, error: String(e) })
+        })
     })
     return true
   }
 
   if (request.action === 'get_auto_group_debug_state') {
-    Promise.all([StorageLocalAutoGroup.getOwnershipRegistry(), StorageLocalAutoGroup.getAuditEntries()])
-      .then(([ownership, audit]) => sendResponse({ success: true, ownership: Object.values(ownership), audit }))
+    Promise.all([
+      StorageLocalAutoGroup.getOwnershipRegistry(),
+      StorageLocalAutoGroup.getAuditEntries(),
+    ])
+      .then(([ownership, audit]) =>
+        sendResponse({ success: true, ownership: Object.values(ownership), audit }),
+      )
       .catch((e) => sendResponse({ success: false, error: String(e) }))
     return true
   }
@@ -80,28 +88,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // --- AUTO GROUPING ---
 const handleAutoGrouping = async (
-  tabId: number, 
-  url: string | undefined, 
-  windowId: number, 
-  activeRules: NStorage.Sync.Schema.AutoGroupRule[]
+  tabId: number,
+  url: string | undefined,
+  windowId: number,
+  activeRules: NStorage.Sync.Schema.AutoGroupRule[],
 ) => {
   if (!url || shouldIgnoreAutoGroupUrl(url)) return { kind: 'ignored' }
-  
+
   try {
     const tab = await chrome.tabs.get(tabId)
-    
+
     for (const rule of activeRules) {
       const patterns = getAutoGroupRulePatterns(rule)
       const isMatch = patterns.some((p) => matchesAutoGroupRule(url, p))
-      
+
       if (isMatch) {
         console.log(`[Automation] Match found for tab ${tabId}: "${rule.title}" (Pattern matched)`)
-        
+
         const groups = await chrome.tabGroups.query({ windowId })
-        const targetGroup = groups.find((g) => 
-          g.title?.trim().toLowerCase() === rule.title.trim().toLowerCase()
+        const targetGroup = groups.find(
+          (g) => g.title?.trim().toLowerCase() === rule.title.trim().toLowerCase(),
         )
-        
+
         if (targetGroup) {
           if (tab.groupId === targetGroup.id) {
             console.log(`[Automation] Tab ${tabId} already in target group: ${rule.title}`)
@@ -118,8 +126,8 @@ const handleAutoGrouping = async (
         }
       }
     }
-  } catch (e) { 
-    console.error('[Background] Auto-grouping error for tab', tabId, e) 
+  } catch (e) {
+    console.error('[Background] Auto-grouping error for tab', tabId, e)
   }
   return { kind: 'no_match' }
 }
@@ -127,11 +135,12 @@ const handleAutoGrouping = async (
 const scanTabs = async (tabs: chrome.tabs.Tab[]) => {
   console.log(`[Background] Manual scan triggered for ${tabs.length} tabs`)
   const summary = { scanned: 0, matched: 0, grouped: 0, created: 0, alreadyGrouped: 0, errors: 0 }
-  
+
   try {
     const settingsData = await chrome.storage.local.get('extensionSettings')
     const settings = settingsData.extensionSettings as NStorage.Local.ExtensionSettings | undefined
-    const storageArea = settings?.storageEngine === 'local' ? chrome.storage.local : chrome.storage.sync
+    const storageArea =
+      settings?.storageEngine === 'local' ? chrome.storage.local : chrome.storage.sync
 
     const data = await storageArea.get('autoGroups')
     const rules = (data.autoGroups || []) as NStorage.Sync.Schema.AutoGroupRule[]
@@ -140,7 +149,7 @@ const scanTabs = async (tabs: chrome.tabs.Tab[]) => {
     for (const tab of tabs) {
       if (!tab.url || !tab.id) continue
       summary.scanned++
-      
+
       const res = await handleAutoGrouping(tab.id, tab.url, tab.windowId, activeRules)
       if (res.kind === 'grouped') summary.grouped++
       if (res.kind === 'already_grouped') summary.alreadyGrouped++
@@ -149,7 +158,7 @@ const scanTabs = async (tabs: chrome.tabs.Tab[]) => {
     console.error('[Background] Scan tabs error:', e)
     summary.errors++
   }
-  
+
   return summary
 }
 
@@ -159,10 +168,10 @@ const trackCurrentSession = async () => {
     const snapshot = {
       timestamp: new Date().toISOString(),
       tabCount: allWindows.reduce((acc, win) => acc + (win.tabs?.length || 0), 0),
-      windows: allWindows.map(win => ({
+      windows: allWindows.map((win) => ({
         id: win.id,
-        tabs: (win.tabs || []).map(t => ({ url: t.url, title: t.title, groupId: t.groupId }))
-      }))
+        tabs: (win.tabs || []).map((t) => ({ url: t.url, title: t.title, groupId: t.groupId })),
+      })),
     }
     if (snapshot.tabCount > 0) await chrome.storage.local.set({ last_known_good_session: snapshot })
   } catch (e) {}
@@ -175,16 +184,17 @@ const handleTabUpdate = async (tabId: number, windowId: number, url?: string) =>
   try {
     const settingsData = await chrome.storage.local.get('extensionSettings')
     const settings = settingsData.extensionSettings as NStorage.Local.ExtensionSettings | undefined
-    
+
     // Check global enable switch
     const autoGroupingEnabled = settings?.autoGroupingEnabled ?? true
     if (!autoGroupingEnabled) return
 
-    const storageArea = settings?.storageEngine === 'local' ? chrome.storage.local : chrome.storage.sync
+    const storageArea =
+      settings?.storageEngine === 'local' ? chrome.storage.local : chrome.storage.sync
     const data = await storageArea.get('autoGroups')
     const rules = (data.autoGroups || []) as NStorage.Sync.Schema.AutoGroupRule[]
     const activeRules = sortAutoGroupRules(rules.filter((r) => r.isActive))
-    
+
     if (activeRules.length > 0) {
       // Support scan delay if scanDebounceTime is set
       const debounceTime = settings?.scanDebounceTime ?? 0
@@ -291,6 +301,6 @@ chrome.runtime.onInstalled.addListener(() => {
 // Also run at top level to ensure behavior is set immediately on service worker startup/reloads
 chrome.sidePanel
   ?.setPanelBehavior?.({ openPanelOnActionClick: true })
-  .catch((error) => console.error('[Background] Failed to set side panel behavior at top level:', error))
-
-
+  .catch((error) =>
+    console.error('[Background] Failed to set side panel behavior at top level:', error),
+  )

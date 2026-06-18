@@ -1,9 +1,9 @@
 {
   "name": "crx-tab-groups",
-  "displayName": "Crx Tab Groups",
+  "displayName": "Groupify: Auto Tab Organizer",
   "version": "0.1.0",
   "author": "2zcory",
-  "description": "Inspect live Chrome tab groups and manage saved-group snapshots from a side panel.",
+  "description": "Auto-organize tab groups with rules, inspect live tabs, and save/restore snapshots in a side panel.",
   "type": "module",
   "license": "MIT",
   "keywords": [

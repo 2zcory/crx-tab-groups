@@ -133,11 +133,7 @@ function Tabs(props: IProps) {
           ))}
         </div>
 
-        {props.rightElement && (
-          <div className="flex items-center px-2">
-            {props.rightElement}
-          </div>
-        )}
+        {props.rightElement && <div className="flex items-center px-2">{props.rightElement}</div>}
 
         <div
           className="absolute bottom-0 z-10 h-[2px] bg-[var(--sp-tab-pill-active)] transition-all duration-300 ease-in-out"

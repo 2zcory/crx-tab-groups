@@ -69,10 +69,7 @@ const COLOR_MAP: Record<string, string> = {
   orange: 'bg-orange-500',
 }
 
-const RULE_CARD_TINT_MAP: Record<
-  NStorage.Sync.GroupColor,
-  { accent: string; border: string }
-> = {
+const RULE_CARD_TINT_MAP: Record<NStorage.Sync.GroupColor, { accent: string; border: string }> = {
   grey: { accent: 'rgb(148 163 184)', border: 'rgba(148, 163, 184, 0.3)' },
   blue: { accent: 'rgb(59 130 246)', border: 'rgba(59, 130, 246, 0.3)' },
   red: { accent: 'rgb(239 68 68)', border: 'rgba(239, 68, 68, 0.3)' },
@@ -167,7 +164,7 @@ function RuleCardUI({
   const rulePatterns = getAutoGroupRulePatterns(rule)
   const activeColor = isEditing ? editingColor : rule.color
   const surfaceTint = RULE_CARD_TINT_MAP[activeColor]
-  
+
   const cardSurfaceStyle = {
     ...style,
     '--sp-rule-card-accent': surfaceTint.accent,
@@ -221,8 +218,10 @@ function RuleCardUI({
             </span>
           )}
           {!isEditing && (
-            <div className="sp-rule-card-chevron flex size-5 items-center justify-center text-[var(--text-muted)] transition-transform duration-300"
-                 style={{ transform: effectiveExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>
+            <div
+              className="sp-rule-card-chevron flex size-5 items-center justify-center text-[var(--text-muted)] transition-transform duration-300"
+              style={{ transform: effectiveExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
+            >
               <ChevronRight size={16} />
             </div>
           )}
@@ -243,7 +242,9 @@ function RuleCardUI({
                   <Pencil size={12} />
                 </button>
               </Tooltip.Trigger>
-              <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">Edit</Tooltip.Content>
+              <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
+                Edit
+              </Tooltip.Content>
             </Tooltip>
             <Tooltip>
               <Tooltip.Trigger asChild>
@@ -255,7 +256,9 @@ function RuleCardUI({
                   }}
                   className={cn(
                     'flex size-6 items-center justify-center rounded-lg transition-colors',
-                    rule.isActive ? 'text-amber-500 hover:bg-amber-500/10' : 'text-emerald-500 hover:bg-emerald-500/10',
+                    rule.isActive
+                      ? 'text-amber-500 hover:bg-amber-500/10'
+                      : 'text-emerald-500 hover:bg-emerald-500/10',
                   )}
                 >
                   {rule.isActive ? <Pause size={12} /> : <Play size={12} />}
@@ -278,7 +281,9 @@ function RuleCardUI({
                   <Trash2 size={12} />
                 </button>
               </Tooltip.Trigger>
-              <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">Delete</Tooltip.Content>
+              <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
+                Delete
+              </Tooltip.Content>
             </Tooltip>
           </div>
         )}
@@ -362,7 +367,7 @@ function RuleCardUI({
                   <label className="sp-label text-[10px] font-bold uppercase tracking-wider ml-1">
                     Patterns
                   </label>
-                  
+
                   <div className="flex flex-col gap-2">
                     {editingPatterns.map((pattern, idx) => (
                       <div key={idx} className="flex items-center gap-2">
@@ -491,16 +496,16 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
   const [newRuleColor, setNewRuleColor] = useState<NStorage.Sync.GroupColor>('blue')
   const [newRulePattern, setNewRulePattern] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
-  
+
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
   const [editingColor, setEditingColor] = useState<NStorage.Sync.GroupColor>('blue')
   const [editingPatterns, setEditingPatterns] = useState<string[]>([])
   const [editingPatternDraft, setEditingPatternDraft] = useState('')
-  
+
   const [activeId, setActiveId] = useState<string | null>(null)
   const activeRule = rules.find((r) => r.id === activeId)
-  
+
   const [showDebug, setShowDebug] = useState(false)
   const effectiveShowDebug = developerMode && showDebug
   const [debugState, setDebugState] = useState<DebugState | null>(null)
@@ -610,7 +615,11 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
       return
     }
 
-    if (editingPatterns.map((p) => p.toLowerCase()).includes(validation.normalizedPattern.toLowerCase())) {
+    if (
+      editingPatterns
+        .map((p) => p.toLowerCase())
+        .includes(validation.normalizedPattern.toLowerCase())
+    ) {
       setEditingPatternDraft('')
       return
     }
@@ -643,7 +652,7 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
     for (const p of editingPatterns) {
       const trimmed = p.trim()
       if (!trimmed) continue
-      
+
       const validation = validateAutoGroupRulePattern(normalizeAutoGroupPattern(trimmed))
       if (!validation.isValid) {
         alert(`Invalid pattern: ${trimmed}. ${validation.error || ''}`)
@@ -658,7 +667,11 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
     }
 
     try {
-      console.log('[Automation] Saving changes for rule:', rule.id, { title, editingColor, validPatterns })
+      console.log('[Automation] Saving changes for rule:', rule.id, {
+        title,
+        editingColor,
+        validPatterns,
+      })
       await StorageSyncAutoGroup.update({
         ...rule,
         title,
@@ -708,7 +721,7 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
     setActiveId(null)
-    
+
     if (!over || active.id === over.id) return
 
     const oldIndex = rules.findIndex((r) => r.id === active.id)
@@ -844,10 +857,7 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
             </div>
           )}
 
-          <SortableContext
-            items={rules.map((r) => r.id)}
-            strategy={verticalListSortingStrategy}
-          >
+          <SortableContext items={rules.map((r) => r.id)} strategy={verticalListSortingStrategy}>
             {rules.map((rule) => (
               <SortableRuleCard
                 key={rule.id}
@@ -968,7 +978,9 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
                     <span
                       className={cn(
                         'text-[9px] font-bold uppercase tracking-tighter',
-                        entry.outcome === 'grouped' ? 'text-emerald-600' : 'text-[var(--text-muted)]',
+                        entry.outcome === 'grouped'
+                          ? 'text-emerald-600'
+                          : 'text-[var(--text-muted)]',
                       )}
                     >
                       {entry.outcome.replace('_', ' ')}

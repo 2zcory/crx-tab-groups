@@ -102,7 +102,11 @@
   --sp-chip-active-bg: var(--sp-tab-pill-active);
   --sp-chip-active-border: var(--sp-tab-pill-active);
   --sp-chip-active-color: var(--primary-foreground);
-  --sp-style-preview-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(226, 232, 240, 0.9));
+  --sp-style-preview-bg: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.82),
+    rgba(226, 232, 240, 0.9)
+  );
   --sp-style-preview-glow: transparent;
   --sp-style-preview-surface: rgba(255, 255, 255, 0.36);
   --sp-style-preview-border: rgba(255, 255, 255, 0.46);
@@ -267,19 +271,33 @@ body {
   --sp-statusbar-bg: rgba(255, 255, 255, 0.24);
   --sp-statusbar-border: rgba(255, 255, 255, 0.28);
   --glass-depth-shadow: 0 16px 36px rgba(15, 23, 42, 0.12);
-  --glass-panel-sheen:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.02) 58%);
+  --glass-panel-sheen: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.32),
+    rgba(255, 255, 255, 0.02) 58%
+  );
   --glass-panel-sheen-opacity: 1;
-  --sp-shell-sheen:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.02) 52%);
+  --sp-shell-sheen: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.22),
+    rgba(255, 255, 255, 0.02) 52%
+  );
   --sp-shell-sheen-opacity: 1;
   --sp-overlay-bg: color-mix(in srgb, var(--surface-elevated) 92%, rgba(255, 255, 255, 0.14));
   --sp-overlay-shadow: 0 26px 54px rgba(15, 23, 42, 0.16);
   --sp-action-rail-bg: color-mix(in srgb, var(--surface-elevated) 90%, rgba(255, 255, 255, 0.12));
   --sp-action-rail-shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
   --sp-tab-card-bg: color-mix(in srgb, var(--surface-elevated) 74%, rgba(255, 255, 255, 0.08));
-  --sp-tab-card-hover-bg: color-mix(in srgb, var(--surface-elevated) 88%, rgba(255, 255, 255, 0.14));
-  --sp-tab-card-active-bg: color-mix(in srgb, var(--surface-elevated) 94%, rgba(255, 255, 255, 0.18));
+  --sp-tab-card-hover-bg: color-mix(
+    in srgb,
+    var(--surface-elevated) 88%,
+    rgba(255, 255, 255, 0.14)
+  );
+  --sp-tab-card-active-bg: color-mix(
+    in srgb,
+    var(--surface-elevated) 94%,
+    rgba(255, 255, 255, 0.18)
+  );
   --sp-tab-card-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
   --sp-tab-card-hover-shadow: 0 16px 36px rgba(15, 23, 42, 0.12);
   --sp-tab-card-active-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
@@ -289,8 +307,11 @@ body {
   --sp-style-preview-bg:
     radial-gradient(circle at top left, rgba(125, 211, 252, 0.42), transparent 34%),
     linear-gradient(180deg, #dfe8f4 0%, #cfdeef 100%);
-  --sp-style-preview-glow:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.02) 62%);
+  --sp-style-preview-glow: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.28),
+    rgba(255, 255, 255, 0.02) 62%
+  );
   --sp-style-preview-surface: rgba(255, 255, 255, 0.32);
   --sp-style-preview-border: rgba(255, 255, 255, 0.42);
   --sp-style-preview-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
@@ -329,7 +350,13 @@ body {
     radial-gradient(circle at 88% 18%, rgba(168, 85, 247, 0.28), transparent 30%),
     radial-gradient(circle at 58% 88%, rgba(56, 189, 248, 0.12), transparent 30%),
     linear-gradient(120deg, rgba(34, 211, 238, 0.22) 8%, transparent 28%),
-    linear-gradient(136deg, transparent 28%, rgba(125, 211, 252, 0.15) 45%, rgba(168, 85, 247, 0.2) 58%, transparent 74%),
+    linear-gradient(
+      136deg,
+      transparent 28%,
+      rgba(125, 211, 252, 0.15) 45%,
+      rgba(168, 85, 247, 0.2) 58%,
+      transparent 74%
+    ),
     linear-gradient(180deg, #07101d 0%, #040816 44%, #02050d 100%);
   --background: oklch(0.14 0.03 255);
   --foreground: oklch(0.975 0.018 255);
@@ -365,7 +392,13 @@ body {
   --sp-shell-bg: linear-gradient(180deg, rgba(6, 13, 28, 0.76), rgba(4, 8, 18, 0.84));
   --sp-shell-gradient:
     radial-gradient(circle at 18% 0%, rgba(34, 211, 238, 0.24), transparent 34%),
-    linear-gradient(135deg, transparent 26%, rgba(34, 211, 238, 0.08) 44%, rgba(168, 85, 247, 0.1) 58%, transparent 74%);
+    linear-gradient(
+      135deg,
+      transparent 26%,
+      rgba(34, 211, 238, 0.08) 44%,
+      rgba(168, 85, 247, 0.1) 58%,
+      transparent 74%
+    );
   --sp-card-bg: var(--glass-surface);
   --sp-card-border: var(--glass-border);
   --sp-card-hover: var(--glass-surface-elevated);
@@ -377,48 +410,56 @@ body {
   --sp-statusbar-bg: rgba(8, 18, 38, 0.72);
   --sp-statusbar-border: rgba(103, 232, 249, 0.18);
   --glass-depth-shadow: 0 20px 48px rgba(2, 6, 23, 0.48);
-  --glass-panel-sheen:
-    linear-gradient(180deg, rgba(196, 181, 253, 0.18), rgba(8, 17, 31, 0.02) 64%);
+  --glass-panel-sheen: linear-gradient(
+    180deg,
+    rgba(196, 181, 253, 0.18),
+    rgba(8, 17, 31, 0.02) 64%
+  );
   --glass-panel-sheen-opacity: 1;
-  --sp-shell-sheen:
-    linear-gradient(180deg, rgba(34, 211, 238, 0.18), rgba(2, 6, 23, 0.02) 56%);
+  --sp-shell-sheen: linear-gradient(180deg, rgba(34, 211, 238, 0.18), rgba(2, 6, 23, 0.02) 56%);
   --sp-shell-sheen-opacity: 1;
-  --sp-overlay-bg:
-    linear-gradient(180deg, rgba(15, 31, 66, 0.9), rgba(9, 20, 42, 0.88));
+  --sp-overlay-bg: linear-gradient(180deg, rgba(15, 31, 66, 0.9), rgba(9, 20, 42, 0.88));
   --sp-overlay-shadow: 0 34px 80px rgba(2, 6, 23, 0.62);
-  --sp-action-rail-bg:
-    linear-gradient(135deg, rgba(15, 31, 66, 0.9), rgba(23, 46, 92, 0.82));
+  --sp-action-rail-bg: linear-gradient(135deg, rgba(15, 31, 66, 0.9), rgba(23, 46, 92, 0.82));
   --sp-action-rail-shadow: 0 18px 42px rgba(2, 6, 23, 0.5);
-  --sp-tab-card-bg:
-    linear-gradient(180deg, rgba(11, 24, 49, 0.82), rgba(10, 21, 44, 0.74));
-  --sp-tab-card-hover-bg:
-    linear-gradient(180deg, rgba(15, 33, 68, 0.9), rgba(11, 27, 58, 0.82));
-  --sp-tab-card-active-bg:
-    linear-gradient(135deg, rgba(18, 40, 82, 0.96), rgba(24, 54, 110, 0.88));
+  --sp-tab-card-bg: linear-gradient(180deg, rgba(11, 24, 49, 0.82), rgba(10, 21, 44, 0.74));
+  --sp-tab-card-hover-bg: linear-gradient(180deg, rgba(15, 33, 68, 0.9), rgba(11, 27, 58, 0.82));
+  --sp-tab-card-active-bg: linear-gradient(135deg, rgba(18, 40, 82, 0.96), rgba(24, 54, 110, 0.88));
   --sp-tab-card-shadow: 0 16px 36px rgba(2, 6, 23, 0.38);
   --sp-tab-card-hover-shadow: 0 22px 50px rgba(2, 6, 23, 0.48);
   --sp-tab-card-active-shadow: 0 28px 62px rgba(2, 6, 23, 0.58);
-  --sp-chip-active-bg:
-    linear-gradient(135deg, rgba(34, 211, 238, 0.42), rgba(96, 165, 250, 0.34) 48%, rgba(168, 85, 247, 0.36));
+  --sp-chip-active-bg: linear-gradient(
+    135deg,
+    rgba(34, 211, 238, 0.42),
+    rgba(96, 165, 250, 0.34) 48%,
+    rgba(168, 85, 247, 0.36)
+  );
   --sp-chip-active-border: rgba(125, 211, 252, 0.52);
   --sp-chip-active-color: #f3fdff;
   --sp-style-preview-bg:
     radial-gradient(circle at top left, rgba(34, 211, 238, 0.34), transparent 28%),
     radial-gradient(circle at top right, rgba(168, 85, 247, 0.34), transparent 34%),
-    linear-gradient(136deg, transparent 30%, rgba(125, 211, 252, 0.18) 48%, rgba(168, 85, 247, 0.22) 60%, transparent 76%),
+    linear-gradient(
+      136deg,
+      transparent 30%,
+      rgba(125, 211, 252, 0.18) 48%,
+      rgba(168, 85, 247, 0.22) 60%,
+      transparent 76%
+    ),
     linear-gradient(180deg, #08111f 0%, #050914 100%);
-  --sp-style-preview-glow:
-    linear-gradient(180deg, rgba(196, 181, 253, 0.2), rgba(8, 17, 31, 0.02) 64%);
+  --sp-style-preview-glow: linear-gradient(
+    180deg,
+    rgba(196, 181, 253, 0.2),
+    rgba(8, 17, 31, 0.02) 64%
+  );
   --sp-style-preview-surface: rgba(15, 27, 52, 0.72);
   --sp-style-preview-border: rgba(125, 211, 252, 0.38);
   --sp-style-preview-shadow:
-    inset 0 1px 0 rgba(196, 181, 253, 0.16),
-    0 0 0 1px rgba(34, 211, 238, 0.06);
+    inset 0 1px 0 rgba(196, 181, 253, 0.16), 0 0 0 1px rgba(34, 211, 238, 0.06);
 }
 
 [data-theme='glass'][data-glass-style='minimal-clear'] {
-  background:
-    linear-gradient(180deg, #edf2f7 0%, #e4ebf3 52%, #dde6ef 100%);
+  background: linear-gradient(180deg, #edf2f7 0%, #e4ebf3 52%, #dde6ef 100%);
   --surface: rgba(255, 255, 255, 0.7);
   --surface-elevated: rgba(255, 255, 255, 0.82);
   --surface-muted: rgba(248, 250, 252, 0.8);
@@ -445,11 +486,17 @@ body {
   --sp-statusbar-bg: rgba(255, 255, 255, 0.7);
   --sp-statusbar-border: rgba(203, 213, 225, 0.74);
   --glass-depth-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-  --glass-panel-sheen:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.02) 58%);
+  --glass-panel-sheen: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.18),
+    rgba(255, 255, 255, 0.02) 58%
+  );
   --glass-panel-sheen-opacity: 1;
-  --sp-shell-sheen:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02) 52%);
+  --sp-shell-sheen: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.16),
+    rgba(255, 255, 255, 0.02) 52%
+  );
   --sp-shell-sheen-opacity: 1;
   --sp-overlay-bg: color-mix(in srgb, var(--surface-elevated) 96%, rgba(255, 255, 255, 0.06));
   --sp-overlay-shadow: 0 20px 42px rgba(15, 23, 42, 0.1);
@@ -465,8 +512,11 @@ body {
   --sp-chip-active-border: rgba(148, 163, 184, 0.44);
   --sp-chip-active-color: #f8fafc;
   --sp-style-preview-bg: linear-gradient(180deg, #edf2f7 0%, #dfe7ef 100%);
-  --sp-style-preview-glow:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02) 64%);
+  --sp-style-preview-glow: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.16),
+    rgba(255, 255, 255, 0.02) 64%
+  );
   --sp-style-preview-surface: rgba(255, 255, 255, 0.8);
   --sp-style-preview-border: rgba(203, 213, 225, 0.84);
   --sp-style-preview-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
@@ -507,13 +557,19 @@ body {
   --glass-highlight: rgba(255, 246, 237, 0.42);
   --glass-shadow: 0 24px 54px rgba(91, 53, 33, 0.16);
   --glass-depth-shadow: 0 14px 34px rgba(91, 53, 33, 0.14);
-  --glass-panel-sheen:
-    linear-gradient(180deg, rgba(255, 248, 241, 0.34), rgba(255, 248, 241, 0.04) 58%);
+  --glass-panel-sheen: linear-gradient(
+    180deg,
+    rgba(255, 248, 241, 0.34),
+    rgba(255, 248, 241, 0.04) 58%
+  );
   --glass-panel-sheen-opacity: 1;
   --sp-shell-bg: linear-gradient(180deg, rgba(255, 248, 241, 0.34), rgba(251, 241, 231, 0.28));
   --sp-shell-gradient: radial-gradient(circle at top, rgba(251, 191, 36, 0.18), transparent 50%);
-  --sp-shell-sheen:
-    linear-gradient(180deg, rgba(255, 244, 235, 0.2), rgba(255, 244, 235, 0.02) 54%);
+  --sp-shell-sheen: linear-gradient(
+    180deg,
+    rgba(255, 244, 235, 0.2),
+    rgba(255, 244, 235, 0.02) 54%
+  );
   --sp-shell-sheen-opacity: 1;
   --sp-card-bg: var(--glass-surface);
   --sp-card-border: var(--glass-border);
@@ -530,8 +586,16 @@ body {
   --sp-action-rail-bg: color-mix(in srgb, var(--surface-elevated) 92%, rgba(255, 244, 235, 0.1));
   --sp-action-rail-shadow: 0 12px 28px rgba(91, 53, 33, 0.14);
   --sp-tab-card-bg: color-mix(in srgb, var(--surface-elevated) 80%, rgba(255, 244, 235, 0.12));
-  --sp-tab-card-hover-bg: color-mix(in srgb, var(--surface-elevated) 92%, rgba(255, 244, 235, 0.16));
-  --sp-tab-card-active-bg: color-mix(in srgb, var(--surface-elevated) 96%, rgba(255, 244, 235, 0.22));
+  --sp-tab-card-hover-bg: color-mix(
+    in srgb,
+    var(--surface-elevated) 92%,
+    rgba(255, 244, 235, 0.16)
+  );
+  --sp-tab-card-active-bg: color-mix(
+    in srgb,
+    var(--surface-elevated) 96%,
+    rgba(255, 244, 235, 0.22)
+  );
   --sp-tab-card-shadow: 0 8px 20px rgba(91, 53, 33, 0.08);
   --sp-tab-card-hover-shadow: 0 14px 30px rgba(91, 53, 33, 0.12);
   --sp-tab-card-active-shadow: 0 18px 40px rgba(91, 53, 33, 0.16);
@@ -542,8 +606,11 @@ body {
     radial-gradient(circle at top left, rgba(251, 191, 36, 0.24), transparent 34%),
     radial-gradient(circle at top right, rgba(251, 113, 133, 0.2), transparent 32%),
     linear-gradient(180deg, #f4e7da 0%, #ead9c9 100%);
-  --sp-style-preview-glow:
-    linear-gradient(180deg, rgba(255, 247, 239, 0.22), rgba(255, 247, 239, 0.02) 64%);
+  --sp-style-preview-glow: linear-gradient(
+    180deg,
+    rgba(255, 247, 239, 0.22),
+    rgba(255, 247, 239, 0.02) 64%
+  );
   --sp-style-preview-surface: rgba(255, 248, 241, 0.48);
   --sp-style-preview-border: rgba(255, 234, 220, 0.52);
   --sp-style-preview-shadow: inset 0 1px 0 rgba(255, 248, 241, 0.3);
@@ -583,13 +650,19 @@ body {
   --glass-highlight: rgba(255, 255, 255, 0.28);
   --glass-shadow: 0 24px 54px rgba(17, 24, 39, 0.18);
   --glass-depth-shadow: 0 14px 32px rgba(17, 24, 39, 0.16);
-  --glass-panel-sheen:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.02) 60%);
+  --glass-panel-sheen: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.24),
+    rgba(255, 255, 255, 0.02) 60%
+  );
   --glass-panel-sheen-opacity: 1;
   --sp-shell-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(241, 245, 249, 0.22));
   --sp-shell-gradient: radial-gradient(circle at top, rgba(255, 255, 255, 0.22), transparent 48%);
-  --sp-shell-sheen:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.02) 56%);
+  --sp-shell-sheen: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.18),
+    rgba(255, 255, 255, 0.02) 56%
+  );
   --sp-shell-sheen-opacity: 1;
   --sp-card-bg: var(--glass-surface);
   --sp-card-border: var(--glass-border);
@@ -606,8 +679,16 @@ body {
   --sp-action-rail-bg: color-mix(in srgb, var(--surface-elevated) 94%, rgba(255, 255, 255, 0.06));
   --sp-action-rail-shadow: 0 12px 28px rgba(17, 24, 39, 0.16);
   --sp-tab-card-bg: color-mix(in srgb, var(--surface-elevated) 78%, rgba(255, 255, 255, 0.08));
-  --sp-tab-card-hover-bg: color-mix(in srgb, var(--surface-elevated) 90%, rgba(255, 255, 255, 0.12));
-  --sp-tab-card-active-bg: color-mix(in srgb, var(--surface-elevated) 96%, rgba(255, 255, 255, 0.18));
+  --sp-tab-card-hover-bg: color-mix(
+    in srgb,
+    var(--surface-elevated) 90%,
+    rgba(255, 255, 255, 0.12)
+  );
+  --sp-tab-card-active-bg: color-mix(
+    in srgb,
+    var(--surface-elevated) 96%,
+    rgba(255, 255, 255, 0.18)
+  );
   --sp-tab-card-shadow: 0 8px 18px rgba(17, 24, 39, 0.08);
   --sp-tab-card-hover-shadow: 0 14px 30px rgba(17, 24, 39, 0.12);
   --sp-tab-card-active-shadow: 0 18px 40px rgba(17, 24, 39, 0.16);
@@ -617,8 +698,11 @@ body {
   --sp-style-preview-bg:
     radial-gradient(circle at top, rgba(255, 255, 255, 0.2), transparent 32%),
     linear-gradient(180deg, #d8dbe0 0%, #bec4cc 100%);
-  --sp-style-preview-glow:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02) 64%);
+  --sp-style-preview-glow: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.16),
+    rgba(255, 255, 255, 0.02) 64%
+  );
   --sp-style-preview-surface: rgba(255, 255, 255, 0.4);
   --sp-style-preview-border: rgba(255, 255, 255, 0.48);
   --sp-style-preview-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);

@@ -95,7 +95,10 @@ main {
   border-radius: 0.9rem;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--sp-card-border) 82%, transparent);
-  background: var(--sp-style-preview-bg, linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(226, 232, 240, 0.9)));
+  background: var(
+    --sp-style-preview-bg,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(226, 232, 240, 0.9))
+  );
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
@@ -339,7 +342,9 @@ main {
 
 .sp-rule-card-chevron-shell {
   color: var(--text-muted);
-  transition: opacity 160ms ease, background-color 160ms ease;
+  transition:
+    opacity 160ms ease,
+    background-color 160ms ease;
 }
 
 .sp-rule-card-surface:hover .sp-rule-card-chevron-shell,
@@ -380,7 +385,9 @@ main {
   background: var(--sp-rule-card-accent, var(--sp-tab-pill-active));
   opacity: 0.5;
   box-shadow: 0 0 8px color-mix(in srgb, var(--sp-rule-card-accent) 40%, transparent);
-  transition: opacity 250ms ease, height 200ms ease;
+  transition:
+    opacity 250ms ease,
+    height 200ms ease;
 }
 
 .sp-rule-card-surface:hover {
@@ -415,7 +422,7 @@ main {
   transform: scale(1.04) rotate(1deg);
   border-color: var(--sp-rule-card-accent) !important;
   background: color-mix(in srgb, var(--sp-card-bg) 95%, white 5%);
-  box-shadow: 
+  box-shadow:
     0 20px 40px -10px rgb(0 0 0 / 0.6),
     0 0 25px color-mix(in srgb, var(--sp-rule-card-accent) 20%, transparent);
   opacity: 0.95;
@@ -578,7 +585,10 @@ main {
 }
 
 .sp-tab-card:hover {
-  background: var(--sp-tab-card-hover-bg, color-mix(in srgb, var(--surface-elevated) 96%, transparent));
+  background: var(
+    --sp-tab-card-hover-bg,
+    color-mix(in srgb, var(--surface-elevated) 96%, transparent)
+  );
   border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
   box-shadow: var(--sp-tab-card-hover-shadow, 0 4px 12px rgba(15, 23, 42, 0.06));
 }
@@ -732,7 +742,9 @@ main {
 
 .sp-settings-group {
   box-shadow: var(--shadow-sm);
-  transition: border-color 200ms ease, box-shadow 200ms ease;
+  transition:
+    border-color 200ms ease,
+    box-shadow 200ms ease;
 }
 
 .sp-settings-group:hover {
@@ -749,7 +761,9 @@ main {
   background-color: var(--surface-elevated);
   border: 1px solid var(--sp-card-border);
   cursor: pointer;
-  transition: background-color 200ms ease, border-color 200ms ease;
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease;
 }
 
 .sp-toggle-switch::after {
@@ -761,7 +775,9 @@ main {
   height: 1rem;
   border-radius: 9999px;
   background-color: var(--text-muted);
-  transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1), background-color 200ms ease;
+  transition:
+    transform 200ms cubic-bezier(0.23, 1, 0.32, 1),
+    background-color 200ms ease;
 }
 
 .sp-toggle-switch.is-active {
@@ -793,7 +809,9 @@ main {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(128,128,128,0.7)' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.5rem center;
-  transition: border-color 150ms ease, background-color 150ms ease;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease;
 }
 
 .sp-select:hover:not(:disabled) {

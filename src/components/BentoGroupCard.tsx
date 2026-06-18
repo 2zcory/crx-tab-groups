@@ -41,16 +41,13 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
     grey: 'bg-slate-100/55 border-slate-200/70 dark:bg-slate-800/55 dark:border-slate-700/80',
     blue: 'bg-blue-50/55 border-blue-200/80 dark:bg-blue-950/25 dark:border-blue-900/60',
     red: 'bg-red-50/55 border-red-200/80 dark:bg-red-950/20 dark:border-red-900/55',
-    yellow:
-      'bg-amber-50/60 border-amber-200/80 dark:bg-amber-950/20 dark:border-amber-900/55',
+    yellow: 'bg-amber-50/60 border-amber-200/80 dark:bg-amber-950/20 dark:border-amber-900/55',
     green:
       'bg-emerald-50/55 border-emerald-200/80 dark:bg-emerald-950/20 dark:border-emerald-900/55',
     pink: 'bg-pink-50/55 border-pink-200/80 dark:bg-pink-950/20 dark:border-pink-900/55',
-    purple:
-      'bg-violet-50/55 border-violet-200/80 dark:bg-violet-950/20 dark:border-violet-900/55',
+    purple: 'bg-violet-50/55 border-violet-200/80 dark:bg-violet-950/20 dark:border-violet-900/55',
     cyan: 'bg-cyan-50/55 border-cyan-200/80 dark:bg-cyan-950/20 dark:border-cyan-900/55',
-    orange:
-      'bg-orange-50/55 border-orange-200/80 dark:bg-orange-950/20 dark:border-orange-900/55',
+    orange: 'bg-orange-50/55 border-orange-200/80 dark:bg-orange-950/20 dark:border-orange-900/55',
   }
 
   const cardStyle = color ? colorMap[color] : 'sp-card'
@@ -95,7 +92,10 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
             </span>
           )}
           <div
-            className={cn('h-2 w-2 shrink-0 rounded-full', color ? `bg-${color}-500` : 'bg-slate-400')}
+            className={cn(
+              'h-2 w-2 shrink-0 rounded-full',
+              color ? `bg-${color}-500` : 'bg-slate-400',
+            )}
           />
           <h3 className="sp-copy-primary min-w-0 flex-1 truncate font-bold text-[13px] tracking-tight">
             {title}
@@ -150,9 +150,7 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
           ))}
           {tabs.length === 0 && (
             <div className="sp-empty-state flex-1 flex items-center justify-center py-4 rounded-lg">
-              <p className="text-[10px] font-medium uppercase tracking-widest">
-                Drop tabs here
-              </p>
+              <p className="text-[10px] font-medium uppercase tracking-widest">Drop tabs here</p>
             </div>
           )}
         </div>

@@ -202,10 +202,16 @@ export const triggerAutoGroupScan = async () => {
   for (let i = 0; i < 3; i++) {
     try {
       const response = await chrome.runtime.sendMessage({ action: 'run_auto_group_scan' })
-      return (response || { success: false, error: 'Auto-group scan failed' }) as AutoGroupScanResponse
+      return (response || {
+        success: false,
+        error: 'Auto-group scan failed',
+      }) as AutoGroupScanResponse
     } catch (error) {
       if (i < 2) {
-        console.warn(`[Harness] Auto-group scan attempt ${i + 1} failed, retrying in 500ms...`, error)
+        console.warn(
+          `[Harness] Auto-group scan attempt ${i + 1} failed, retrying in 500ms...`,
+          error,
+        )
         await new Promise((resolve) => setTimeout(resolve, 500))
         continue
       }
