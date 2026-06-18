@@ -126,8 +126,13 @@ const handleAutoGrouping = async (
         }
       }
     }
-  } catch (e) {
-    console.error('[Background] Auto-grouping error for tab', tabId, e)
+  } catch (e: any) {
+    const errorMsg = e?.message || String(e)
+    if (errorMsg.includes('No tab with id') || errorMsg.includes('not found')) {
+      console.warn(`[Background] Auto-grouping skipped for tab ${tabId} because it was closed.`)
+    } else {
+      console.error('[Background] Auto-grouping error for tab', tabId, e)
+    }
   }
   return { kind: 'no_match' }
 }
