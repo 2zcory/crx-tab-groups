@@ -1,0 +1,71 @@
+name: Release Extension
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 11.6.0
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Extension
+        run: pnpm run build
+
+      - name: Package Extension (Zip)
+        run: pnpm run zip
+
+      - name: Identify Release Type
+        id: release_info
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          if [[ "$TAG_NAME" == *"-beta."* ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "type=beta" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "type=stable" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_info.outputs.tag_name }}
+          name: Release ${{ steps.release_info.outputs.tag_name }}
+          draft: false
+          prerelease: ${{ steps.release_info.outputs.is_prerelease == 'true' }}
+          files: package/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload to Chrome Web Store (Stable Only)
+        if: steps.release_info.outputs.type == 'stable'
+        uses: weweb-io/chrome-webstore-upload@v2.2.0
+        with:
+          app-id: ${{ secrets.CWS_APP_ID }}
+          client-id: ${{ secrets.CWS_CLIENT_ID }}
+          client-secret: ${{ secrets.CWS_CLIENT_SECRET }}
+          refresh-token: ${{ secrets.CWS_REFRESH_TOKEN }}
+          file-name: 'package/Groupify:-Auto-Tab-Organizer-*.zip'
+          publish: true
