@@ -47,10 +47,10 @@ English
 | Asset | Dimensions | Status | Filename |
 |-------|-----------|--------|----------|
 | Store Icon [REQUIRED] | 128×128 PNG | ✅ Ready | `public/img/logo-128.png` |
-| Screenshot 1 [REQUIRED] | 1280×800 or 640×400 | 🟡 Needs update | *Needs capture of the live view side panel* |
-| Screenshot 2 [RECOMMENDED] | 1280×800 or 640×400 | 🟡 Needs update | *Needs capture of the rules automation view* |
-| Screenshot 3 [RECOMMENDED] | 1280×800 or 640×400 | 🟡 Needs update | *Needs capture of the saved snapshots view* |
-| Small Promo Tile [RECOMMENDED] | 440×280 | ⬜ Not created | |
+| Screenshot 1 [REQUIRED] | 1280×800 or 640×400 | ✅ Ready | `store-assets/screenshot-live-view.png` |
+| Screenshot 2 [RECOMMENDED] | 1280×800 or 640×400 | ✅ Ready | `store-assets/screenshot-rules-view.png` |
+| Screenshot 3 [RECOMMENDED] | 1280×800 or 640×400 | ✅ Ready | `store-assets/screenshot-saved-view.png` |
+| Small Promo Tile [RECOMMENDED] | 440×280 | ✅ Ready | `store-assets/promo-tile-small.png` |
 
 ---
 
@@ -85,7 +85,7 @@ English
 ## Privacy Policy
 
 **Privacy Policy URL** [RECOMMENDED]
-*A placeholder policy should be hosted at a public URL (e.g. GitHub pages). Below is the text of the privacy policy:*
+https://github.com/2zcory/crx-tab-groups/blob/main/PRIVACY_POLICY.md
 
 ### Groupify Privacy Policy
 Last updated: 2026-06-24
