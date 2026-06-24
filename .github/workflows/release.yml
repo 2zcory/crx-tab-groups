@@ -34,7 +34,7 @@ jobs:
       - name: Package Extension (Zip)
         run: pnpm run zip
 
-      - name: Identify Release Type
+      - name: Identify Release Type and Notes
         id: release_info
         run: |
           TAG_NAME="${{ github.ref_name }}"
@@ -42,9 +42,11 @@ jobs:
           if [[ "$TAG_NAME" == *"-beta."* ]]; then
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
             echo "type=beta" >> $GITHUB_OUTPUT
+            echo "notes_path=.github/workflows/release-notes-beta.md" >> $GITHUB_OUTPUT
           else
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
             echo "type=stable" >> $GITHUB_OUTPUT
+            echo "notes_path=.github/workflows/release-notes-stable.md" >> $GITHUB_OUTPUT
           fi
 
       - name: Create GitHub Release
@@ -55,17 +57,18 @@ jobs:
           name: Release ${{ steps.release_info.outputs.tag_name }}
           draft: false
           prerelease: ${{ steps.release_info.outputs.is_prerelease == 'true' }}
+          body_path: ${{ steps.release_info.outputs.notes_path }}
           files: package/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload to Chrome Web Store (Stable Only)
         if: steps.release_info.outputs.type == 'stable'
-        uses: weweb-io/chrome-webstore-upload@v2.2.0
-        with:
-          app-id: ${{ secrets.CWS_APP_ID }}
-          client-id: ${{ secrets.CWS_CLIENT_ID }}
-          client-secret: ${{ secrets.CWS_CLIENT_SECRET }}
-          refresh-token: ${{ secrets.CWS_REFRESH_TOKEN }}
-          file-name: 'package/Groupify:-Auto-Tab-Organizer-*.zip'
-          publish: true
+        run: |
+          npx chrome-webstore-upload-cli upload \
+            --source package/Groupify-Auto-Tab-Organizer-*.zip \
+            --extension-id ${{ secrets.CWS_APP_ID }} \
+            --client-id ${{ secrets.CWS_CLIENT_ID }} \
+            --client-secret ${{ secrets.CWS_CLIENT_SECRET }} \
+            --refresh-token ${{ secrets.CWS_REFRESH_TOKEN }} \
+            --auto-publish
