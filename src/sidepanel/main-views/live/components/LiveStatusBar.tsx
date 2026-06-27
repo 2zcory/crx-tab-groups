@@ -1,8 +1,10 @@
 import { Info, Sparkles } from 'lucide-react'
 import Tooltip from '@/components/ui/tooltip'
 import { useLiveBrowserState } from '@/hooks/useLiveBrowserState'
+import { useTranslation } from '@/hooks/useTranslation'
 
 export function LiveStatusBar() {
+  const { t } = useTranslation()
   const { windows, totalTabsCount } = useLiveBrowserState()
 
   const runAutoGroupScan = () => {
@@ -14,7 +16,7 @@ export function LiveStatusBar() {
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)]">
-            Live Browser
+            {t('statusLiveBrowser')}
           </p>
           <Tooltip>
             <Tooltip.Trigger asChild>
@@ -30,7 +32,7 @@ export function LiveStatusBar() {
               sideOffset={8}
               className="max-w-56 rounded-xl px-3 py-2 text-[11px] shadow-lg bg-[var(--sp-tab-pill-active)] text-[var(--primary-foreground)]"
             >
-              Manage tabs and groups across all open windows.
+              {t('statusTooltipManage')}
             </Tooltip.Content>
           </Tooltip>
 
@@ -48,7 +50,7 @@ export function LiveStatusBar() {
               sideOffset={8}
               className="rounded-xl px-3 py-2 text-[11px] shadow-lg bg-[var(--sp-tab-pill-active)] text-[var(--primary-foreground)]"
             >
-              Apply Auto-Group Rules Across Browser
+              {t('statusTooltipApplyRules')}
             </Tooltip.Content>
           </Tooltip>
         </div>
@@ -56,10 +58,10 @@ export function LiveStatusBar() {
 
       <div className="flex flex-wrap justify-end gap-1.5">
         <span className="rounded-full border px-2 py-0.5 text-[10px] font-bold border-[var(--sp-card-border)] bg-[var(--surface)] text-[var(--text-secondary)]">
-          {totalTabsCount} tabs
+          {t('statusTabsCount', { count: String(totalTabsCount) })}
         </span>
         <span className="rounded-full border px-2 py-0.5 text-[10px] font-bold border-[var(--sp-card-border)] bg-[var(--surface)] text-[var(--text-secondary)]">
-          {windows.length} windows
+          {t('statusWindowsCount', { count: String(windows.length) })}
         </span>
       </div>
     </section>

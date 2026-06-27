@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useTranslation } from '@/hooks/useTranslation'
 
 import {
   AddToRulesDraft,
@@ -27,6 +28,7 @@ export const LiveAddToRulesSheetContent = ({
   onCancel,
   onSubmit,
 }: LiveAddToRulesSheetContentProps) => {
+  const { t } = useTranslation()
   const suggestions = getAddToRulesPatternSuggestions(draft)
 
   return (
@@ -41,7 +43,7 @@ export const LiveAddToRulesSheetContent = ({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label className="sp-label ml-1 text-[10px] font-bold uppercase">Pattern</label>
+        <label className="sp-label ml-1 text-[10px] font-bold uppercase">{t('labelPattern')}</label>
         <input
           data-bottom-sheet-autofocus
           className="sp-input-shell sp-input w-full rounded-xl border-none px-3 py-2 text-[12px] font-medium outline-none"
@@ -61,23 +63,26 @@ export const LiveAddToRulesSheetContent = ({
               )}
               onClick={() => onUpdateDraft({ patternDraft: suggestion.value })}
             >
-              {suggestion.label}
+              {suggestion.label === 'Host' ? t('suggestHost') :
+               suggestion.label === 'Path' ? t('suggestPath') :
+               suggestion.label === 'Exact' ? t('suggestExact') :
+               suggestion.label}
             </button>
           ))}
         </div>
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label className="sp-label ml-1 text-[10px] font-bold uppercase">Destination</label>
+        <label className="sp-label ml-1 text-[10px] font-bold uppercase">{t('labelDestination')}</label>
         <select
           className="sp-input-shell sp-input w-full rounded-xl border-none px-3 py-2 text-[12px] font-bold outline-none"
           value={draft.destinationRuleId}
           onChange={(event) => onUpdateDraft({ destinationRuleId: event.target.value })}
         >
-          <option value={NEW_RULE_DESTINATION_ID}>Create new rule</option>
+          <option value={NEW_RULE_DESTINATION_ID}>{t('actionCreateNewRule')}</option>
           {autoGroupRules.map((rule) => (
             <option key={rule.id} value={rule.id}>
-              {rule.title} - priority {rule.order}
+              {t('rulePriorityDesc', { title: rule.title, order: String(rule.order) })}
             </option>
           ))}
         </select>
@@ -89,7 +94,7 @@ export const LiveAddToRulesSheetContent = ({
             className="sp-input-shell sp-input w-full rounded-lg border-none px-2.5 py-2 text-[12px] font-bold outline-none"
             value={draft.newRuleTitle}
             onChange={(event) => onUpdateDraft({ newRuleTitle: event.target.value })}
-            placeholder="New rule title"
+            placeholder={t('placeholderNewRuleTitle')}
           />
           <div className="flex flex-wrap gap-1.5">
             {COLORS.map((color) => (
@@ -133,14 +138,14 @@ export const LiveAddToRulesSheetContent = ({
           className="sp-secondary-action h-8 flex-1 rounded-xl text-[11px] font-bold shadow-none"
           onClick={onCancel}
         >
-          Cancel
+          {t('cancel')}
         </Button>
         <Button
           type="button"
           className="sp-primary-action h-8 flex-1 rounded-xl text-[11px] font-bold"
           onClick={onSubmit}
         >
-          Add Pattern
+          {t('actionAddPattern')}
         </Button>
       </div>
     </div>

@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 
 import TabListItem from '@/sidepanel/main-views/live/components/TabListItem'
 import { useDroppable } from '@dnd-kit/core'
+import { useTranslation } from '@/hooks/useTranslation'
 
 interface BentoGroupCardProps {
   id: string
@@ -33,6 +34,7 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
   onCloseTabs,
   onAddTabToRules,
 }) => {
+  const { t } = useTranslation()
   const { setNodeRef, isOver } = useDroppable({
     id: id,
   })
@@ -46,7 +48,7 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
       'bg-emerald-50/55 border-emerald-200/80 dark:bg-emerald-950/20 dark:border-emerald-900/55',
     pink: 'bg-pink-50/55 border-pink-200/80 dark:bg-pink-950/20 dark:border-pink-900/55',
     purple: 'bg-violet-50/55 border-violet-200/80 dark:bg-violet-950/20 dark:border-violet-900/55',
-    cyan: 'bg-cyan-50/55 border-cyan-200/80 dark:bg-cyan-950/20 dark:border-cyan-900/55',
+    cyan: 'bg-cyan-50/55 border-cyan-200/80 dark:bg-cyan-950/20 dark:border-cyan-900/60',
     orange: 'bg-orange-50/55 border-orange-200/80 dark:bg-orange-950/20 dark:border-orange-900/55',
   }
 
@@ -75,7 +77,7 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
           role={onToggleCollapsed ? 'button' : undefined}
           tabIndex={onToggleCollapsed ? 0 : undefined}
           aria-label={
-            onToggleCollapsed ? `${collapsed ? 'Expand' : 'Collapse'} ${title}` : undefined
+            onToggleCollapsed ? (collapsed ? t('ariaExpandGroup', { title }) : t('ariaCollapseGroup', { title })) : undefined
           }
           aria-expanded={onToggleCollapsed ? !collapsed : undefined}
           onClick={() => onToggleCollapsed?.()}
@@ -111,7 +113,7 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
             {onCloseTabs && (
               <button
                 type="button"
-                aria-label={`Close all tabs in ${title}`}
+                aria-label={t('ariaCloseAllTabs', { title })}
                 className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full border border-rose-200/70 bg-[var(--surface-elevated)] text-rose-500 transition-colors hover:bg-rose-500 hover:text-white"
                 onClick={(event) => {
                   event.stopPropagation()
@@ -150,7 +152,7 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
           ))}
           {tabs.length === 0 && (
             <div className="sp-empty-state flex-1 flex items-center justify-center py-4 rounded-lg">
-              <p className="text-[10px] font-medium uppercase tracking-widest">Drop tabs here</p>
+              <p className="text-[10px] font-medium uppercase tracking-widest">{t('dropTabsHere')}</p>
             </div>
           )}
         </div>

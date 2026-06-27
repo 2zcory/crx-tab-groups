@@ -3,6 +3,7 @@ import Tooltip from '@/components/ui/tooltip'
 import { extractDomainNameFromUrl } from '@/helpers'
 import StorageSyncFavIcon from '@/storage/favIcon.sync'
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from '@/hooks/useTranslation'
 
 interface IMostVisitedURLFavIconProps {
   url: string
@@ -31,6 +32,7 @@ function MostVisitedURLFavIcon(props: IMostVisitedURLFavIconProps) {
 }
 
 function TopSites() {
+  const { t } = useTranslation()
   const [list, setList] = useState<chrome.topSites.MostVisitedURL[]>([])
   const [favIcons, setFavIcons] = useState<NStorage.Sync.Schema.FavIcons>({})
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -73,9 +75,9 @@ function TopSites() {
       <div className="flex items-center justify-between px-4 pt-3">
         <div>
           <p className="sp-label text-[11px] font-semibold uppercase tracking-[0.18em]">
-            Top Sites
+            {t('topSitesTitle')}
           </p>
-          <p className="sp-copy-muted text-[11px]">Quick launch utility</p>
+          <p className="sp-copy-muted text-[11px]">{t('topSitesDesc')}</p>
         </div>
         <span className="sp-chip rounded-full px-2 py-0.5 text-[10px] font-medium">
           {Math.min(list.length, 12)}
