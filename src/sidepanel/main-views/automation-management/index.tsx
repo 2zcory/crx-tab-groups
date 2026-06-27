@@ -132,6 +132,7 @@ interface RuleCardUIProps {
   dragAttributes?: any
   dragListeners?: any
   style?: CSSProperties
+  editingError: string | null
 }
 
 function RuleCardUI({
@@ -159,6 +160,7 @@ function RuleCardUI({
   dragAttributes,
   dragListeners,
   style,
+  editingError,
 }: RuleCardUIProps) {
   const effectiveExpanded = isExpanded || isEditing
   const rulePatterns = getAutoGroupRulePatterns(rule)
@@ -174,8 +176,6 @@ function RuleCardUI({
   return (
     <div
       style={cardSurfaceStyle}
-      {...dragAttributes}
-      {...dragListeners}
       className={cn(
         'sp-rule-card-surface group flex flex-col gap-3 transition-all',
         !rule.isActive && 'is-paused',
@@ -185,6 +185,17 @@ function RuleCardUI({
       )}
     >
       <div className="flex items-center justify-between gap-2">
+        {!isEditing && (
+          <div
+            {...(!isOverlay ? { ...dragAttributes, ...dragListeners } : {})}
+            className={cn(
+              "sp-rule-drag-handle shrink-0 flex items-center justify-center text-[var(--text-muted)] p-1 transition-colors",
+              !isOverlay ? "cursor-grab active:cursor-grabbing hover:text-[var(--text-primary)]" : "opacity-50"
+            )}
+          >
+            <GripVertical size={14} />
+          </div>
+        )}
         <div
           className="flex min-w-0 flex-1 items-center cursor-pointer"
           onPointerDown={(e) => e.stopPropagation()}
@@ -342,6 +353,12 @@ function RuleCardUI({
                   </span>
                 </div>
 
+                {editingError && (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-medium text-rose-600 animate-in fade-in slide-in-from-top-1 duration-200">
+                    {editingError}
+                  </div>
+                )}
+
                 <div className="flex flex-col gap-2">
                   <label className="sp-label text-[10px] font-bold uppercase tracking-wider ml-1">
                     Color
@@ -352,67 +369,100 @@ function RuleCardUI({
                         key={color}
                         type="button"
                         className={cn(
-                          'size-4 rounded-full transition-transform hover:scale-125 cursor-pointer',
+                          'size-6 rounded-full transition-transform hover:scale-110 cursor-pointer flex items-center justify-center border border-black/10',
                           COLOR_MAP[color],
                           editingColor === color &&
-                            'scale-125 ring-2 ring-[var(--sp-tab-pill-active)] ring-offset-2',
+                            'scale-110 ring-2 ring-[var(--sp-tab-pill-active)] ring-offset-2',
                         )}
                         onClick={() => setEditingColor(color)}
-                      />
+                      >
+                        {editingColor === color && (
+                          <Check size={12} className={cn("drop-shadow-sm font-bold", color === 'yellow' ? 'text-black' : 'text-white')} />
+                        )}
+                      </button>
                     ))}
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <label className="sp-label text-[10px] font-bold uppercase tracking-wider ml-1">
-                    Patterns
-                  </label>
-
-                  <div className="flex flex-col gap-2">
-                    {editingPatterns.map((pattern, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <div className="sp-input-shell flex flex-1 items-center gap-2 rounded-xl px-3 py-1.5">
-                          <Globe size={12} className="sp-copy-muted shrink-0" />
-                          <input
-                            className="sp-input w-full border-none bg-transparent text-[11px] font-medium outline-none"
-                            value={pattern}
-                            onChange={(e) => updatePattern(idx, e.target.value)}
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          className="sp-copy-muted cursor-pointer hover:text-rose-500 transition-colors"
-                          onClick={() => removePattern(idx)}
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    ))}
+                  <div className="flex flex-col gap-0.5 ml-1">
+                    <label className="sp-label text-[10px] font-bold uppercase tracking-wider">
+                      Patterns
+                    </label>
+                    <span className="text-[9px] text-[var(--text-muted)]">
+                      Supports Host (<code>google.com</code>), Glob (<code>*.google.com</code>), or Regex (<code>re:^google\.com$</code>).
+                    </span>
                   </div>
 
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="sp-input-shell flex flex-1 items-center gap-2 rounded-xl px-3 py-1.5 border-dashed">
-                      <Plus size={12} className="sp-copy-muted" />
-                      <input
-                        placeholder="Add new pattern"
-                        className="sp-input w-full border-none bg-transparent text-[11px] font-medium outline-none"
-                        value={editingPatternDraft}
-                        onChange={(e) => setEditingPatternDraft(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault()
-                            addPattern()
-                          }
-                        }}
-                      />
+                  <div className="flex flex-col gap-2">
+                    {editingPatterns.map((pattern, idx) => {
+                      const validation = validateAutoGroupRulePattern(normalizeAutoGroupPattern(pattern))
+                      const isInvalid = pattern.trim() !== '' && !validation.isValid
+                      return (
+                        <div key={idx} className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <div className={cn(
+                              "sp-input-shell flex flex-1 items-center gap-2 rounded-xl px-3 py-1.5 transition-colors",
+                              isInvalid && "border-rose-500 bg-rose-500/5 ring-1 ring-rose-500/20"
+                            )}>
+                              <Globe size={12} className={cn("sp-copy-muted shrink-0", isInvalid && "text-rose-500")} />
+                              <input
+                                className="sp-input w-full border-none bg-transparent text-[11px] font-medium outline-none"
+                                value={pattern}
+                                onChange={(e) => updatePattern(idx, e.target.value)}
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              className="sp-copy-muted cursor-pointer hover:text-rose-500 transition-colors"
+                              onClick={() => removePattern(idx)}
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                          {isInvalid && validation.error && (
+                            <span className="text-[9px] font-medium text-rose-500 ml-1">
+                              {validation.error}
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  <div className="flex flex-col gap-1 mt-1">
+                    <div className="flex items-center gap-2">
+                      <div className={cn(
+                        "sp-input-shell flex flex-1 items-center gap-2 rounded-xl px-3 py-1.5 border-dashed transition-colors",
+                        editingPatternDraft.trim() !== '' && !validateAutoGroupRulePattern(normalizeAutoGroupPattern(editingPatternDraft)).isValid && "border-rose-500 bg-rose-500/5 ring-1 ring-rose-500/20 border-solid"
+                      )}>
+                        <Plus size={12} className="sp-copy-muted" />
+                        <input
+                          placeholder="Add new pattern"
+                          className="sp-input w-full border-none bg-transparent text-[11px] font-medium outline-none"
+                          value={editingPatternDraft}
+                          onChange={(e) => setEditingPatternDraft(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              addPattern()
+                            }
+                          }}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="sp-primary-action cursor-pointer rounded-lg px-2.5 py-1.5 text-[10px] font-bold"
+                        onClick={addPattern}
+                      >
+                        Add
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      className="sp-primary-action cursor-pointer rounded-lg px-2.5 py-1.5 text-[10px] font-bold"
-                      onClick={addPattern}
-                    >
-                      Add
-                    </button>
+                    {editingPatternDraft.trim() !== '' && !validateAutoGroupRulePattern(normalizeAutoGroupPattern(editingPatternDraft)).isValid && (
+                      <span className="text-[9px] font-medium text-rose-500 ml-1">
+                        {validateAutoGroupRulePattern(normalizeAutoGroupPattern(editingPatternDraft)).error}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -461,6 +511,7 @@ interface SortableRuleCardProps {
   saveChanges: (rule: NStorage.Sync.Schema.AutoGroupRule) => void
   cancelEdit: () => void
   editingPatterns: string[]
+  editingError: string | null
 }
 
 function SortableRuleCard(props: SortableRuleCardProps) {
@@ -502,6 +553,7 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
   const [editingColor, setEditingColor] = useState<NStorage.Sync.GroupColor>('blue')
   const [editingPatterns, setEditingPatterns] = useState<string[]>([])
   const [editingPatternDraft, setEditingPatternDraft] = useState('')
+  const [editingError, setEditingError] = useState<string | null>(null)
 
   const [activeId, setActiveId] = useState<string | null>(null)
   const activeRule = rules.find((r) => r.id === activeId)
@@ -596,6 +648,7 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
     setEditingColor(rule.color)
     setEditingPatterns([...getAutoGroupRulePatterns(rule)])
     setEditingPatternDraft('')
+    setEditingError(null)
   }
 
   const cancelPatternEditing = () => {
@@ -603,15 +656,17 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
     setEditingTitle('')
     setEditingPatterns([])
     setEditingPatternDraft('')
+    setEditingError(null)
   }
 
   const addPatternToDraftList = () => {
+    setEditingError(null)
     const pattern = normalizeAutoGroupPattern(editingPatternDraft.trim())
     if (!pattern) return
 
     const validation = validateAutoGroupRulePattern(pattern)
     if (!validation.isValid) {
-      alert(validation.error || 'Invalid pattern')
+      setEditingError(validation.error || 'Invalid pattern')
       return
     }
 
@@ -641,9 +696,10 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
   }
 
   const saveEditedPatterns = async (rule: NStorage.Sync.Schema.AutoGroupRule) => {
+    setEditingError(null)
     const title = editingTitle.trim()
     if (!title) {
-      alert('Title is required')
+      setEditingError('Title is required')
       return
     }
 
@@ -655,14 +711,14 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
 
       const validation = validateAutoGroupRulePattern(normalizeAutoGroupPattern(trimmed))
       if (!validation.isValid) {
-        alert(`Invalid pattern: ${trimmed}. ${validation.error || ''}`)
+        setEditingError(`Invalid pattern: ${trimmed}. ${validation.error || ''}`)
         return
       }
       validPatterns.push(validation.normalizedPattern)
     }
 
     if (validPatterns.length === 0) {
-      alert('A rule must have at least one valid pattern')
+      setEditingError('A rule must have at least one valid pattern')
       return
     }
 
@@ -683,7 +739,7 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
       chrome.runtime.sendMessage({ action: 'run_auto_group_scan' })
     } catch (e) {
       console.error('[Automation] Save error:', e)
-      alert(`Failed to save changes: ${e instanceof Error ? e.message : 'Unknown error'}`)
+      setEditingError(`Failed to save changes: ${e instanceof Error ? e.message : 'Unknown error'}`)
     }
   }
 
@@ -793,10 +849,18 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="sp-label ml-1 text-[10px] font-bold uppercase tracking-wider">
-                Initial Pattern
-              </label>
-              <div className="sp-input-shell flex items-center gap-2 rounded-xl px-3 py-2.5">
+              <div className="flex flex-col gap-0.5 ml-1">
+                <label className="sp-label text-[10px] font-bold uppercase tracking-wider">
+                  Initial Pattern
+                </label>
+                <span className="text-[9px] text-[var(--text-muted)]">
+                  Supports Host (<code>google.com</code>), Glob (<code>*.google.com</code>), or Regex (<code>re:^google\.com$</code>).
+                </span>
+              </div>
+              <div className={cn(
+                "sp-input-shell flex items-center gap-2 rounded-xl px-3 py-2.5 transition-colors",
+                newRulePattern.trim() !== '' && !validateAutoGroupRulePattern(normalizeAutoGroupPattern(newRulePattern)).isValid && "border-rose-500 bg-rose-500/5 ring-1 ring-rose-500/20"
+              )}>
                 <Globe size={14} className="sp-copy-muted" />
                 <input
                   placeholder="github.com, *.google.com..."
@@ -805,6 +869,11 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
                   onChange={(e) => setNewRulePattern(e.target.value)}
                 />
               </div>
+              {newRulePattern.trim() !== '' && !validateAutoGroupRulePattern(normalizeAutoGroupPattern(newRulePattern)).isValid && (
+                <span className="text-[9px] font-medium text-rose-500 ml-1">
+                  {validateAutoGroupRulePattern(normalizeAutoGroupPattern(newRulePattern)).error}
+                </span>
+              )}
             </div>
 
             <div className="flex flex-col gap-2">
@@ -817,13 +886,17 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
                     key={color}
                     type="button"
                     className={cn(
-                      'size-5 rounded-full transition-transform hover:scale-125 cursor-pointer',
+                      'size-6 rounded-full transition-transform hover:scale-110 cursor-pointer flex items-center justify-center border border-black/10',
                       COLOR_MAP[color],
                       newRuleColor === color &&
-                        'scale-125 ring-2 ring-[var(--sp-tab-pill-active)] ring-offset-2',
+                        'scale-110 ring-2 ring-[var(--sp-tab-pill-active)] ring-offset-2',
                     )}
                     onClick={() => setNewRuleColor(color)}
-                  />
+                  >
+                    {newRuleColor === color && (
+                      <Check size={12} className={cn("drop-shadow-sm font-bold", color === 'yellow' ? 'text-black' : 'text-white')} />
+                    )}
+                  </button>
                 ))}
               </div>
             </div>
@@ -852,8 +925,16 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
       >
         <div className="flex flex-col gap-2.5">
           {rules.length === 0 && !isAdding && (
-            <div className="sp-outline-dashed rounded-2xl py-12 text-center">
+            <div className="sp-outline-dashed rounded-2xl py-12 px-4 text-center flex flex-col items-center gap-3">
               <p className="sp-copy-muted text-xs font-medium">No automation rules yet.</p>
+              <button
+                type="button"
+                onClick={() => setIsAdding(true)}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-[var(--sp-tab-pill-active)] px-4 py-2 text-xs font-bold text-[var(--primary-foreground)] shadow-md hover:scale-105 transition-transform"
+              >
+                <Plus size={14} />
+                Create Your First Rule
+              </button>
             </div>
           )}
 
@@ -878,6 +959,7 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
                 saveChanges={saveEditedPatterns}
                 cancelEdit={cancelPatternEditing}
                 editingPatterns={editingPatterns}
+                editingError={editingError}
               />
             ))}
           </SortableContext>
@@ -907,6 +989,7 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
                 onToggle={() => {}}
                 onDelete={() => {}}
                 isOverlay
+                editingError={null}
               />
             </div>
           ) : null}
