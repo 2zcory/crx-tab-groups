@@ -1,0 +1,18 @@
+{
+  "extName": {
+    "message": "Groupify: Tự Động Gom Nhóm Tab",
+    "description": "Tên của tiện ích mở rộng."
+  },
+  "extNameDev": {
+    "message": "Groupify: Tự Động Gom Nhóm Tab ➡️ Dev",
+    "description": "Tên của tiện ích mở rộng trong chế độ phát triển."
+  },
+  "extDesc": {
+    "message": "Tự động gom nhóm tab bằng quy tắc, theo dõi tab đang hoạt động và quản lý bản chụp phiên làm việc ngay trên side panel.",
+    "description": "Mô tả của tiện ích mở rộng."
+  },
+  "extActionTitle": {
+    "message": "Mở khung quản lý nhóm tab",
+    "description": "Chỉ dẫn khi di chuột lên nút của tiện ích mở rộng."
+  }
+}

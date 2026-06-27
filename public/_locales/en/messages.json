@@ -1,0 +1,18 @@
+{
+  "extName": {
+    "message": "Groupify: Auto Tab Organizer",
+    "description": "The name of the extension."
+  },
+  "extNameDev": {
+    "message": "Groupify: Auto Tab Organizer ➡️ Dev",
+    "description": "The name of the extension in development mode."
+  },
+  "extDesc": {
+    "message": "Auto-organize tab groups with rules, inspect live tabs, and save/restore snapshots in a side panel.",
+    "description": "The description of the extension."
+  },
+  "extActionTitle": {
+    "message": "Open tab groups side panel",
+    "description": "Hover tooltip text for the extension action button."
+  }
+}

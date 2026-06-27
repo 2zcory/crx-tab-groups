@@ -5,9 +5,10 @@ import packageData from '../package.json'
 const isDev = process.env.NODE_ENV == 'development'
 
 export default defineManifest({
-  name: `${packageData.displayName || packageData.name}${isDev ? ` ➡️ Dev` : ''}`,
-  description: packageData.description,
+  name: isDev ? '__MSG_extNameDev__' : '__MSG_extName__',
+  description: '__MSG_extDesc__',
   version: packageData.version,
+  default_locale: 'en',
   manifest_version: 3,
   key: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3iZe9suKhK7iBpT5Do1TtZEy5mItfbWXLSsY5bj54tI9CFf15DZYynLHv73IqjqI71FkG9gX8f7oeNko+lHTNMMRnKG2smQjYEaBv0gw0p46CUQ0dWOlhbqytnXH3tanIjSKvVhNAZUleuEFFR3oN0ZswMvEAlOCIqqYxapx6mt7d2ujxWtwIhDTWrY7FqPs6nk3HaA2fV0xEfw6FI4aaGo2mMsecGC1OXqf2DRtL/bzHfH7rI25T97fKSf68JoxK42tf/TmLMRBsqDAbt/LSQi3I+sYRLtDS0a3UUPHt0ZubsIByioy9+3da5exCCJsauotBL4bomJV65ZwApCuFwIDAQAB',
   icons: {
@@ -18,7 +19,7 @@ export default defineManifest({
   },
   action: {
     default_icon: 'img/logo-48.png',
-    default_title: 'Open tab groups side panel',
+    default_title: '__MSG_extActionTitle__',
   },
   background: {
     service_worker: 'src/background/index.ts',
