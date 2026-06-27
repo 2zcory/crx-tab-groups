@@ -12,9 +12,9 @@
     </linearGradient>
   </defs>
   <!-- Outer "G" shape path -->
-  <path d="M 180,76 A 72,72 0 1,0 180,180 H 140" fill="none" stroke="url(#primary-grad)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M 202,54 A 104,104 0 1,0 202,202 H 144" fill="none" stroke="url(#primary-grad)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" />
   <!-- Inner tab shape path -->
-  <path d="M 100,140 V 110 C 100,102 106,96 114,96 H 166 C 174,96 180,102 180,110 V 140 Z" fill="url(#accent-grad)" />
+  <path d="M 68,144 V 100 C 68,88 76,80 84,80 H 172 C 180,80 188,88 188,100 V 144 Z" fill="url(#accent-grad)" />
   <!-- Dynamic tab indicator status dot -->
-  <circle cx="140" cy="118" r="8" fill="#FFFFFF" opacity="0.9" />
+  <circle cx="128" cy="112" r="12" fill="#FFFFFF" opacity="0.9" />
 </svg>
