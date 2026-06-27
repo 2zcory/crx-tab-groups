@@ -125,10 +125,7 @@ const launchChrome = () => {
     `--user-data-dir=${PROFILE_DIR}`,
     `--remote-debugging-port=${DEBUG_PORT}`,
     `--remote-debugging-address=${DEBUG_HOST}`,
-    `--load-extension=${BUILD_DIR}`,
-    `--disable-extensions-except=${BUILD_DIR}`,
     '--disable-features=DisableLoadExtensionCommandLineSwitch',
-    '--enable-unsafe-extension-debugging',
     '--no-first-run',
     '--no-default-browser-check',
     '--new-window',
@@ -209,7 +206,38 @@ const readExtensionSettingsFromProfile = () => {
   }
 }
 
-const resolveExtensionId = async () => 'omjffieelhblgkclapfakpmoagphinab'
+const loadExtensionViaCDP = async () => {
+  const versionInfo = await fetchJson(`http://${DEBUG_HOST}:${DEBUG_PORT}/json/version`)
+  const browserWsUrl = versionInfo.webSocketDebuggerUrl
+  
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(browserWsUrl)
+    ws.onopen = () => {
+      ws.send(JSON.stringify({
+        id: 1,
+        method: 'Extensions.loadUnpacked',
+        params: {
+          path: BUILD_DIR
+        }
+      }))
+    }
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data)
+      if (msg.id === 1) {
+        ws.close()
+        if (msg.error) {
+          reject(new Error(`Failed to load extension via CDP: ${JSON.stringify(msg.error)}`))
+        } else {
+          console.log(`[Test Setup] Successfully loaded extension via CDP. Extension ID: ${msg.result.id}`)
+          resolve(msg.result.id)
+        }
+      }
+    }
+    ws.onerror = (err) => {
+      reject(err)
+    }
+  })
+}
 
 const buildHarnessReadyExpression = () => `(
   () =>
@@ -288,7 +316,7 @@ const main = async () => {
   try {
     await waitForDebugger()
 
-    const extensionId = await resolveExtensionId()
+    const extensionId = await loadExtensionViaCDP()
     assert(extensionId, 'Could not resolve extension id for crx-tab-groups')
 
     sidepanelClient = await openHarnessSidepanel(extensionId)

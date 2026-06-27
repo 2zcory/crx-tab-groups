@@ -14,10 +14,13 @@ import {
   ChevronRight,
   Bug,
   Plus,
+  Languages,
 } from 'lucide-react'
 
 import './SidePanel.css'
 import migrateScheme from '@/migrations'
+import { TRANSLATIONS, TranslationKey } from '@/constants/translations'
+import { TranslationProvider } from '@/hooks/useTranslation'
 import LiveManagement, { LiveManagementHandle } from './live'
 import Layout from './layout'
 import Tabs from '@/components/ui/tabs'
@@ -192,6 +195,63 @@ export const SidePanel = () => {
   const [settings, setSettings] = useState<NStorage.Local.ExtensionSettings>(DEFAULT_SETTINGS)
   const [bytesUsed, setBytesUsed] = useState<number>(0)
   const [expandedSection, setExpandedSection] = useState<string | null>('appearance')
+
+  const resolvedLang = useMemo(() => {
+    const lang = settings.language || 'system'
+    if (lang === 'en' || lang === 'vi') return lang
+    if (typeof chrome !== 'undefined' && chrome.i18n) {
+      if (chrome.i18n.getUILanguage().toLowerCase().startsWith('vi')) return 'vi'
+    }
+    return 'en'
+  }, [settings.language])
+
+  const t = useCallback((key: TranslationKey, variables?: Record<string, string | number>): string => {
+    const dict = TRANSLATIONS[resolvedLang]
+    const template = (dict[key] || TRANSLATIONS.en[key] || String(key)) as string
+    if (!variables) return template
+    return Object.entries(variables).reduce((acc: string, [varName, varValue]) => {
+      return acc.replace(new RegExp(`{${varName}}`, 'g'), String(varValue))
+    }, template)
+  }, [resolvedLang])
+
+  const getThemeLabel = useCallback((value: ThemeMode) => {
+    switch (value) {
+      case 'light': return t('themeLight')
+      case 'dark': return t('themeDark')
+      case 'system': return t('themeSystem')
+      case 'glass': return t('themeGlass')
+    }
+  }, [t])
+
+  const getGlassStyleLabel = useCallback((value: GlassStyle) => {
+    switch (value) {
+      case 'frosted-light': return t('glassFrostedLight')
+      case 'aurora-dark': return t('glassAuroraDark')
+      case 'minimal-clear': return t('glassMinimalClear')
+      case 'warm-glass': return t('glassWarmGlass')
+      case 'monochrome-glass': return t('glassMonochrome')
+    }
+  }, [t])
+
+  const getGlassStyleDescription = useCallback((value: GlassStyle) => {
+    switch (value) {
+      case 'frosted-light': return t('glassFrostedDesc')
+      case 'aurora-dark': return t('glassAuroraDesc')
+      case 'minimal-clear': return t('glassMinimalDesc')
+      case 'warm-glass': return t('glassWarmDesc')
+      case 'monochrome-glass': return t('glassMonoDesc')
+    }
+  }, [t])
+
+  const getGlassStyleAccent = useCallback((value: GlassStyle) => {
+    switch (value) {
+      case 'frosted-light': return t('glassFrostedAccent')
+      case 'aurora-dark': return t('glassAuroraAccent')
+      case 'minimal-clear': return t('glassMinimalAccent')
+      case 'warm-glass': return t('glassWarmAccent')
+      case 'monochrome-glass': return t('glassMonoAccent')
+    }
+  }, [t])
 
   const quotaBytes = settings.storageEngine === 'local' ? 5242880 : 102400
 
@@ -387,9 +447,7 @@ export const SidePanel = () => {
           throw new Error('Định dạng file backup không hợp lệ.')
         }
 
-        const confirmImport = confirm(
-          'Bạn có muốn khôi phục dữ liệu từ file này? Dữ liệu hiện tại sẽ bị ghi đè.',
-        )
+        const confirmImport = confirm(t('importConfirm'))
         if (!confirmImport) return
 
         const storageArea =
@@ -400,27 +458,25 @@ export const SidePanel = () => {
           await updateSettings(backupData.settings)
         }
 
-        alert('Khôi phục dữ liệu thành công!')
+        alert(t('importSuccess'))
         updateStorageUsage()
         groupManagementRef.current?.refreshSavedGroups()
         fetchAutoGroupRules()
         liveManagementRef.current?.refreshActiveGroups()
       } catch (err) {
-        alert(`Import thất bại: ${err instanceof Error ? err.message : 'File JSON không hợp lệ'}`)
+        alert(t('importFailed', { error: err instanceof Error ? err.message : String(err) }))
       }
     }
     reader.readAsText(file)
   }
 
   const handleFactoryReset = async () => {
-    const step1 = confirm(
-      'CẢNH BÁO: Thao tác này sẽ xóa vĩnh viễn toàn bộ Snapshots, Rules và Cài đặt của bạn. Bạn có chắc chắn?',
-    )
+    const step1 = confirm(t('resetConfirmWarning'))
     if (!step1) return
 
-    const step2 = prompt('Để xác nhận xóa toàn bộ, vui lòng nhập chữ "RESET" vào bên dưới:')
+    const step2 = prompt(t('resetPromptText'))
     if (step2 !== 'RESET') {
-      alert('Nhập xác nhận không đúng. Thao tác hủy bỏ.')
+      alert(t('resetAborted'))
       return
     }
 
@@ -430,10 +486,10 @@ export const SidePanel = () => {
       await chrome.storage.local.set({ extensionSettings: DEFAULT_SETTINGS })
       setSettings(DEFAULT_SETTINGS)
 
-      alert('Đã khôi phục cài đặt gốc thành công!')
+      alert(t('resetSuccess'))
       window.location.reload()
     } catch (e) {
-      alert(`Reset thất bại: ${e instanceof Error ? e.message : String(e)}`)
+      alert(t('resetFailed', { error: e instanceof Error ? e.message : String(e) }))
     }
   }
 
@@ -1017,6 +1073,12 @@ export const SidePanel = () => {
     }
   }, [autoGroupRules, fetchAutoGroupRules, harnessMode, openLiveAddToRules])
 
+  const translatedTabMenu = useMemo(() => [
+    { value: ETabMenu.TAB_SYNC, label: t('tabLive') },
+    { value: ETabMenu.AUTOMATION, label: t('tabRules') },
+    { value: ETabMenu.GROUP, label: t('tabSaved') },
+  ], [t])
+
   if (isMigrating) {
     return <div>Migrating...</div>
   }
@@ -1024,12 +1086,13 @@ export const SidePanel = () => {
   const addToRulesDraft = activeSheet?.kind === 'live-add-to-rules' ? activeSheet.payload : null
 
   return (
-    <Layout>
-      <div className="sp-shell flex h-full w-full overflow-hidden">
-        <div className="sp-shell-content flex h-full w-full flex-col overflow-hidden">
-          <Tabs
-            tabs={TAB_MENU}
-            defaultValue={ETabMenu.TAB_SYNC}
+    <TranslationProvider language={settings.language}>
+      <Layout>
+        <div className="sp-shell flex h-full w-full overflow-hidden">
+          <div className="sp-shell-content flex h-full w-full flex-col overflow-hidden">
+            <Tabs
+              tabs={translatedTabMenu}
+              defaultValue={ETabMenu.TAB_SYNC}
             value={activeTab}
             onValueChange={(val) => setActiveTab(Number(val) as ETabMenu)}
             className="flex-1 min-h-0"
@@ -1094,8 +1157,8 @@ export const SidePanel = () => {
         <BottomSheet
           isOpen={activeSheet?.kind === 'settings'}
           onClose={closeSheet}
-          title="Cấu hình hệ thống"
-          description="Tùy chỉnh hoạt động và giao diện của extension"
+          title={t('settingsTitle')}
+          description={t('settingsDesc')}
           sheetDataAttributes={{ 'data-bottom-sheet': 'settings' }}
         >
           <div className="flex flex-col gap-3 max-h-[70vh] overflow-y-auto pr-1 pb-4">
@@ -1107,7 +1170,7 @@ export const SidePanel = () => {
               >
                 <span className="flex items-center gap-2">
                   <Paintbrush size={14} className="text-indigo-500" />
-                  Appearance & Styling
+                  {t('sectionAppearance')}
                 </span>
                 {expandedSection === 'appearance' ? (
                   <ChevronDown size={14} />
@@ -1120,7 +1183,7 @@ export const SidePanel = () => {
                 <div className="p-4 border-t border-[var(--sp-card-border)] flex flex-col gap-4 animate-in fade-in duration-200">
                   <div className="flex flex-col gap-2">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                      Theme Mode
+                      {t('themeModeLabel')}
                     </p>
                     <div className="grid grid-cols-3 gap-2">
                       {THEME_OPTIONS.map((option) => (
@@ -1131,7 +1194,7 @@ export const SidePanel = () => {
                           className="sp-theme-chip rounded-xl py-2.5 text-[10px] font-bold uppercase tracking-[0.12em] flex flex-col items-center gap-1 border border-[var(--sp-card-border)] bg-[var(--surface-elevated)] cursor-pointer"
                           onClick={() => void handleThemeModeChange(option.value)}
                         >
-                          {option.label}
+                          {getThemeLabel(option.value)}
                         </button>
                       ))}
                     </div>
@@ -1140,7 +1203,7 @@ export const SidePanel = () => {
                   {themeMode === 'glass' && (
                     <div className="flex flex-col gap-2">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                        Glass Style
+                        {t('glassStyleLabel')}
                       </p>
                       <div className="sp-glass-style-grid">
                         {GLASS_STYLE_OPTIONS.map((option) => (
@@ -1159,11 +1222,11 @@ export const SidePanel = () => {
                             </span>
                             <span className="sp-glass-style-copy">
                               <span className="sp-glass-style-title-row">
-                                <span className="sp-glass-style-title">{option.label}</span>
+                                <span className="sp-glass-style-title">{getGlassStyleLabel(option.value)}</span>
                                 <span className="sp-glass-style-badge">{option.shortLabel}</span>
                               </span>
                               <span className="sp-glass-style-description">
-                                {option.description}
+                                {getGlassStyleDescription(option.value)}
                               </span>
                             </span>
                           </button>
@@ -1171,6 +1234,51 @@ export const SidePanel = () => {
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+
+            {/* Category 1.5: Language Settings */}
+            <div className="sp-settings-group border border-[var(--sp-card-border)] rounded-2xl overflow-hidden bg-[var(--surface-elevated)]">
+              <button
+                className="w-full flex items-center justify-between p-3.5 font-bold text-xs uppercase tracking-wider text-[var(--text-primary)] hover:bg-[var(--sp-card-hover)] transition-colors cursor-pointer"
+                onClick={() => toggleSection('language')}
+              >
+                <span className="flex items-center gap-2">
+                  <Languages size={14} className="text-blue-500" />
+                  {t('languageLabel')}
+                </span>
+                {expandedSection === 'language' ? (
+                  <ChevronDown size={14} />
+                ) : (
+                  <ChevronRight size={14} />
+                )}
+              </button>
+
+              {expandedSection === 'language' && (
+                <div className="p-4 border-t border-[var(--sp-card-border)] flex flex-col gap-4 animate-in fade-in duration-200">
+                  <div className="flex flex-col gap-2">
+                    <p className="text-[10px] text-[var(--text-secondary)]">
+                      {t('languageDesc')}
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { value: 'system', label: t('langSystem') },
+                        { value: 'en', label: t('langEn') },
+                        { value: 'vi', label: t('langVi') },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          data-active={settings.language === option.value}
+                          className="sp-theme-chip rounded-xl py-2.5 text-[10px] font-bold uppercase tracking-[0.05em] flex flex-col items-center gap-1 border border-[var(--sp-card-border)] bg-[var(--surface-elevated)] cursor-pointer"
+                          onClick={() => void updateSettings({ language: option.value as 'system' | 'en' | 'vi' })}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1183,7 +1291,7 @@ export const SidePanel = () => {
               >
                 <span className="flex items-center gap-2">
                   <Cpu size={14} className="text-amber-500" />
-                  Auto-Grouping Preferences
+                  {t('sectionAutomation')}
                 </span>
                 {expandedSection === 'automation' ? (
                   <ChevronDown size={14} />
@@ -1197,10 +1305,10 @@ export const SidePanel = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-bold text-[var(--text-primary)]">
-                        Tự động gom nhóm
+                        {t('autoGroupingEnabled')}
                       </p>
                       <p className="text-[10px] text-[var(--text-secondary)]">
-                        Bật/tắt chạy ngầm gom nhóm tự động
+                        {t('autoGroupingDesc')}
                       </p>
                     </div>
                     <button
@@ -1213,9 +1321,9 @@ export const SidePanel = () => {
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-bold text-[var(--text-primary)]">Khi mở tab mới</p>
+                      <p className="text-xs font-bold text-[var(--text-primary)]">{t('groupOnTabCreated')}</p>
                       <p className="text-[10px] text-[var(--text-secondary)]">
-                        Tự động gom nhóm ngay khi tạo tab mới
+                        {t('groupOnTabCreatedDesc')}
                       </p>
                     </div>
                     <button
@@ -1230,10 +1338,10 @@ export const SidePanel = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-bold text-[var(--text-primary)]">
-                        Khi cập nhật URL tab
+                        {t('groupOnTabUpdated')}
                       </p>
                       <p className="text-[10px] text-[var(--text-secondary)]">
-                        Gom lại nhóm khi URL thay đổi
+                        {t('groupOnTabUpdatedDesc')}
                       </p>
                     </div>
                     <button
@@ -1248,10 +1356,10 @@ export const SidePanel = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-bold text-[var(--text-primary)]">
-                        Độ trễ quét (Debounce)
+                        {t('scanDebounceTime')}
                       </p>
                       <p className="text-[10px] text-[var(--text-secondary)]">
-                        Chờ trước khi chạy quét (tránh quá tải CPU)
+                        {t('scanDebounceDesc')}
                       </p>
                     </div>
                     <select
@@ -1260,10 +1368,10 @@ export const SidePanel = () => {
                       onChange={(e) => updateSettings({ scanDebounceTime: Number(e.target.value) })}
                       disabled={!settings.autoGroupingEnabled}
                     >
-                      <option value={0}>Tức thì (0ms)</option>
+                      <option value={0}>{t('debounceInstant')}</option>
                       <option value={500}>500ms</option>
-                      <option value={1000}>1 giây</option>
-                      <option value={2000}>2 giây</option>
+                      <option value={1000}>{t('debounceSec', { count: 1 })}</option>
+                      <option value={2000}>{t('debounceSecs', { count: 2 })}</option>
                     </select>
                   </div>
                 </div>
@@ -1278,7 +1386,7 @@ export const SidePanel = () => {
               >
                 <span className="flex items-center gap-2">
                   <Database size={14} className="text-emerald-500" />
-                  Storage & Snapshots
+                  {t('sectionStorage')}
                 </span>
                 {expandedSection === 'storage' ? (
                   <ChevronDown size={14} />
@@ -1291,9 +1399,9 @@ export const SidePanel = () => {
                 <div className="p-4 border-t border-[var(--sp-card-border)] flex flex-col gap-4 animate-in fade-in duration-200">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-bold text-[var(--text-primary)]">Vùng lưu trữ</p>
+                      <p className="text-xs font-bold text-[var(--text-primary)]">{t('storageEngine')}</p>
                       <p className="text-[10px] text-[var(--text-secondary)]">
-                        Sync (Đồng bộ Cloud - 100KB) hoặc Local (Cục bộ máy - 5MB+)
+                        {t('storageEngineDesc')}
                       </p>
                     </div>
                     <select
@@ -1301,36 +1409,36 @@ export const SidePanel = () => {
                       value={settings.storageEngine}
                       onChange={async (e) => {
                         const nextEngine = e.target.value as 'sync' | 'local'
-                        const labelStr = nextEngine === 'sync' ? 'Sync Cloud' : 'Local máy'
+                        const labelStr = nextEngine === 'sync' ? t('storageSync') : t('storageLocal')
                         if (
                           confirm(
-                            `Bạn có chắc muốn chuyển sang bộ nhớ ${labelStr}? Hệ thống sẽ tự động sao chép toàn bộ Snapshots, Rules, Favicons hiện có.`,
+                            t('storageMigrationConfirm', { engine: labelStr }),
                           )
                         ) {
                           const res = await migrateStorageData(nextEngine)
                           if (res.success) {
                             await updateSettings({ storageEngine: nextEngine })
                             updateStorageUsage()
-                            alert('Di chuyển dữ liệu thành công!')
+                            alert(t('storageMigrationSuccess'))
                             groupManagementRef.current?.refreshSavedGroups()
                           } else {
-                            alert(`Lỗi di chuyển dữ liệu: ${res.error}`)
+                            alert(t('storageMigrationFailed', { error: res.error || '' }))
                           }
                         }
                       }}
                     >
-                      <option value="sync">Sync (Đồng bộ Cloud)</option>
-                      <option value="local">Local (Cục bộ máy)</option>
+                      <option value="sync">{t('storageSync')}</option>
+                      <option value="local">{t('storageLocal')}</option>
                     </select>
                   </div>
 
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-bold text-[var(--text-primary)]">
-                        Dọn dẹp nhóm trống
+                        {t('autoCleanupEmptyGroups')}
                       </p>
                       <p className="text-[10px] text-[var(--text-secondary)]">
-                        Tự động xóa các nhóm trống của Chrome sau khi phục hồi
+                        {t('autoCleanupEmptyGroupsDesc')}
                       </p>
                     </div>
                     <button
@@ -1344,7 +1452,7 @@ export const SidePanel = () => {
                   <div className="py-2 border-t border-[var(--sp-card-border)] mt-2">
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                        Dung lượng sử dụng
+                        {t('storageUsed')}
                       </span>
                       <span
                         className={`text-xs font-bold ${bytesUsed / quotaBytes >= 0.8 ? 'text-rose-500 animate-pulse' : 'text-indigo-500'}`}
@@ -1361,8 +1469,7 @@ export const SidePanel = () => {
                     </div>
                     {bytesUsed / quotaBytes >= 0.8 && (
                       <p className="text-[9px] text-rose-500 font-medium mt-1 flex items-center gap-1 animate-pulse">
-                        <AlertTriangle size={10} /> Cảnh báo: Bộ nhớ gần đầy (&gt;80%). Hãy chuyển
-                        sang Local storage hoặc xóa bớt Snapshots!
+                        <AlertTriangle size={10} /> {t('storageWarning')}
                       </p>
                     )}
                   </div>
@@ -1378,7 +1485,7 @@ export const SidePanel = () => {
               >
                 <span className="flex items-center gap-2">
                   <Terminal size={14} className="text-purple-500" />
-                  System & Developer Mode
+                  {t('sectionDeveloper')}
                 </span>
                 {expandedSection === 'developer' ? (
                   <ChevronDown size={14} />
@@ -1392,10 +1499,10 @@ export const SidePanel = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-bold text-[var(--text-primary)]">
-                        Chế độ nhà phát triển
+                        {t('developerMode')}
                       </p>
                       <p className="text-[10px] text-[var(--text-secondary)]">
-                        Hiện nút Con Bọ gỡ lỗi quét nhóm tự động ở tab Rules
+                        {t('developerModeDesc')}
                       </p>
                     </div>
                     <button
@@ -1415,7 +1522,7 @@ export const SidePanel = () => {
               >
                 <span className="flex items-center gap-2">
                   <RefreshCcw size={14} className="text-rose-500" />
-                  Data Management
+                  {t('sectionData')}
                 </span>
                 {expandedSection === 'data' ? (
                   <ChevronDown size={14} />
@@ -1429,10 +1536,10 @@ export const SidePanel = () => {
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex-1">
                       <p className="text-xs font-bold text-[var(--text-primary)]">
-                        Sao lưu dữ liệu
+                        {t('backupData')}
                       </p>
                       <p className="text-[10px] text-[var(--text-secondary)]">
-                        Xuất toàn bộ Snapshots, Rules và Cấu hình ra file .json
+                        {t('backupDataDesc')}
                       </p>
                     </div>
                     <button
@@ -1440,22 +1547,22 @@ export const SidePanel = () => {
                       onClick={handleExportData}
                     >
                       <Download size={12} />
-                      Export
+                      {t('export')}
                     </button>
                   </div>
 
                   <div className="flex items-center justify-between gap-2 border-t border-[var(--sp-card-border)] pt-3">
                     <div className="flex-1">
                       <p className="text-xs font-bold text-[var(--text-primary)]">
-                        Khôi phục dữ liệu
+                        {t('restoreData')}
                       </p>
                       <p className="text-[10px] text-[var(--text-secondary)]">
-                        Khôi phục snapshots và rules từ file sao lưu .json
+                        {t('restoreDataDesc')}
                       </p>
                     </div>
                     <label className="sp-btn-backup flex items-center gap-1 text-[10px] font-bold uppercase cursor-pointer">
                       <Upload size={12} />
-                      Import
+                      {t('import')}
                       <input
                         type="file"
                         accept=".json"
@@ -1467,16 +1574,16 @@ export const SidePanel = () => {
 
                   <div className="flex items-center justify-between gap-2 border-t border-[var(--sp-card-border)] pt-3">
                     <div className="flex-1">
-                      <p className="text-xs font-bold text-rose-500">Khôi phục cài đặt gốc</p>
+                      <p className="text-xs font-bold text-rose-500">{t('factoryReset')}</p>
                       <p className="text-[10px] text-[var(--text-secondary)]">
-                        Xóa vĩnh viễn toàn bộ cấu hình, rules và snapshots
+                        {t('factoryResetDesc')}
                       </p>
                     </div>
                     <button
                       className="sp-btn-reset text-[10px] font-bold uppercase cursor-pointer"
                       onClick={handleFactoryReset}
                     >
-                      Reset All
+                      {t('resetAll')}
                     </button>
                   </div>
                 </div>
@@ -1505,7 +1612,8 @@ export const SidePanel = () => {
         </BottomSheet>
       </div>
     </Layout>
-  )
+  </TranslationProvider>
+)
 }
 
 export default SidePanel
