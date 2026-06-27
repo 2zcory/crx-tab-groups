@@ -178,6 +178,7 @@ const DEFAULT_SETTINGS: NStorage.Local.ExtensionSettings = {
   storageEngine: 'sync',
   autoCleanupEmptyGroups: true,
   developerMode: false,
+  language: 'system',
 }
 
 export const SidePanel = () => {
