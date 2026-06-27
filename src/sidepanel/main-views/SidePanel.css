@@ -508,27 +508,14 @@ main {
   background: rgba(255, 255, 255, 0.05);
 }
 
-/* Floating Actions Rail */
-.sp-rule-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px;
-  background: var(--surface-elevated);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--sp-card-border);
-  border-radius: 12px;
-  opacity: 0;
-  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.5);
-  transform: scale(0.9) translateX(10px);
-  transition: all 220ms cubic-bezier(0.23, 1, 0.32, 1);
-  pointer-events: none;
+/* Inline Actions Transition */
+.sp-rule-inline-actions {
+  opacity: 0.35;
+  transition: opacity 200ms ease;
 }
 
-.sp-rule-card-surface:hover .sp-rule-actions {
+.sp-rule-card-surface:hover .sp-rule-inline-actions {
   opacity: 1;
-  transform: scale(1) translateX(0);
-  pointer-events: auto;
 }
 
 .sp-rule-card-body-wrapper {

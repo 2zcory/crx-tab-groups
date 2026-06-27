@@ -173,73 +173,80 @@ function RuleCardUI({
     '--sp-rule-card-border-accent': surfaceTint.border,
   } as CSSProperties
 
+  const patternPreview = rulePatterns.join(', ')
+
   return (
     <div
       style={cardSurfaceStyle}
       className={cn(
-        'sp-rule-card-surface group flex flex-col gap-3 transition-all',
+        'sp-rule-card-surface group flex flex-col gap-2 transition-all p-3',
         !rule.isActive && 'is-paused',
         isDragging && 'is-placeholder',
         isOverlay && 'is-lifted',
         isEditing && 'is-editing scale-[1.01]',
       )}
     >
-      <div className="flex items-center justify-between gap-2">
-        {!isEditing && (
-          <div
-            {...(!isOverlay ? { ...dragAttributes, ...dragListeners } : {})}
-            className={cn(
-              "sp-rule-drag-handle shrink-0 flex items-center justify-center text-[var(--text-muted)] p-1 transition-colors",
-              !isOverlay ? "cursor-grab active:cursor-grabbing hover:text-[var(--text-primary)]" : "opacity-50"
-            )}
-          >
-            <GripVertical size={14} />
-          </div>
-        )}
-        <div
-          className="flex min-w-0 flex-1 items-center cursor-pointer"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation()
-            if (!isEditing) setIsExpanded(!isExpanded)
-          }}
-        >
-          <div className="min-w-0 flex-1">
-            {isEditing ? (
-              <input
-                autoFocus
-                className="sp-input w-full bg-transparent text-[14px] font-bold outline-none border-b border-[var(--sp-tab-pill-active)] py-0"
-                value={editingTitle}
-                onChange={(e) => setEditingTitle(e.target.value)}
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
-              />
-            ) : (
-              <h3 className="sp-rule-card-title truncate pr-4" title={rule.title}>
-                {rule.title}
-              </h3>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {!isEditing && !rule.isActive && (
-            <span className="sp-chip-muted rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider">
-              Paused
-            </span>
-          )}
+      <div className="flex items-center justify-between gap-2.5 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           {!isEditing && (
             <div
-              className="sp-rule-card-chevron flex size-5 items-center justify-center text-[var(--text-muted)] transition-transform duration-300"
-              style={{ transform: effectiveExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
+              {...(!isOverlay ? { ...dragAttributes, ...dragListeners } : {})}
+              className={cn(
+                "sp-rule-drag-handle shrink-0 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-0.5",
+                !isOverlay ? "cursor-grab active:cursor-grabbing" : "opacity-50"
+              )}
             >
-              <ChevronRight size={16} />
+              <GripVertical size={13} />
             </div>
           )}
+
+          {!isEditing && (
+            <div className={cn("size-2.5 rounded-full shrink-0 shadow-sm", COLOR_MAP[activeColor])} />
+          )}
+
+          <div
+            className="flex flex-col min-w-0 flex-1 cursor-pointer"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (!isEditing) setIsExpanded(!isExpanded)
+            }}
+          >
+            <div className="flex items-center gap-1.5 min-w-0">
+              {isEditing ? (
+                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                  <div className={cn("size-2.5 rounded-full shrink-0 shadow-sm", COLOR_MAP[activeColor])} />
+                  <input
+                    autoFocus
+                    className="sp-input w-full bg-transparent text-[13px] font-bold outline-none border-b border-[var(--sp-tab-pill-active)] py-0.5"
+                    value={editingTitle}
+                    onChange={(e) => setEditingTitle(e.target.value)}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
+              ) : (
+                <>
+                  <h3 className="sp-rule-card-title truncate" title={rule.title}>
+                    {rule.title}
+                  </h3>
+                  <span className="text-[9px] font-bold text-[var(--text-muted)] shrink-0 bg-[var(--surface-muted)] px-1.5 py-0.5 rounded-md border border-[var(--sp-card-border)]">
+                    #{rule.order}
+                  </span>
+                </>
+              )}
+            </div>
+
+            {!effectiveExpanded && patternPreview && (
+              <span className="text-[10px] text-[var(--text-muted)] truncate font-medium mt-0.5" title={patternPreview}>
+                {patternPreview}
+              </span>
+            )}
+          </div>
         </div>
 
         {!isEditing && !isOverlay && (
-          <div className="sp-rule-actions absolute right-8 top-1/2 -translate-y-1/2">
+          <div className="sp-rule-inline-actions flex items-center gap-1 shrink-0">
             <Tooltip>
               <Tooltip.Trigger asChild>
                 <button
@@ -248,9 +255,9 @@ function RuleCardUI({
                     e.stopPropagation()
                     onEdit(rule)
                   }}
-                  className="sp-icon-button flex size-6 items-center justify-center rounded-lg"
+                  className="size-6 flex items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--text-primary)] transition-all cursor-pointer"
                 >
-                  <Pencil size={12} />
+                  <Pencil size={11} />
                 </button>
               </Tooltip.Trigger>
               <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
@@ -266,13 +273,13 @@ function RuleCardUI({
                     onToggle(rule)
                   }}
                   className={cn(
-                    'flex size-6 items-center justify-center rounded-lg transition-colors',
+                    'size-6 flex items-center justify-center rounded-lg transition-all cursor-pointer hover:bg-[var(--surface-elevated)]',
                     rule.isActive
-                      ? 'text-amber-500 hover:bg-amber-500/10'
-                      : 'text-emerald-500 hover:bg-emerald-500/10',
+                      ? 'text-amber-500/80 hover:text-amber-500'
+                      : 'text-emerald-500/80 hover:text-emerald-500',
                   )}
                 >
-                  {rule.isActive ? <Pause size={12} /> : <Play size={12} />}
+                  {rule.isActive ? <Pause size={11} /> : <Play size={11} />}
                 </button>
               </Tooltip.Trigger>
               <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
@@ -287,89 +294,90 @@ function RuleCardUI({
                     e.stopPropagation()
                     onDelete(rule.id)
                   }}
-                  className="flex size-6 items-center justify-center rounded-lg text-rose-500 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                  className="size-6 flex items-center justify-center rounded-lg text-rose-500/80 hover:bg-rose-500/10 hover:text-rose-500 transition-all cursor-pointer"
                 >
-                  <Trash2 size={12} />
+                  <Trash2 size={11} />
                 </button>
               </Tooltip.Trigger>
               <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
                 Delete
               </Tooltip.Content>
             </Tooltip>
+
+            <div
+              className="flex size-6 items-center justify-center text-[var(--text-muted)] transition-transform duration-200 cursor-pointer"
+              style={{ transform: effectiveExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsExpanded(!isExpanded)
+              }}
+            >
+              <ChevronRight size={14} />
+            </div>
+          </div>
+        )}
+
+        {isOverlay && (
+          <div className="text-[var(--text-muted)]">
+            <ChevronRight size={14} />
           </div>
         )}
       </div>
 
       <div className="sp-rule-card-body-wrapper" data-expanded={effectiveExpanded}>
         <div className="sp-rule-card-body-inner">
-          <div className="flex flex-col gap-4 border-t border-[var(--sp-card-border)] mt-1 pt-4">
+          <div className="flex flex-col gap-3 border-t border-[var(--sp-card-border)] mt-2 pt-3">
             {!isEditing && (
-              <>
-                <div className="flex items-center gap-2 px-1">
-                  <span className="sp-rule-metric" title={`Priority ${rule.order}`}>
-                    <ArrowUpWideNarrow size={10} />
-                    Priority {rule.order}
-                  </span>
-                  <span className="sp-rule-metric" title={`${rulePatterns.length} patterns`}>
-                    <Globe size={10} />
-                    {rulePatterns.length} Patterns
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap gap-2 px-1">
-                  {getAutoGroupRulePatterns(rule).map((pattern, idx) => (
-                    <div
-                      key={pattern}
-                      className="sp-rule-tag sp-rule-card-chip"
-                      style={{ '--stagger-idx': idx } as CSSProperties}
-                    >
-                      <Globe size={10} className="sp-copy-muted shrink-0" />
-                      <code title={pattern}>{pattern}</code>
-                      <span className="sp-chip-muted rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider">
-                        {describeRulePattern(pattern)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </>
+              <div className="flex flex-wrap gap-1.5 px-0.5">
+                {rulePatterns.map((pattern, idx) => (
+                  <div
+                    key={pattern}
+                    className="sp-rule-tag sp-rule-card-chip py-1 px-2.5 rounded-lg gap-1.5 text-[10px]"
+                    style={{ '--stagger-idx': idx } as CSSProperties}
+                  >
+                    <Globe size={9} className="sp-copy-muted shrink-0" />
+                    <code title={pattern} className="max-w-32 truncate">{pattern}</code>
+                    <span className="sp-chip-muted rounded px-1 py-0.5 text-[7px] font-bold uppercase tracking-wider">
+                      {describeRulePattern(pattern)}
+                    </span>
+                  </div>
+                ))}
+              </div>
             )}
 
             {isEditing && (
               <div
-                className="sp-subtle-surface flex flex-col gap-4 rounded-xl p-3"
+                className="sp-subtle-surface flex flex-col gap-3 rounded-xl p-2.5"
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="sp-copy-primary text-[11px] font-bold uppercase tracking-[0.16em]">
+                    <p className="sp-copy-primary text-[10px] font-bold uppercase tracking-[0.14em]">
                       Rule Editor
                     </p>
-                    <p className="sp-copy-muted text-[10px]">
-                      Adjust identity, color, and pattern scope in one place.
-                    </p>
                   </div>
-                  <span className="sp-chip-muted rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wider">
+                  <span className="sp-chip-muted rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider">
                     {editingPatterns.length} pattern{editingPatterns.length === 1 ? '' : 's'}
                   </span>
                 </div>
 
                 {editingError && (
-                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-medium text-rose-600 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[10px] font-medium text-rose-600 animate-in fade-in slide-in-from-top-1 duration-200">
                     {editingError}
                   </div>
                 )}
 
-                <div className="flex flex-col gap-2">
-                  <label className="sp-label text-[10px] font-bold uppercase tracking-wider ml-1">
+                <div className="flex flex-col gap-1.5">
+                  <label className="sp-label text-[9px] font-bold uppercase tracking-wider ml-0.5">
                     Color
                   </label>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {COLORS.map((color) => (
                       <button
                         key={color}
                         type="button"
                         className={cn(
-                          'size-6 rounded-full transition-transform hover:scale-110 cursor-pointer flex items-center justify-center border border-black/10',
+                          'size-5.5 rounded-full transition-transform hover:scale-110 cursor-pointer flex items-center justify-center border border-black/10',
                           COLOR_MAP[color],
                           editingColor === color &&
                             'scale-110 ring-2 ring-[var(--sp-tab-pill-active)] ring-offset-2',
@@ -377,7 +385,7 @@ function RuleCardUI({
                         onClick={() => setEditingColor(color)}
                       >
                         {editingColor === color && (
-                          <Check size={12} className={cn("drop-shadow-sm font-bold", color === 'yellow' ? 'text-black' : 'text-white')} />
+                          <Check size={10} className={cn("drop-shadow-sm font-bold", color === 'yellow' ? 'text-black' : 'text-white')} />
                         )}
                       </button>
                     ))}
@@ -385,43 +393,43 @@ function RuleCardUI({
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <div className="flex flex-col gap-0.5 ml-1">
-                    <label className="sp-label text-[10px] font-bold uppercase tracking-wider">
+                  <div className="flex flex-col gap-0.5 ml-0.5">
+                    <label className="sp-label text-[9px] font-bold uppercase tracking-wider">
                       Patterns
                     </label>
-                    <span className="text-[9px] text-[var(--text-muted)]">
+                    <span className="text-[8px] text-[var(--text-muted)]">
                       Supports Host (<code>google.com</code>), Glob (<code>*.google.com</code>), or Regex (<code>re:^google\.com$</code>).
                     </span>
                   </div>
 
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-1.5">
                     {editingPatterns.map((pattern, idx) => {
                       const validation = validateAutoGroupRulePattern(normalizeAutoGroupPattern(pattern))
                       const isInvalid = pattern.trim() !== '' && !validation.isValid
                       return (
                         <div key={idx} className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5">
                             <div className={cn(
-                              "sp-input-shell flex flex-1 items-center gap-2 rounded-xl px-3 py-1.5 transition-colors",
+                              "sp-input-shell flex flex-1 items-center gap-1.5 rounded-lg px-2 py-1 transition-colors",
                               isInvalid && "border-rose-500 bg-rose-500/5 ring-1 ring-rose-500/20"
                             )}>
-                              <Globe size={12} className={cn("sp-copy-muted shrink-0", isInvalid && "text-rose-500")} />
+                              <Globe size={11} className={cn("sp-copy-muted shrink-0", isInvalid && "text-rose-500")} />
                               <input
-                                className="sp-input w-full border-none bg-transparent text-[11px] font-medium outline-none"
+                                className="sp-input w-full border-none bg-transparent text-[10px] font-medium outline-none"
                                 value={pattern}
                                 onChange={(e) => updatePattern(idx, e.target.value)}
                               />
                             </div>
                             <button
                               type="button"
-                              className="sp-copy-muted cursor-pointer hover:text-rose-500 transition-colors"
+                              className="sp-copy-muted cursor-pointer hover:text-rose-500 transition-colors shrink-0"
                               onClick={() => removePattern(idx)}
                             >
-                              <Trash2 size={12} />
+                              <Trash2 size={11} />
                             </button>
                           </div>
                           {isInvalid && validation.error && (
-                            <span className="text-[9px] font-medium text-rose-500 ml-1">
+                            <span className="text-[8px] font-medium text-rose-500 ml-1">
                               {validation.error}
                             </span>
                           )}
@@ -430,16 +438,16 @@ function RuleCardUI({
                     })}
                   </div>
 
-                  <div className="flex flex-col gap-1 mt-1">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-col gap-1 mt-0.5">
+                    <div className="flex items-center gap-1.5">
                       <div className={cn(
-                        "sp-input-shell flex flex-1 items-center gap-2 rounded-xl px-3 py-1.5 border-dashed transition-colors",
+                        "sp-input-shell flex flex-1 items-center gap-1.5 rounded-lg px-2 py-1 border-dashed transition-colors",
                         editingPatternDraft.trim() !== '' && !validateAutoGroupRulePattern(normalizeAutoGroupPattern(editingPatternDraft)).isValid && "border-rose-500 bg-rose-500/5 ring-1 ring-rose-500/20 border-solid"
                       )}>
-                        <Plus size={12} className="sp-copy-muted" />
+                        <Plus size={11} className="sp-copy-muted" />
                         <input
                           placeholder="Add new pattern"
-                          className="sp-input w-full border-none bg-transparent text-[11px] font-medium outline-none"
+                          className="sp-input w-full border-none bg-transparent text-[10px] font-medium outline-none"
                           value={editingPatternDraft}
                           onChange={(e) => setEditingPatternDraft(e.target.value)}
                           onKeyDown={(e) => {
@@ -452,34 +460,34 @@ function RuleCardUI({
                       </div>
                       <button
                         type="button"
-                        className="sp-primary-action cursor-pointer rounded-lg px-2.5 py-1.5 text-[10px] font-bold"
+                        className="sp-primary-action cursor-pointer rounded-lg px-2 py-1 text-[9px] font-bold"
                         onClick={addPattern}
                       >
                         Add
                       </button>
                     </div>
                     {editingPatternDraft.trim() !== '' && !validateAutoGroupRulePattern(normalizeAutoGroupPattern(editingPatternDraft)).isValid && (
-                      <span className="text-[9px] font-medium text-rose-500 ml-1">
+                      <span className="text-[8px] font-medium text-rose-500 ml-1">
                         {validateAutoGroupRulePattern(normalizeAutoGroupPattern(editingPatternDraft)).error}
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--sp-card-border)]">
+                <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-[var(--sp-card-border)]">
                   <button
                     type="button"
-                    className="sp-secondary-action cursor-pointer rounded-lg px-3 py-1.5 text-[10px] font-bold"
+                    className="sp-secondary-action cursor-pointer rounded-lg px-2.5 py-1 text-[9px] font-bold"
                     onClick={cancelEdit}
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
-                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-1.5 text-[10px] font-bold text-white shadow-sm hover:bg-emerald-700 transition-colors"
+                    className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1 text-[9px] font-bold text-white shadow-sm hover:bg-emerald-700 transition-colors"
                     onClick={() => void saveChanges(rule)}
                   >
-                    <Check size={12} />
+                    <Check size={11} />
                     Save Changes
                   </button>
                 </div>
@@ -794,12 +802,9 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
   }
 
   return (
-    <div className="flex flex-col gap-6 p-4">
+    <div className="flex flex-col gap-3.5 p-3">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-[var(--text-primary)]">
-            Rules
-          </h2>
+        <div className="flex items-center gap-2">
           {developerMode && (
             <Tooltip>
               <Tooltip.Trigger asChild>
@@ -822,13 +827,13 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
         <button
           onClick={() => setIsAdding(!isAdding)}
           className={cn(
-            'flex size-7 items-center justify-center rounded-full transition-all cursor-pointer',
+            'flex size-6.5 items-center justify-center rounded-full transition-all cursor-pointer',
             isAdding
               ? 'sp-secondary-action rotate-45'
-              : 'bg-[var(--sp-tab-pill-active)] text-[var(--primary-foreground)] shadow-lg shadow-indigo-500/20 hover:scale-110',
+              : 'bg-[var(--sp-tab-pill-active)] text-[var(--primary-foreground)] shadow-lg shadow-indigo-500/20 hover:scale-105',
           )}
         >
-          <Plus size={16} />
+          <Plus size={14} />
         </button>
       </div>
 
