@@ -115,6 +115,7 @@ namespace NStorage {
       storageEngine: 'sync' | 'local'
       autoCleanupEmptyGroups: boolean
       developerMode: boolean
+      language: 'system' | 'en' | 'vi'
     }
   }
 }
