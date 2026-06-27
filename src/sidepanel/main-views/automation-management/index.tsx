@@ -44,6 +44,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { CSSProperties } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 const COLORS: NStorage.Sync.GroupColor[] = [
   'grey',
@@ -237,11 +238,21 @@ function RuleCardUI({
               )}
             </div>
 
-            {!effectiveExpanded && patternPreview && (
-              <span className="text-[10px] text-[var(--text-muted)] truncate font-medium mt-0.5" title={patternPreview}>
-                {patternPreview}
-              </span>
-            )}
+            <AnimatePresence initial={false} mode="wait">
+              {!effectiveExpanded && patternPreview && (
+                <motion.span
+                  key="preview"
+                  initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                  transition={{ duration: 0.18, ease: 'easeInOut' }}
+                  className="text-[10px] text-[var(--text-muted)] truncate font-medium mt-0.5"
+                  title={patternPreview}
+                >
+                  {patternPreview}
+                </motion.span>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
@@ -324,178 +335,191 @@ function RuleCardUI({
         )}
       </div>
 
-      <div className="sp-rule-card-body-wrapper" data-expanded={effectiveExpanded}>
-        <div className="sp-rule-card-body-inner">
-          <div className="flex flex-col gap-3 border-t border-[var(--sp-card-border)] mt-2 pt-3">
-            {!isEditing && (
-              <div className="flex flex-wrap gap-1.5 px-0.5">
-                {rulePatterns.map((pattern, idx) => (
-                  <div
-                    key={pattern}
-                    className="sp-rule-tag sp-rule-card-chip py-1 px-2.5 rounded-lg gap-1.5 text-[10px]"
-                    style={{ '--stagger-idx': idx } as CSSProperties}
-                  >
-                    <Globe size={9} className="sp-copy-muted shrink-0" />
-                    <code title={pattern} className="max-w-32 truncate">{pattern}</code>
-                    <span className="sp-chip-muted rounded px-1 py-0.5 text-[7px] font-bold uppercase tracking-wider">
-                      {describeRulePattern(pattern)}
+      <AnimatePresence initial={false}>
+        {effectiveExpanded && (
+          <motion.div
+            key="expanded-body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="flex flex-col gap-3 border-t border-[var(--sp-card-border)] mt-2 pt-3">
+              {!isEditing && (
+                <div className="flex flex-wrap gap-1.5 px-0.5">
+                  {rulePatterns.map((pattern, idx) => (
+                    <motion.div
+                      key={pattern}
+                      initial={{ opacity: 0, scale: 0.85, y: 5 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      transition={{ duration: 0.18, delay: idx * 0.02 }}
+                      className="sp-rule-tag sp-rule-card-chip py-1 px-2.5 rounded-lg gap-1.5 text-[10px]"
+                    >
+                      <Globe size={9} className="sp-copy-muted shrink-0" />
+                      <code title={pattern} className="max-w-32 truncate">{pattern}</code>
+                      <span className="sp-chip-muted rounded px-1 py-0.5 text-[7px] font-bold uppercase tracking-wider">
+                        {describeRulePattern(pattern)}
+                      </span>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+
+              {isEditing && (
+                <motion.div
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="sp-subtle-surface flex flex-col gap-3 rounded-xl p-2.5"
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="sp-copy-primary text-[10px] font-bold uppercase tracking-[0.14em]">
+                        Rule Editor
+                      </p>
+                    </div>
+                    <span className="sp-chip-muted rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider">
+                      {editingPatterns.length} pattern{editingPatterns.length === 1 ? '' : 's'}
                     </span>
                   </div>
-                ))}
-              </div>
-            )}
 
-            {isEditing && (
-              <div
-                className="sp-subtle-surface flex flex-col gap-3 rounded-xl p-2.5"
-                onPointerDown={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="sp-copy-primary text-[10px] font-bold uppercase tracking-[0.14em]">
-                      Rule Editor
-                    </p>
-                  </div>
-                  <span className="sp-chip-muted rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider">
-                    {editingPatterns.length} pattern{editingPatterns.length === 1 ? '' : 's'}
-                  </span>
-                </div>
-
-                {editingError && (
-                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[10px] font-medium text-rose-600 animate-in fade-in slide-in-from-top-1 duration-200">
-                    {editingError}
-                  </div>
-                )}
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="sp-label text-[9px] font-bold uppercase tracking-wider ml-0.5">
-                    Color
-                  </label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {COLORS.map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        className={cn(
-                          'size-5.5 rounded-full transition-transform hover:scale-110 cursor-pointer flex items-center justify-center border border-black/10',
-                          COLOR_MAP[color],
-                          editingColor === color &&
-                            'scale-110 ring-2 ring-[var(--sp-tab-pill-active)] ring-offset-2',
-                        )}
-                        onClick={() => setEditingColor(color)}
-                      >
-                        {editingColor === color && (
-                          <Check size={10} className={cn("drop-shadow-sm font-bold", color === 'yellow' ? 'text-black' : 'text-white')} />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <div className="flex flex-col gap-0.5 ml-0.5">
-                    <label className="sp-label text-[9px] font-bold uppercase tracking-wider">
-                      Patterns
-                    </label>
-                    <span className="text-[8px] text-[var(--text-muted)]">
-                      Supports Host (<code>google.com</code>), Glob (<code>*.google.com</code>), or Regex (<code>re:^google\.com$</code>).
-                    </span>
-                  </div>
+                  {editingError && (
+                    <div className="rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[10px] font-medium text-rose-600 animate-in fade-in slide-in-from-top-1 duration-200">
+                      {editingError}
+                    </div>
+                  )}
 
                   <div className="flex flex-col gap-1.5">
-                    {editingPatterns.map((pattern, idx) => {
-                      const validation = validateAutoGroupRulePattern(normalizeAutoGroupPattern(pattern))
-                      const isInvalid = pattern.trim() !== '' && !validation.isValid
-                      return (
-                        <div key={idx} className="flex flex-col gap-1">
-                          <div className="flex items-center gap-1.5">
-                            <div className={cn(
-                              "sp-input-shell flex flex-1 items-center gap-1.5 rounded-lg px-2 py-1 transition-colors",
-                              isInvalid && "border-rose-500 bg-rose-500/5 ring-1 ring-rose-500/20"
-                            )}>
-                              <Globe size={11} className={cn("sp-copy-muted shrink-0", isInvalid && "text-rose-500")} />
-                              <input
-                                className="sp-input w-full border-none bg-transparent text-[10px] font-medium outline-none"
-                                value={pattern}
-                                onChange={(e) => updatePattern(idx, e.target.value)}
-                              />
-                            </div>
-                            <button
-                              type="button"
-                              className="sp-copy-muted cursor-pointer hover:text-rose-500 transition-colors shrink-0"
-                              onClick={() => removePattern(idx)}
-                            >
-                              <Trash2 size={11} />
-                            </button>
-                          </div>
-                          {isInvalid && validation.error && (
-                            <span className="text-[8px] font-medium text-rose-500 ml-1">
-                              {validation.error}
-                            </span>
+                    <label className="sp-label text-[9px] font-bold uppercase tracking-wider ml-0.5">
+                      Color
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {COLORS.map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          className={cn(
+                            'size-5.5 rounded-full transition-transform hover:scale-110 cursor-pointer flex items-center justify-center border border-black/10',
+                            COLOR_MAP[color],
+                            editingColor === color &&
+                              'scale-110 ring-2 ring-[var(--sp-tab-pill-active)] ring-offset-2',
                           )}
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  <div className="flex flex-col gap-1 mt-0.5">
-                    <div className="flex items-center gap-1.5">
-                      <div className={cn(
-                        "sp-input-shell flex flex-1 items-center gap-1.5 rounded-lg px-2 py-1 border-dashed transition-colors",
-                        editingPatternDraft.trim() !== '' && !validateAutoGroupRulePattern(normalizeAutoGroupPattern(editingPatternDraft)).isValid && "border-rose-500 bg-rose-500/5 ring-1 ring-rose-500/20 border-solid"
-                      )}>
-                        <Plus size={11} className="sp-copy-muted" />
-                        <input
-                          placeholder="Add new pattern"
-                          className="sp-input w-full border-none bg-transparent text-[10px] font-medium outline-none"
-                          value={editingPatternDraft}
-                          onChange={(e) => setEditingPatternDraft(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault()
-                              addPattern()
-                            }
-                          }}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        className="sp-primary-action cursor-pointer rounded-lg px-2 py-1 text-[9px] font-bold"
-                        onClick={addPattern}
-                      >
-                        Add
-                      </button>
+                          onClick={() => setEditingColor(color)}
+                        >
+                          {editingColor === color && (
+                            <Check size={10} className={cn("drop-shadow-sm font-bold", color === 'yellow' ? 'text-black' : 'text-white')} />
+                          )}
+                        </button>
+                      ))}
                     </div>
-                    {editingPatternDraft.trim() !== '' && !validateAutoGroupRulePattern(normalizeAutoGroupPattern(editingPatternDraft)).isValid && (
-                      <span className="text-[8px] font-medium text-rose-500 ml-1">
-                        {validateAutoGroupRulePattern(normalizeAutoGroupPattern(editingPatternDraft)).error}
-                      </span>
-                    )}
                   </div>
-                </div>
 
-                <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-[var(--sp-card-border)]">
-                  <button
-                    type="button"
-                    className="sp-secondary-action cursor-pointer rounded-lg px-2.5 py-1 text-[9px] font-bold"
-                    onClick={cancelEdit}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1 text-[9px] font-bold text-white shadow-sm hover:bg-emerald-700 transition-colors"
-                    onClick={() => void saveChanges(rule)}
-                  >
-                    <Check size={11} />
-                    Save Changes
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-0.5 ml-0.5">
+                      <label className="sp-label text-[9px] font-bold uppercase tracking-wider">
+                        Patterns
+                      </label>
+                      <span className="text-[8px] text-[var(--text-muted)]">
+                        Supports Host (<code>google.com</code>), Glob (<code>*.google.com</code>), or Regex (<code>re:^google\.com$</code>).
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      {editingPatterns.map((pattern, idx) => {
+                        const validation = validateAutoGroupRulePattern(normalizeAutoGroupPattern(pattern))
+                        const isInvalid = pattern.trim() !== '' && !validation.isValid
+                        return (
+                          <div key={idx} className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1.5">
+                              <div className={cn(
+                                "sp-input-shell flex flex-1 items-center gap-1.5 rounded-lg px-2 py-1 transition-colors",
+                                isInvalid && "border-rose-500 bg-rose-500/5 ring-1 ring-rose-500/20"
+                              )}>
+                                <Globe size={11} className={cn("sp-copy-muted shrink-0", isInvalid && "text-rose-500")} />
+                                <input
+                                  className="sp-input w-full border-none bg-transparent text-[10px] font-medium outline-none"
+                                  value={pattern}
+                                  onChange={(e) => updatePattern(idx, e.target.value)}
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                className="sp-copy-muted cursor-pointer hover:text-rose-500 transition-colors shrink-0"
+                                onClick={() => removePattern(idx)}
+                              >
+                                <Trash2 size={11} />
+                              </button>
+                            </div>
+                            {isInvalid && validation.error && (
+                              <span className="text-[8px] font-medium text-rose-500 ml-1">
+                                {validation.error}
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    <div className="flex flex-col gap-1 mt-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <div className={cn(
+                          "sp-input-shell flex flex-1 items-center gap-1.5 rounded-lg px-2 py-1 border-dashed transition-colors",
+                          editingPatternDraft.trim() !== '' && !validateAutoGroupRulePattern(normalizeAutoGroupPattern(editingPatternDraft)).isValid && "border-rose-500 bg-rose-500/5 ring-1 ring-rose-500/20 border-solid"
+                        )}>
+                          <Plus size={11} className="sp-copy-muted" />
+                          <input
+                            placeholder="Add new pattern"
+                            className="sp-input w-full border-none bg-transparent text-[10px] font-medium outline-none"
+                            value={editingPatternDraft}
+                            onChange={(e) => setEditingPatternDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                addPattern()
+                              }
+                            }}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          className="sp-primary-action cursor-pointer rounded-lg px-2 py-1 text-[9px] font-bold"
+                          onClick={addPattern}
+                        >
+                          Add
+                        </button>
+                      </div>
+                      {editingPatternDraft.trim() !== '' && !validateAutoGroupRulePattern(normalizeAutoGroupPattern(editingPatternDraft)).isValid && (
+                        <span className="text-[8px] font-medium text-rose-500 ml-1">
+                          {validateAutoGroupRulePattern(normalizeAutoGroupPattern(editingPatternDraft)).error}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-[var(--sp-card-border)]">
+                    <button
+                      type="button"
+                      className="sp-secondary-action cursor-pointer rounded-lg px-2.5 py-1 text-[9px] font-bold"
+                      onClick={cancelEdit}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1 text-[9px] font-bold text-white shadow-sm hover:bg-emerald-700 transition-colors"
+                      onClick={() => void saveChanges(rule)}
+                    >
+                      <Check size={11} />
+                      Save Changes
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
