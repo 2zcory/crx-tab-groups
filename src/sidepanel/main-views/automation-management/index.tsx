@@ -238,21 +238,22 @@ function RuleCardUI({
               )}
             </div>
 
-            <AnimatePresence initial={false} mode="wait">
-              {!effectiveExpanded && patternPreview && (
-                <motion.span
-                  key="preview"
-                  initial={{ opacity: 0, scale: 0.95, y: -4 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                  transition={{ duration: 0.18, ease: 'easeInOut' }}
-                  className="text-[10px] text-[var(--text-muted)] truncate font-medium mt-0.5"
-                  title={patternPreview}
-                >
+            <motion.div
+              initial={false}
+              animate={{
+                height: effectiveExpanded ? 0 : 'auto',
+                opacity: effectiveExpanded ? 0 : 1,
+                marginTop: effectiveExpanded ? 0 : 2,
+              }}
+              transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
+              className="overflow-hidden min-w-0 flex"
+            >
+              {patternPreview && (
+                <span className="text-[10px] text-[var(--text-muted)] truncate font-medium w-full" title={patternPreview}>
                   {patternPreview}
-                </motion.span>
+                </span>
               )}
-            </AnimatePresence>
+            </motion.div>
           </div>
         </div>
 
