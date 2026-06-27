@@ -24,7 +24,7 @@ import {
   ArrowUpWideNarrow,
   GripVertical,
 } from 'lucide-react'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, forwardRef, useImperativeHandle } from 'react'
 import Tooltip from '@/components/ui/tooltip'
 import {
   DndContext,
@@ -573,7 +573,15 @@ function SortableRuleCard(props: SortableRuleCardProps) {
   )
 }
 
-function AutomationManagement({ developerMode = false }: { developerMode?: boolean }) {
+export interface AutomationManagementHandle {
+  toggleAddMode: () => void
+  toggleDebugMode: () => void
+}
+
+const AutomationManagement = forwardRef<
+  AutomationManagementHandle,
+  { developerMode?: boolean }
+>(({ developerMode = false }, ref) => {
   const [rules, setRules] = useState<NStorage.Sync.Schema.AutoGroupRule[]>([])
   const [isAdding, setIsAdding] = useState(false)
   const [newRuleTitle, setNewRuleTitle] = useState('')
@@ -594,6 +602,15 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
   const [showDebug, setShowDebug] = useState(false)
   const effectiveShowDebug = developerMode && showDebug
   const [debugState, setDebugState] = useState<DebugState | null>(null)
+
+  useImperativeHandle(ref, () => ({
+    toggleAddMode: () => {
+      setIsAdding((prev) => !prev)
+    },
+    toggleDebugMode: () => {
+      setShowDebug((prev) => !prev)
+    },
+  }))
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -827,40 +844,7 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
   }
 
   return (
-    <div className="flex flex-col gap-3.5 p-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {developerMode && (
-            <Tooltip>
-              <Tooltip.Trigger asChild>
-                <button
-                  onClick={() => setShowDebug(!showDebug)}
-                  className={cn(
-                    'sp-icon-button flex size-6 items-center justify-center rounded-full cursor-pointer',
-                    showDebug && 'bg-amber-100 text-amber-600',
-                  )}
-                >
-                  <Bug size={12} />
-                </button>
-              </Tooltip.Trigger>
-              <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
-                {showDebug ? 'Hide Automation Debugger' : 'Show Automation Debugger'}
-              </Tooltip.Content>
-            </Tooltip>
-          )}
-        </div>
-        <button
-          onClick={() => setIsAdding(!isAdding)}
-          className={cn(
-            'flex size-6.5 items-center justify-center rounded-full transition-all cursor-pointer',
-            isAdding
-              ? 'sp-secondary-action rotate-45'
-              : 'bg-[var(--sp-tab-pill-active)] text-[var(--primary-foreground)] shadow-lg shadow-indigo-500/20 hover:scale-105',
-          )}
-        >
-          <Plus size={14} />
-        </button>
-      </div>
+    <div className="flex flex-col gap-2.5 px-3 pb-3 pt-1">
 
       {isAdding && (
         <div className="sp-card animate-in fade-in slide-in-from-top-2 rounded-2xl border p-4 duration-300">
@@ -1116,6 +1100,6 @@ function AutomationManagement({ developerMode = false }: { developerMode?: boole
       )}
     </div>
   )
-}
+})
 
 export default AutomationManagement

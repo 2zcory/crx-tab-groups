@@ -12,6 +12,8 @@ import {
   Sparkles,
   ChevronDown,
   ChevronRight,
+  Bug,
+  Plus,
 } from 'lucide-react'
 
 import './SidePanel.css'
@@ -27,7 +29,7 @@ import GroupManagement, {
   SavedRestoreHarnessState,
 } from './group-management'
 import { SavedStatusBar } from './group-management/SavedStatusBar'
-import AutomationManagement from './automation-management'
+import AutomationManagement, { AutomationManagementHandle } from './automation-management'
 import { RulesStatusBar } from './automation-management/RulesStatusBar'
 import { LiveStatusBar } from './live/components/LiveStatusBar'
 import StorageLocal from '@/storage/local'
@@ -237,6 +239,7 @@ export const SidePanel = () => {
 
   const liveManagementRef = useRef<LiveManagementHandle | null>(null)
   const groupManagementRef = useRef<GroupManagementHandle | null>(null)
+  const automationManagementRef = useRef<AutomationManagementHandle | null>(null)
   const harnessMode = useMemo(() => {
     if (typeof window === 'undefined') return null
     return new URLSearchParams(window.location.search).get(LIVE_HARNESS_QUERY_KEY)
@@ -1030,20 +1033,45 @@ export const SidePanel = () => {
             onValueChange={(val) => setActiveTab(Number(val) as ETabMenu)}
             className="flex-1 min-h-0"
             rightElement={
-              <button
-                onClick={openSettingsSheet}
-                className="size-8 flex items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--sp-card-hover)] transition-colors cursor-pointer"
-                title="Settings"
-              >
-                <Settings2 size={15} />
-              </button>
+              <div className="flex items-center gap-1">
+                {activeTab === ETabMenu.AUTOMATION && (
+                  <>
+                    {settings.developerMode && (
+                      <button
+                        onClick={() => automationManagementRef.current?.toggleDebugMode()}
+                        className="size-8 flex items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--sp-card-hover)] transition-colors cursor-pointer"
+                        title="Toggle Debugger"
+                      >
+                        <Bug size={14} />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => automationManagementRef.current?.toggleAddMode()}
+                      className="size-8 flex items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--sp-card-hover)] transition-colors cursor-pointer"
+                      title="Add Rule"
+                    >
+                      <Plus size={15} />
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={openSettingsSheet}
+                  className="size-8 flex items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--sp-card-hover)] transition-colors cursor-pointer"
+                  title="Settings"
+                >
+                  <Settings2 size={15} />
+                </button>
+              </div>
             }
           >
             <Tabs.Content value={ETabMenu.TAB_SYNC}>
               <LiveManagement ref={liveManagementRef} onOpenAddToRules={openLiveAddToRules} />
             </Tabs.Content>
             <Tabs.Content value={ETabMenu.AUTOMATION}>
-              <AutomationManagement developerMode={settings.developerMode} />
+              <AutomationManagement
+                ref={automationManagementRef}
+                developerMode={settings.developerMode}
+              />
             </Tabs.Content>
             <Tabs.Content value={ETabMenu.GROUP}>
               <GroupManagement ref={groupManagementRef} onStatsChange={setSavedStats} />
