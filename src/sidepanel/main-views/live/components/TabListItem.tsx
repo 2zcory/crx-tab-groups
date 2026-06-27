@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { formatTimeAgo, extractDomainNameFromUrl } from '@/helpers'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { useTranslation } from '@/hooks/useTranslation'
 
 interface IButtonIconProps extends React.ComponentPropsWithoutRef<'button'> {}
 
@@ -33,6 +34,7 @@ interface IProps {
 }
 
 function TabListItem({ tab, isOverlay, onAddTabToRules }: IProps) {
+  const { t } = useTranslation()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: tab.id!,
   })
@@ -196,26 +198,26 @@ function TabListItem({ tab, isOverlay, onAddTabToRules }: IProps) {
           >
             {onAddTabToRules && (
               <>
-                <ButtonIcon onClick={handleCreateQuickRule} title="Add to Rules">
+                <ButtonIcon onClick={handleCreateQuickRule} title={t('actionAddToRules')}>
                   <ListPlus size={11} className="sp-copy-secondary" />
                 </ButtonIcon>
                 <div className="sp-action-divider mx-0.5" />
               </>
             )}
-            <ButtonIcon onClick={togglePin} title={tab.pinned ? 'Unpin tab' : 'Pin tab'}>
+            <ButtonIcon onClick={togglePin} title={tab.pinned ? t('actionUnpinTab') : t('actionPinTab')}>
               {tab.pinned ? (
                 <PinOff size={11} className="sp-copy-secondary" />
               ) : (
                 <Pin size={11} className="sp-copy-secondary" />
               )}
             </ButtonIcon>
-            <ButtonIcon onClick={handleReloadTab} title="Reload tab">
+            <ButtonIcon onClick={handleReloadTab} title={t('actionReloadTab')}>
               <RefreshCw size={11} className="sp-copy-secondary" />
             </ButtonIcon>
             <div className="sp-action-divider mx-0.5" />
             <ButtonIcon
               onClick={handleCloseTab}
-              title="Close tab"
+              title={t('actionCloseTab')}
               className="hover:bg-red-50 hover:text-red-600"
             >
               <X size={11} className="sp-copy-secondary group-hover:text-red-600" />

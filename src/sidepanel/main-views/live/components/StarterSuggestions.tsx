@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { History, Bookmark, Rocket, ArrowRight, RefreshCw, Layers } from 'lucide-react'
 import AvatarIcon from '@/components/ui/avatar'
 import Tooltip from '@/components/ui/tooltip'
 import { extractDomainNameFromUrl } from '@/helpers'
 import StorageSyncFavIcon from '@/storage/favIcon.sync'
+import { useTranslation } from '@/hooks/useTranslation'
 
 interface SessionSnapshot {
   timestamp: string
@@ -36,6 +37,7 @@ export const StarterSuggestions: React.FC<StarterSuggestionsProps> = ({
   savedSnapshots,
   onRestoreSnapshot,
 }) => {
+  const { t } = useTranslation()
   const [topSites, setTopSites] = useState<chrome.topSites.MostVisitedURL[]>([])
   const [favIcons, setFavIcons] = useState<NStorage.Sync.Schema.FavIcons>({})
   const [recentSessions, setRecentSessions] = useState<chrome.sessions.Session[]>([])
@@ -159,21 +161,21 @@ export const StarterSuggestions: React.FC<StarterSuggestionsProps> = ({
 
   const getTimeAgo = (isoString: string) => {
     const seconds = Math.floor((new Date().getTime() - new Date(isoString).getTime()) / 1000)
-    if (seconds < 60) return 'just now'
+    if (seconds < 60) return t('timeJustNow')
     const minutes = Math.floor(seconds / 60)
-    if (minutes < 60) return `${minutes}m ago`
+    if (minutes < 60) return t('timeMinAgo', { count: String(minutes) })
     const hours = Math.floor(minutes / 60)
-    return `${hours}h ago`
+    return t('timeHoursAgo', { count: String(hours) })
   }
 
   return (
     <div className="flex flex-col gap-8 py-10 px-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="text-center mb-2">
         <h1 className="text-lg font-bold tracking-tight text-[var(--text-primary)]">
-          Ready to start?
+          {t('starterTitle')}
         </h1>
         <p className="text-[11px] text-[var(--text-muted)] uppercase tracking-[0.1em] mt-1 font-medium">
-          Pick up where you left off
+          {t('starterDesc')}
         </p>
       </div>
 
@@ -188,15 +190,18 @@ export const StarterSuggestions: React.FC<StarterSuggestionsProps> = ({
               <div className="flex items-center gap-2 mb-1">
                 <div className="size-2 rounded-full bg-indigo-500 animate-pulse" />
                 <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
-                  Recovery Available
+                  {t('recoveryAvailable')}
                 </span>
               </div>
               <h2 className="text-sm font-bold text-[var(--text-primary)]">
-                Resume your previous session?
+                {t('resumeSession')}
               </h2>
               <p className="text-[11px] text-[var(--text-secondary)] mt-1">
-                Restore **{lastKnownSession.tabCount} tabs** across **{lastKnownSession.windowCount}{' '}
-                windows** from {getTimeAgo(lastKnownSession.timestamp)}.
+                {t('restoreSessionDesc', {
+                  tabCount: `**${lastKnownSession.tabCount}**`,
+                  windowCount: `**${lastKnownSession.windowCount}**`,
+                  timeAgo: getTimeAgo(lastKnownSession.timestamp),
+                })}
               </p>
             </div>
             <button
@@ -209,7 +214,7 @@ export const StarterSuggestions: React.FC<StarterSuggestionsProps> = ({
               ) : (
                 <RefreshCw size={14} />
               )}
-              {isRestoring ? 'Restoring Session...' : 'Restore Everything'}
+              {isRestoring ? t('restoringSession') : t('restoreEverything')}
             </button>
           </div>
         </section>
@@ -222,7 +227,7 @@ export const StarterSuggestions: React.FC<StarterSuggestionsProps> = ({
             <div className="flex items-center gap-2 mb-3 px-1">
               <History size={14} className="text-[var(--sp-tab-pill-active)]" />
               <h2 className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-secondary)]">
-                Recently Closed
+                {t('recentlyClosed')}
               </h2>
             </div>
             <div className="grid grid-cols-1 gap-2">
@@ -230,8 +235,8 @@ export const StarterSuggestions: React.FC<StarterSuggestionsProps> = ({
                 const title =
                   session.tab?.title ||
                   (session.window?.tabs
-                    ? `${session.window.tabs.length} tabs window`
-                    : 'Recent Session')
+                    ? t('tabsWindow', { count: String(session.window.tabs.length) })
+                    : t('recentSession'))
                 const url = session.tab?.url || ''
                 return (
                   <button
@@ -255,7 +260,7 @@ export const StarterSuggestions: React.FC<StarterSuggestionsProps> = ({
                         <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate pr-2">
                           {title}
                         </p>
-                        <p className="text-[10px] text-[var(--text-muted)]">Restore this item</p>
+                        <p className="text-[10px] text-[var(--text-muted)]">{t('restoreThis')}</p>
                       </div>
                     </div>
                     <ArrowRight
@@ -275,7 +280,7 @@ export const StarterSuggestions: React.FC<StarterSuggestionsProps> = ({
             <div className="flex items-center gap-2 mb-3 px-1">
               <Bookmark size={14} className="text-amber-500" />
               <h2 className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-secondary)]">
-                Favorite Snapshots
+                {t('favoriteSnapshots')}
               </h2>
             </div>
             <div className="grid grid-cols-1 gap-2">
@@ -300,7 +305,7 @@ export const StarterSuggestions: React.FC<StarterSuggestionsProps> = ({
                         {group.title}
                       </p>
                       <p className="text-[10px] text-[var(--text-muted)]">
-                        {group.tabs.length} tabs saved
+                        {t('tabsSaved', { count: String(group.tabs.length) })}
                       </p>
                     </div>
                   </div>
@@ -320,7 +325,7 @@ export const StarterSuggestions: React.FC<StarterSuggestionsProps> = ({
             <div className="flex items-center gap-2 mb-4 px-1">
               <Rocket size={14} className="text-indigo-500" />
               <h2 className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-secondary)]">
-                Quick Launch
+                {t('quickLaunch')}
               </h2>
             </div>
             <div className="flex flex-wrap gap-4 justify-center px-2">

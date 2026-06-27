@@ -19,6 +19,7 @@ import { BentoGroupCard } from '@/components/BentoGroupCard'
 import Tooltip from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useTranslation } from '@/hooks/useTranslation'
 import {
   DndContext,
   DragEndEvent,
@@ -175,6 +176,7 @@ interface LiveManagementProps {
 
 const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(
   function LiveManagement({ onOpenAddToRules }, ref) {
+    const { t } = useTranslation()
     const [windows, setWindows] = useState<WindowData[]>([])
     const windowsRef = useRef<WindowData[]>([])
     const [totalTabsAllCount, setTotalTabsAllCount] = useState(0)
@@ -474,13 +476,13 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(
         await fetchSavedSnapshots()
         setSaveStatus(group.id, {
           state: 'saved',
-          message: 'Saved',
+          message: t('saved'),
         })
       } catch (e) {
         console.error(e)
         setSaveStatus(group.id, {
           state: 'failed',
-          message: 'Save failed',
+          message: t('stateSaveFailed'),
         })
       }
     }
@@ -494,7 +496,7 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(
       setSaveMenuPosition(null)
       setSaveStatus(liveGroup.id, {
         state: 'pending',
-        message: 'Saving...',
+        message: t('stateSavingProgress'),
       })
 
       const now = new Date().toISOString()
@@ -516,13 +518,13 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(
         await fetchSavedSnapshots()
         setSaveStatus(liveGroup.id, {
           state: 'saved',
-          message: 'Saved',
+          message: t('saved'),
         })
       } catch (e) {
         console.error(e)
         setSaveStatus(liveGroup.id, {
           state: 'failed',
-          message: 'Save failed',
+          message: t('stateSaveFailed'),
         })
       }
     }
@@ -551,14 +553,14 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(
     const runAutoGroupScan = () => {
       setAutoGroupScanStatus({
         tone: 'idle',
-        message: 'Scanning browser...',
+        message: t('scanScanning'),
       })
 
       chrome.runtime.sendMessage({ action: 'run_auto_group_scan' }, (response) => {
         if (chrome.runtime.lastError || !response?.success) {
           setAutoGroupScanStatus({
             tone: 'error',
-            message: 'Auto-group scan failed',
+            message: t('scanFailed'),
           })
           void getActiveGroups()
           return
@@ -569,8 +571,8 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(
           tone: summary?.grouped > 0 ? 'success' : 'warning',
           message:
             summary?.grouped > 0
-              ? `Grouped ${summary.grouped} tab${summary.grouped === 1 ? '' : 's'}`
-              : 'No matching tabs found',
+              ? t('scanGroupedCount', { count: String(summary.grouped) })
+              : t('scanNoMatching'),
         })
         void getActiveGroups()
       })
@@ -920,7 +922,7 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(
                     type="button"
                     className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-current/60 transition-all duration-200 hover:bg-black/5 hover:text-current hover:scale-105"
                     onClick={() => setAutoGroupScanStatus({ tone: 'idle' })}
-                    aria-label="Dismiss status message"
+                    aria-label={t('dismissMessage')}
                   >
                     <X size={11} />
                   </button>
@@ -951,12 +953,14 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(
                       win.isCurrent ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]',
                     )}
                   >
-                    Window {windows.length > 1 ? windows.findIndex((w) => w.id === win.id) + 1 : ''}{' '}
-                    {win.isCurrent && '• Current'}
+                    {t('windowTitle', {
+                      index: windows.length > 1 ? String(windows.findIndex((w) => w.id === win.id) + 1) : '',
+                    })}{' '}
+                    {win.isCurrent && `• ${t('currentLabel')}`}
                   </p>
                 </div>
                 <span className="sp-copy-muted text-[9px] font-bold uppercase">
-                  {win.totalTabs} tabs
+                  {t('tabsCount', { count: String(win.totalTabs) })}
                 </span>
               </div>
 
@@ -984,7 +988,7 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(
                   >
                     <BentoGroupCard
                       id={`group-${group.id}`}
-                      title={group.title || 'Untitled Group'}
+                      title={group.title || t('untitledGroup')}
                       color={group.color}
                       tabs={group.tabs}
                       collapsed={group.collapsed}
@@ -1011,7 +1015,9 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(
                                     'bg-[var(--surface-muted)] text-[var(--text-secondary)]',
                                 )}
                               >
-                                {saveStatuses[group.id].state}
+                                {saveStatuses[group.id].state === 'saved' && t('saved')}
+                                {saveStatuses[group.id].state === 'failed' && t('stateSaveFailed')}
+                                {saveStatuses[group.id].state === 'pending' && t('stateSaving')}
                               </span>
                             )}
                           <Button
@@ -1043,11 +1049,11 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(
                               <FolderPlus size={12} />
                             )}
                             <span className="ml-1">
-                              {saveStatuses[group.id]?.state === 'pending' && 'Saving'}
-                              {saveStatuses[group.id]?.state === 'saved' && 'Saved'}
+                              {saveStatuses[group.id]?.state === 'pending' && t('stateSaving')}
+                              {saveStatuses[group.id]?.state === 'saved' && t('saved')}
                               {saveStatuses[group.id]?.state !== 'pending' &&
                                 saveStatuses[group.id]?.state !== 'saved' &&
-                                'Snapshot'}
+                                t('snapshot')}
                             </span>
                           </Button>
 
@@ -1073,7 +1079,7 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(
                                     className="sp-overlay-item flex items-center justify-between rounded-lg px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em]"
                                     onClick={() => setIsNamingNewSnapshot((current) => !current)}
                                   >
-                                    <span>New Snapshot</span>
+                                    <span>{t('newSnapshot')}</span>
                                     <FolderPlus size={12} className="sp-copy-muted" />
                                   </button>
 
@@ -1097,7 +1103,7 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(
                                         className="h-7 w-full rounded-md px-2 text-[10px] font-bold"
                                         onClick={() => void saveGroupSnapshot(group)}
                                       >
-                                        Save
+                                        {t('save')}
                                       </Button>
                                     </div>
                                   )}
@@ -1105,7 +1111,7 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(
                                   <div className="sp-divider my-1" />
 
                                   <p className="sp-label px-2 py-1 text-[9px] font-bold uppercase tracking-wider">
-                                    Overwrite
+                                    {t('overwrite')}
                                   </p>
 
                                   {savedSnapshots.length > 0 ? (
@@ -1120,7 +1126,7 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(
                                           }
                                         >
                                           <span className="sp-copy-secondary min-w-0 truncate font-medium">
-                                            {snapshot.title || 'Untitled Snapshot'}
+                                            {snapshot.title || t('untitledSnapshot')}
                                           </span>
                                           <span className="sp-copy-muted shrink-0 text-[9px] font-bold">
                                             {snapshot.tabs.length}
@@ -1130,7 +1136,7 @@ const LiveManagement = forwardRef<LiveManagementHandle, LiveManagementProps>(
                                     </div>
                                   ) : (
                                     <p className="sp-copy-muted px-2 py-1.5 text-[10px] italic">
-                                      No saved snapshots yet
+                                      {t('noSavedSnapshotsYet')}
                                     </p>
                                   )}
                                 </div>
