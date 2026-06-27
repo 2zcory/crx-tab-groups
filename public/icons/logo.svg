@@ -1,2 +1,20 @@
-<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg t="1656468723058" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="3824" width="256" height="256" xmlns:xlink="http://www.w3.org/1999/xlink"><defs><style type="text/css">@font-face { font-family: feedback-iconfont; src: url("//at.alicdn.com/t/font_1031158_u69w8yhxdu.woff2?t=1630033759944") format("woff2"), url("//at.alicdn.com/t/font_1031158_u69w8yhxdu.woff?t=1630033759944") format("woff"), url("//at.alicdn.com/t/font_1031158_u69w8yhxdu.ttf?t=1630033759944") format("truetype"); }
-</style></defs><path d="M512 0C228.266667 0 0 228.266667 0 512s228.266667 512 512 512 512-228.266667 512-512S795.733333 0 512 0z m224 727.466667c0 23.466667-17.066667 40.533333-40.533333 40.533333H328.533333c-21.333333 0-40.533333-19.2-40.533333-40.533333V296.533333c0-23.466667 17.066667-40.533333 40.533333-40.533333h366.933334c21.333333 0 40.533333 19.2 40.533333 40.533333v430.933334z" fill="#61dafb" p-id="3825" data-spm-anchor-id="a313x.7781069.0.i0" class=""></path><path d="M473.6 727.466667h221.866667V411.733333H473.6v315.733334zM328.533333 727.466667h106.666667V411.733333h-106.666667v315.733334zM328.533333 296.533333v74.666667h369.066667V298.666667H328.533333z" fill="#61dafb" p-id="3826" data-spm-anchor-id="a313x.7781069.0.i2" class=""></path></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <!-- Primary outer ring gradient -->
+    <linearGradient id="primary-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F46E5" />
+      <stop offset="100%" stop-color="#06B6D4" />
+    </linearGradient>
+    <!-- Secondary tab gradient -->
+    <linearGradient id="accent-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6" />
+      <stop offset="100%" stop-color="#10B981" />
+    </linearGradient>
+  </defs>
+  <!-- Outer "G" shape path -->
+  <path d="M 180,76 A 72,72 0 1,0 180,180 H 140" fill="none" stroke="url(#primary-grad)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" />
+  <!-- Inner tab shape path -->
+  <path d="M 100,140 V 110 C 100,102 106,96 114,96 H 166 C 174,96 180,102 180,110 V 140 Z" fill="url(#accent-grad)" />
+  <!-- Dynamic tab indicator status dot -->
+  <circle cx="140" cy="118" r="8" fill="#FFFFFF" opacity="0.9" />
+</svg>
