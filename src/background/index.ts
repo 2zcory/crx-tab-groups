@@ -240,9 +240,22 @@ const handleAutoGrouping = async (
             console.log(`[Automation] Tab ${tabId} already in target group: ${rule.title}`)
             return { kind: 'already_grouped' }
           }
-          await chrome.tabs.group({ tabIds: [tabId], groupId: targetGroup.id })
-          console.log(`[Automation] Grouped tab ${tabId} into existing group: ${rule.title}`)
-          return { kind: 'grouped' }
+          try {
+            await chrome.tabs.group({ tabIds: [tabId], groupId: targetGroup.id })
+            console.log(`[Automation] Grouped tab ${tabId} into existing group: ${rule.title}`)
+            return { kind: 'grouped' }
+          } catch (groupError: any) {
+            const groupErrorMsg = groupError?.message || String(groupError)
+            if (groupErrorMsg.includes('No group with id')) {
+              console.warn(`[Background] Target group ${targetGroup.id} was dissolved before grouping. Re-creating group.`)
+              const gid = await chrome.tabs.group({ tabIds: [tabId] })
+              await chrome.tabGroups.update(gid, { title: rule.title, color: rule.color })
+              console.log(`[Automation] Created new group "${rule.title}" for tab ${tabId} after target group dissolved.`)
+              return { kind: 'grouped' }
+            } else {
+              throw groupError
+            }
+          }
         } else {
           const gid = await chrome.tabs.group({ tabIds: [tabId] })
           await chrome.tabGroups.update(gid, { title: rule.title, color: rule.color })
