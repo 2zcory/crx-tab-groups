@@ -1065,7 +1065,7 @@ const AutomationManagement = forwardRef<
               debugState.audit.map((entry) => (
                 <div
                   key={entry.id}
-                  className="sp-subtle-surface flex flex-col gap-1 rounded-lg p-2 border-l-2"
+                  className="sp-subtle-surface flex flex-col gap-1 rounded-xl p-2.5 border-l-[3px] hover:translate-x-[2px] transition-all duration-200 shadow-sm"
                   style={{
                     borderLeftColor:
                       entry.outcome === 'grouped'

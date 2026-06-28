@@ -5,6 +5,7 @@
 
 :root {
   font-family:
+    'Outfit',
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
@@ -64,10 +65,10 @@
   --warning: #d97706;
   --danger: #e11d48;
   --info: #2563eb;
-  --shadow-sm: 0 8px 18px rgba(15, 23, 42, 0.06);
-  --shadow-md: 0 18px 40px rgba(15, 23, 42, 0.08);
-  --sp-shell-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 249, 252, 0.97));
-  --sp-shell-gradient: radial-gradient(circle at top, rgba(226, 232, 240, 0.28), transparent 48%);
+  --shadow-sm: 0 8px 24px rgba(148, 163, 184, 0.08);
+  --shadow-md: 0 20px 48px rgba(148, 163, 184, 0.14);
+  --sp-shell-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(246, 248, 252, 0.98));
+  --sp-shell-gradient: radial-gradient(circle at top left, rgba(224, 242, 254, 0.35), transparent 48%), radial-gradient(circle at top right, rgba(243, 232, 255, 0.25), transparent 48%);
   --sp-card-bg: rgba(255, 255, 255, 0.92);
   --sp-card-border: rgba(148, 163, 184, 0.18);
   --sp-card-hover: rgba(255, 255, 255, 0.98);
@@ -319,9 +320,9 @@ body {
 
 [data-theme='glass'][data-glass-style='frosted-light'] {
   background:
-    radial-gradient(circle at top left, rgba(125, 211, 252, 0.38), transparent 34%),
-    radial-gradient(circle at top right, rgba(192, 132, 252, 0.18), transparent 28%),
-    linear-gradient(180deg, #dfe8f4 0%, #cfdceb 52%, #c7d5e8 100%);
+    radial-gradient(circle at top left, rgba(125, 211, 252, 0.45), transparent 38%),
+    radial-gradient(circle at top right, rgba(192, 132, 252, 0.22), transparent 32%),
+    linear-gradient(180deg, #e4eefb 0%, #d4e3f5 52%, #cbdcf2 100%);
   --surface: rgba(255, 255, 255, 0.22);
   --surface-elevated: rgba(255, 255, 255, 0.34);
   --surface-muted: rgba(241, 245, 249, 0.3);

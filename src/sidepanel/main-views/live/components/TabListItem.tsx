@@ -16,7 +16,7 @@ function ButtonIcon({ children, className, onClick, ...props }: IButtonIconProps
       variant="ghost"
       size="icon"
       className={cn(
-        'sp-icon-button cursor-pointer size-5 shrink-0 rounded-md hover:bg-[var(--surface-muted)]',
+        'sp-icon-button cursor-pointer size-5 shrink-0 rounded-md hover:bg-[var(--surface-muted)] transition-transform duration-200 hover:scale-110 active:scale-95',
         className,
       )}
       onClick={onClick}
