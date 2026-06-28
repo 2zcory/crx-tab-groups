@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button'
+import { useTranslation } from '@/hooks/useTranslation'
 import { shouldIgnoreAutoGroupUrl } from '@/helpers'
 import { cn } from '@/lib/utils'
 import StorageSyncGroup from '@/storage/group.sync'
@@ -161,12 +162,15 @@ export interface GroupManagementHandle {
   getRestoreHarnessState: (groupId: string) => Promise<SavedRestoreHarnessState>
 }
 
-const getSavedTabRestoreEligibility = (tab: NStorage.Sync.Schema.Tab): RestoreEligibility => {
+const getSavedTabRestoreEligibility = (
+  tab: NStorage.Sync.Schema.Tab,
+  t: (key: any) => string,
+): RestoreEligibility => {
   if (!tab.url) {
     return {
       canRestore: false,
       reason: 'missing_url',
-      note: 'Missing URL in snapshot',
+      note: t('missingUrlNote'),
     }
   }
 
@@ -175,7 +179,7 @@ const getSavedTabRestoreEligibility = (tab: NStorage.Sync.Schema.Tab): RestoreEl
   if (tab.url === 'about:blank') {
     return {
       canRestore: true,
-      note: tab.isRepaired ? 'Restores as a repaired blank tab' : 'Restores as a blank tab',
+      note: tab.isRepaired ? t('restoresRepaired') : t('restoresBlank'),
     }
   }
 
@@ -183,7 +187,7 @@ const getSavedTabRestoreEligibility = (tab: NStorage.Sync.Schema.Tab): RestoreEl
     return {
       canRestore: false,
       reason: 'unsupported_url',
-      note: 'Chrome cannot restore this internal or unsupported URL',
+      note: t('chromeCannotRestore'),
     }
   }
 
@@ -196,6 +200,7 @@ interface GroupManagementProps {
 
 const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
   function GroupManagement({ onStatsChange }, ref) {
+    const { t } = useTranslation()
     const [groups, setGroups] = useState<NStorage.Sync.Response.Group[]>([])
     const [liveGroups, setLiveGroups] = useState<LiveTabGroup[]>([])
     const [restoreStatuses, setRestoreStatuses] = useState<Record<string, RestoreStatus>>({})
@@ -278,7 +283,7 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
       if (isDuplicate) {
         setRestoreStatus(group.id, {
           state: 'failed',
-          message: 'Name already exists',
+          message: t('nameAlreadyExists'),
         })
         return
       }
@@ -294,7 +299,7 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
       } catch {
         setRestoreStatus(group.id, {
           state: 'failed',
-          message: 'Rename failed',
+          message: t('renameFailed'),
         })
       }
     }
@@ -336,7 +341,7 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
               tabs: [...savedGroup.tabs]
                 .sort((a, b) => a.order - b.order)
                 .map((tab) => {
-                  const eligibility = getSavedTabRestoreEligibility(tab)
+                  const eligibility = getSavedTabRestoreEligibility(tab, t)
 
                   return {
                     id: tab.id,
@@ -370,7 +375,7 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
       setShowUpdateMenu(null)
       setRestoreStatus(savedGroup.id, {
         state: 'pending',
-        message: `Updating...`,
+        message: t('updating'),
       })
 
       const now = new Date().toISOString()
@@ -387,7 +392,7 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
 
       const newTabs: NStorage.Sync.Schema.Tab[] = liveGroup.tabs.map((tab, index) => ({
         id: crypto.randomUUID(),
-        title: tab.title || 'Untitled Tab',
+        title: tab.title || t('untitledTab'),
         url: tab.url,
         favIconUrl: tab.favIconUrl,
         order: index + 1,
@@ -404,20 +409,20 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
 
         setRestoreStatus(savedGroup.id, {
           state: 'updated',
-          message: `Updated`,
+          message: t('updated'),
         })
 
         await fetchGroups()
       } catch {
         setRestoreStatus(savedGroup.id, {
           state: 'failed',
-          message: 'Failed',
+          message: t('failed'),
         })
       }
     }
 
     const deleteSnapshot = async (groupId: string) => {
-      if (!confirm('Delete this snapshot?')) return
+      if (!confirm(t('deleteThisSnapshot'))) return
 
       setRestoreStatus(groupId, {
         state: 'pending',
@@ -428,14 +433,14 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
 
         setRestoreStatus(groupId, {
           state: 'deleted',
-          message: 'Deleted',
+          message: t('deleted'),
         })
 
         setTimeout(() => fetchGroups(), 800)
       } catch {
         setRestoreStatus(groupId, {
           state: 'failed',
-          message: 'Failed',
+          message: t('failed'),
         })
       }
     }
@@ -444,13 +449,13 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
       setShowUpdateMenu(null)
       setRestoreStatus(group.id, {
         state: 'pending',
-        message: 'Restoring...',
+        message: t('restoring'),
       })
 
       const sortedTabs = [...group.tabs].sort((a, b) => a.order - b.order)
       const restorePlan = sortedTabs.map((tab) => ({
         tab,
-        eligibility: getSavedTabRestoreEligibility(tab),
+        eligibility: getSavedTabRestoreEligibility(tab, t),
       }))
       const restorableTabs = restorePlan.filter(
         (
@@ -475,16 +480,16 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
       if (restorableTabs.length === 0) {
         const detailLines = [
           skippedMissingCount > 0
-            ? `${skippedMissingCount} tab(s) had no URL in the snapshot`
+            ? t('tabsMissedUrl', { count: skippedMissingCount })
             : null,
           skippedUnsupportedCount > 0
-            ? `${skippedUnsupportedCount} tab(s) used internal or unsupported URLs`
+            ? t('tabsUnsupportedUrl', { count: skippedUnsupportedCount })
             : null,
         ].filter((line): line is string => Boolean(line))
 
         setRestoreStatus(group.id, {
           state: 'failed',
-          message: 'Nothing restorable',
+          message: t('nothingRestorable'),
           openedCount: 0,
           failedCount,
           detailLines,
@@ -547,17 +552,17 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
       if (openedCount === 0) {
         const detailLines = [
           skippedMissingCount > 0
-            ? `${skippedMissingCount} tab(s) had no URL in the snapshot`
+            ? t('tabsMissedUrl', { count: skippedMissingCount })
             : null,
           skippedUnsupportedCount > 0
-            ? `${skippedUnsupportedCount} tab(s) used internal or unsupported URLs`
+            ? t('tabsUnsupportedUrl', { count: skippedUnsupportedCount })
             : null,
-          tabCreateFailedCount > 0 ? `${tabCreateFailedCount} tab(s) failed while opening` : null,
+          tabCreateFailedCount > 0 ? t('tabsFailedOpening', { count: tabCreateFailedCount }) : null,
         ].filter((line): line is string => Boolean(line))
 
         setRestoreStatus(group.id, {
           state: 'failed',
-          message: 'Restore failed',
+          message: t('restoreFailed'),
           openedCount,
           failedCount,
           detailLines,
@@ -567,17 +572,17 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
 
       const isFullRestore = failedCount === 0 && createdGroup && !groupSetupFailed
       const detailLines = [
-        skippedMissingCount > 0 ? `${skippedMissingCount} tab(s) had no URL in the snapshot` : null,
+        skippedMissingCount > 0 ? t('tabsMissedUrl', { count: skippedMissingCount }) : null,
         skippedUnsupportedCount > 0
-          ? `${skippedUnsupportedCount} tab(s) used internal or unsupported URLs`
+          ? t('tabsUnsupportedUrl', { count: skippedUnsupportedCount })
           : null,
-        tabCreateFailedCount > 0 ? `${tabCreateFailedCount} tab(s) failed while opening` : null,
-        groupSetupFailed ? 'Tabs opened, but Chrome group setup failed' : null,
+        tabCreateFailedCount > 0 ? t('tabsFailedOpening', { count: tabCreateFailedCount }) : null,
+        groupSetupFailed ? t('groupSetupFailed') : null,
       ].filter((line): line is string => Boolean(line))
 
       setRestoreStatus(group.id, {
         state: isFullRestore ? 'full' : 'partial',
-        message: isFullRestore ? 'Restored' : `Partial ${openedCount}/${sortedTabs.length}`,
+        message: isFullRestore ? t('restored') : t('partialRestore', { opened: openedCount, total: sortedTabs.length }),
         openedCount,
         failedCount,
         groupSetupFailed,
@@ -610,7 +615,7 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
         <header className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
             <p className="sp-label text-[10px] font-bold uppercase tracking-[0.2em]">
-              Saved Snapshots
+              {t('savedSnapshots')}
             </p>
             <span className="sp-chip-muted rounded-full px-1.5 py-0.5 text-[10px] font-bold">
               {groups.length}
@@ -620,7 +625,7 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
 
         {groups.length === 0 ? (
           <div className="sp-outline-dashed sp-copy-muted rounded-2xl py-10 text-center">
-            <p className="text-[11px] font-medium">No snapshots saved yet</p>
+            <p className="text-[11px] font-medium">{t('noSnapshotsSaved')}</p>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
@@ -677,7 +682,7 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
                       ) : (
                         <div className="group/title flex items-center gap-1.5 truncate">
                           <h3 className="sp-copy-primary truncate text-[13px] font-bold">
-                            {group.title || 'Untitled'}
+                            {group.title || t('untitled')}
                           </h3>
                           <button
                             className="sp-copy-muted opacity-0 transition-opacity group-hover/title:opacity-100 hover:text-[var(--text-primary)]"
@@ -730,7 +735,7 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
                             </Button>
                           </Tooltip.Trigger>
                           <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
-                            Update from Live
+                            {t('updateFromLive')}
                           </Tooltip.Content>
                         </Tooltip>
 
@@ -746,7 +751,7 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
                             </Button>
                           </Tooltip.Trigger>
                           <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
-                            Delete
+                            {t('delete')}
                           </Tooltip.Content>
                         </Tooltip>
                       </div>
@@ -761,7 +766,7 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
                         {status?.state === 'pending' ? (
                           <LoaderCircle className="animate-spin" size={12} />
                         ) : (
-                          'Restore'
+                          t('restore')
                         )}
                       </Button>
                     </div>
@@ -773,7 +778,7 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
                       onClick={(e) => e.stopPropagation()}
                     >
                       <p className="sp-label px-1.5 py-1 text-[9px] font-bold uppercase tracking-wider">
-                        Update from:
+                        {t('updateFrom')}
                       </p>
                       {liveGroups.length > 0 ? (
                         <div className="flex flex-col gap-0.5">
@@ -791,18 +796,18 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
                                   )}
                                 />
                                 <span className="sp-copy-secondary truncate font-medium">
-                                  {lg.title || 'Untitled Group'}
+                                  {lg.title || t('untitledGroup')}
                                 </span>
                               </div>
                               <span className="sp-copy-muted text-[9px]">
-                                {lg.tabs.length} tabs
+                                {t('tabsCount', { count: lg.tabs.length })}
                               </span>
                             </button>
                           ))}
                         </div>
                       ) : (
                         <p className="sp-copy-muted px-1.5 py-2 text-[10px] italic">
-                          No live groups
+                          {t('noLiveGroups')}
                         </p>
                       )}
                     </div>
@@ -814,7 +819,7 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
                         {[...group.tabs]
                           .sort((a, b) => a.order - b.order)
                           .map((tab) => {
-                            const eligibility = getSavedTabRestoreEligibility(tab)
+                            const eligibility = getSavedTabRestoreEligibility(tab, t)
 
                             return (
                               <li
@@ -827,7 +832,7 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
                                   <div className="size-3.5 shrink-0 rounded-sm bg-[var(--surface-elevated)]" />
                                 )}
                                 <span className="sp-copy-secondary truncate text-[11px]">
-                                  {tab.title || 'Untitled Tab'}
+                                  {tab.title || t('untitledTab')}
                                 </span>
                                 {tab.isRepaired && (
                                   <Tooltip>
@@ -835,7 +840,7 @@ const GroupManagement = forwardRef<GroupManagementHandle, GroupManagementProps>(
                                       <AlertCircle size={10} className="shrink-0 text-amber-500" />
                                     </Tooltip.Trigger>
                                     <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
-                                      Repaired: original URL was missing
+                                      {t('repairedOriginal')}
                                     </Tooltip.Content>
                                   </Tooltip>
                                 )}
