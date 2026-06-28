@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button'
+import { useTranslation } from '@/hooks/useTranslation'
 import {
   describeRulePattern,
   getAutoGroupRulePatterns,
@@ -163,6 +164,7 @@ function RuleCardUI({
   style,
   editingError,
 }: RuleCardUIProps) {
+  const { t } = useTranslation()
   const effectiveExpanded = isExpanded || isEditing
   const rulePatterns = getAutoGroupRulePatterns(rule)
   const activeColor = isEditing ? editingColor : rule.color
@@ -273,7 +275,7 @@ function RuleCardUI({
                 </button>
               </Tooltip.Trigger>
               <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
-                Edit
+                {t('edit')}
               </Tooltip.Content>
             </Tooltip>
             <Tooltip>
@@ -295,7 +297,7 @@ function RuleCardUI({
                 </button>
               </Tooltip.Trigger>
               <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
-                {rule.isActive ? 'Pause' : 'Resume'}
+                {rule.isActive ? t('pause') : t('resume')}
               </Tooltip.Content>
             </Tooltip>
             <Tooltip>
@@ -312,7 +314,7 @@ function RuleCardUI({
                 </button>
               </Tooltip.Trigger>
               <Tooltip.Content className="sp-tooltip rounded-lg px-2 py-1 text-[10px]">
-                Delete
+                {t('delete')}
               </Tooltip.Content>
             </Tooltip>
 
@@ -377,11 +379,11 @@ function RuleCardUI({
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="sp-copy-primary text-[10px] font-bold uppercase tracking-[0.14em]">
-                        Rule Editor
+                        {t('ruleEditor')}
                       </p>
                     </div>
                     <span className="sp-chip-muted rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider">
-                      {editingPatterns.length} pattern{editingPatterns.length === 1 ? '' : 's'}
+                      {editingPatterns.length === 1 ? t('patternsCount', { count: editingPatterns.length }) : t('patternsCountPlural', { count: editingPatterns.length })}
                     </span>
                   </div>
 
@@ -393,7 +395,7 @@ function RuleCardUI({
 
                   <div className="flex flex-col gap-1.5">
                     <label className="sp-label text-[9px] font-bold uppercase tracking-wider ml-0.5">
-                      Color
+                      {t('labelColor')}
                     </label>
                     <div className="flex flex-wrap gap-1.5">
                       {COLORS.map((color) => (
@@ -419,10 +421,10 @@ function RuleCardUI({
                   <div className="flex flex-col gap-2">
                     <div className="flex flex-col gap-0.5 ml-0.5">
                       <label className="sp-label text-[9px] font-bold uppercase tracking-wider">
-                        Patterns
+                        {t('labelPatterns')}
                       </label>
                       <span className="text-[8px] text-[var(--text-muted)]">
-                        Supports Host (<code>google.com</code>), Glob (<code>*.google.com</code>), or Regex (<code>re:^google\.com$</code>).
+                        {t('patternHint')}
                       </span>
                     </div>
 
@@ -470,7 +472,7 @@ function RuleCardUI({
                         )}>
                           <Plus size={11} className="sp-copy-muted" />
                           <input
-                            placeholder="Add new pattern"
+                            placeholder={t('addNewPattern')}
                             className="sp-input w-full border-none bg-transparent text-[10px] font-medium outline-none"
                             value={editingPatternDraft}
                             onChange={(e) => setEditingPatternDraft(e.target.value)}
@@ -487,7 +489,7 @@ function RuleCardUI({
                           className="sp-primary-action cursor-pointer rounded-lg px-2 py-1 text-[9px] font-bold"
                           onClick={addPattern}
                         >
-                          Add
+                          {t('add')}
                         </button>
                       </div>
                       {editingPatternDraft.trim() !== '' && !validateAutoGroupRulePattern(normalizeAutoGroupPattern(editingPatternDraft)).isValid && (
@@ -504,7 +506,8 @@ function RuleCardUI({
                       className="sp-secondary-action cursor-pointer rounded-lg px-2.5 py-1 text-[9px] font-bold"
                       onClick={cancelEdit}
                     >
-                      Cancel
+                      {t('cancel')}
+
                     </button>
                     <button
                       type="button"
@@ -512,7 +515,7 @@ function RuleCardUI({
                       onClick={() => void saveChanges(rule)}
                     >
                       <Check size={11} />
-                      Save Changes
+                      {t('saveChanges')}
                     </button>
                   </div>
                 </motion.div>
@@ -582,6 +585,7 @@ const AutomationManagement = forwardRef<
   AutomationManagementHandle,
   { developerMode?: boolean }
 >(({ developerMode = false }, ref) => {
+  const { t } = useTranslation()
   const [rules, setRules] = useState<NStorage.Sync.Schema.AutoGroupRule[]>([])
   const [isAdding, setIsAdding] = useState(false)
   const [newRuleTitle, setNewRuleTitle] = useState('')
@@ -636,13 +640,13 @@ const AutomationManagement = forwardRef<
     const pattern = normalizeAutoGroupPattern(newRulePattern.trim())
 
     if (!title) {
-      setFormError('Title is required')
+      setFormError(t('titleRequired'))
       return
     }
 
     const validation = validateAutoGroupRulePattern(pattern)
     if (!validation.isValid) {
-      setFormError(validation.error || 'Pattern is invalid')
+      setFormError(validation.error || t('patternIsInvalid'))
       return
     }
 
@@ -667,7 +671,7 @@ const AutomationManagement = forwardRef<
       chrome.runtime.sendMessage({ action: 'run_auto_group_scan' })
     } catch (e) {
       console.error(e)
-      setFormError('Failed to save rule')
+      setFormError(t('failedToSaveRule'))
     }
   }
 
@@ -716,7 +720,7 @@ const AutomationManagement = forwardRef<
 
     const validation = validateAutoGroupRulePattern(pattern)
     if (!validation.isValid) {
-      setEditingError(validation.error || 'Invalid pattern')
+      setEditingError(validation.error || t('invalidPattern'))
       return
     }
 
@@ -749,7 +753,7 @@ const AutomationManagement = forwardRef<
     setEditingError(null)
     const title = editingTitle.trim()
     if (!title) {
-      setEditingError('Title is required')
+      setEditingError(t('titleRequired'))
       return
     }
 
@@ -761,14 +765,14 @@ const AutomationManagement = forwardRef<
 
       const validation = validateAutoGroupRulePattern(normalizeAutoGroupPattern(trimmed))
       if (!validation.isValid) {
-        setEditingError(`Invalid pattern: ${trimmed}. ${validation.error || ''}`)
+        setEditingError(`${t('invalidPatternDetail', { pattern: trimmed, error: validation.error || '' })}`)
         return
       }
       validPatterns.push(validation.normalizedPattern)
     }
 
     if (validPatterns.length === 0) {
-      setEditingError('A rule must have at least one valid pattern')
+      setEditingError(t('atLeastOnePattern'))
       return
     }
 
@@ -789,7 +793,7 @@ const AutomationManagement = forwardRef<
       chrome.runtime.sendMessage({ action: 'run_auto_group_scan' })
     } catch (e) {
       console.error('[Automation] Save error:', e)
-      setEditingError(`Failed to save changes: ${e instanceof Error ? e.message : 'Unknown error'}`)
+      setEditingError(t('failedToSaveChanges', { error: e instanceof Error ? e.message : 'Unknown error' }))
     }
   }
 
@@ -851,11 +855,11 @@ const AutomationManagement = forwardRef<
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="sp-label ml-1 text-[10px] font-bold uppercase tracking-wider">
-                Rule Title
+                {t('ruleTitle')}
               </label>
               <input
                 autoFocus
-                placeholder="Work, Social, Shopping..."
+                placeholder={t('rulePlaceholder')}
                 className="sp-input-shell sp-input w-full rounded-xl border-none px-3 py-2.5 text-xs font-bold outline-none"
                 value={newRuleTitle}
                 onChange={(e) => setNewRuleTitle(e.target.value)}
@@ -865,10 +869,10 @@ const AutomationManagement = forwardRef<
             <div className="flex flex-col gap-1.5">
               <div className="flex flex-col gap-0.5 ml-1">
                 <label className="sp-label text-[10px] font-bold uppercase tracking-wider">
-                  Initial Pattern
+                  {t('initialPattern')}
                 </label>
                 <span className="text-[9px] text-[var(--text-muted)]">
-                  Supports Host (<code>google.com</code>), Glob (<code>*.google.com</code>), or Regex (<code>re:^google\.com$</code>).
+                  {t('patternHint')}
                 </span>
               </div>
               <div className={cn(
@@ -877,7 +881,7 @@ const AutomationManagement = forwardRef<
               )}>
                 <Globe size={14} className="sp-copy-muted" />
                 <input
-                  placeholder="github.com, *.google.com..."
+                  placeholder={t('patternPlaceholder')}
                   className="sp-input w-full border-none bg-transparent text-xs font-bold outline-none"
                   value={newRulePattern}
                   onChange={(e) => setNewRulePattern(e.target.value)}
@@ -892,7 +896,7 @@ const AutomationManagement = forwardRef<
 
             <div className="flex flex-col gap-2">
               <label className="sp-label ml-1 text-[10px] font-bold uppercase tracking-wider">
-                Group Color
+                {t('groupColor')}
               </label>
               <div className="flex flex-wrap gap-2">
                 {COLORS.map((color) => (
@@ -925,7 +929,7 @@ const AutomationManagement = forwardRef<
               className="mt-1 w-full rounded-xl bg-emerald-600 py-2 text-xs font-bold text-white hover:bg-emerald-700 cursor-pointer"
               onClick={handleAddRule}
             >
-              Add Rule
+              {t('addRule')}
             </Button>
           </div>
         </div>
@@ -940,14 +944,14 @@ const AutomationManagement = forwardRef<
         <div className="flex flex-col gap-2.5">
           {rules.length === 0 && !isAdding && (
             <div className="sp-outline-dashed rounded-2xl py-12 px-4 text-center flex flex-col items-center gap-3">
-              <p className="sp-copy-muted text-xs font-medium">No automation rules yet.</p>
+              <p className="sp-copy-muted text-xs font-medium">{t('noRulesYet')}</p>
               <button
                 type="button"
                 onClick={() => setIsAdding(true)}
                 className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-[var(--sp-tab-pill-active)] px-4 py-2 text-xs font-bold text-[var(--primary-foreground)] shadow-md hover:scale-105 transition-transform"
               >
                 <Plus size={14} />
-                Create Your First Rule
+                {t('createFirstRule')}
               </button>
             </div>
           )}
@@ -1014,16 +1018,16 @@ const AutomationManagement = forwardRef<
         <div className="animate-in fade-in slide-in-from-bottom-2 flex flex-col gap-4 duration-300">
           <div className="flex items-center justify-between">
             <h3 className="sp-copy-primary text-[11px] font-bold uppercase tracking-widest">
-              Live Registry
+              {t('liveRegistry')}
             </h3>
             <span className="sp-chip-muted rounded-full px-2 py-0.5 text-[9px] font-bold">
-              {debugState.ownership.length} active groups
+              {t('activeGroupsCount', { count: debugState.ownership.length })}
             </span>
           </div>
 
           <div className="flex flex-col gap-1.5">
             {debugState.ownership.length === 0 ? (
-              <p className="sp-copy-muted text-[10px] italic">No active auto-groups tracked.</p>
+              <p className="sp-copy-muted text-[10px] italic">{t('noActiveAutoGroups')}</p>
             ) : (
               debugState.ownership.map((entry, idx) => (
                 <div
@@ -1035,7 +1039,7 @@ const AutomationManagement = forwardRef<
                       <div className={cn('size-2 rounded-full', COLOR_MAP[entry.color])} />
                       <span className="sp-copy-primary text-[11px] font-bold">{entry.title}</span>
                     </div>
-                    <span className="sp-copy-muted text-[9px]">Window {entry.windowId}</span>
+                    <span className="sp-copy-muted text-[9px]">{t('windowLabel', { id: entry.windowId })}</span>
                   </div>
                 </div>
               ))
@@ -1044,7 +1048,7 @@ const AutomationManagement = forwardRef<
 
           <div className="flex items-center justify-between mt-2">
             <h3 className="sp-copy-primary text-[11px] font-bold uppercase tracking-widest">
-              Recent Audit
+              {t('recentAudit')}
             </h3>
             <button
               onClick={clearAuditLog}
@@ -1056,7 +1060,7 @@ const AutomationManagement = forwardRef<
 
           <div className="flex flex-col gap-1.5 max-h-[300px] overflow-y-auto pr-1">
             {debugState.audit.length === 0 ? (
-              <p className="sp-copy-muted text-[10px] italic">Audit log is empty.</p>
+              <p className="sp-copy-muted text-[10px] italic">{t('auditEmpty')}</p>
             ) : (
               debugState.audit.map((entry) => (
                 <div
@@ -1087,7 +1091,7 @@ const AutomationManagement = forwardRef<
                     </span>
                   </div>
                   <p className="sp-copy-primary text-[10px] font-medium leading-tight truncate">
-                    {entry.ruleTitle || 'Scan'} - {entry.reason}
+                    {entry.ruleTitle || t('scan')} - {entry.reason}
                   </p>
                   {entry.url && (
                     <p className="sp-copy-muted text-[9px] truncate italic">{entry.url}</p>
