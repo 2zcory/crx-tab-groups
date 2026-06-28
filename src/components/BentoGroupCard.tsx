@@ -59,11 +59,11 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
       id={id}
       ref={setNodeRef}
       className={cn(
-        'p-2.5 rounded-2xl border transition-all duration-300',
+        'p-2.5 rounded-2xl border transition-all duration-300 hover:shadow-md hover:translate-y-[-0.5px]',
         cardStyle,
         !color && 'sp-card-hover',
         isOver &&
-          'ring-2 ring-[var(--sp-tab-pill-active)] ring-offset-2 scale-[1.01] bg-[var(--surface-elevated)] shadow-md',
+          'scale-[1.02] bg-[var(--surface-elevated)] shadow-lg border-[var(--sp-tab-pill-active)] ring-4 ring-[var(--sp-tab-pill-active)]/10',
         className,
       )}
     >
@@ -114,7 +114,7 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
               <button
                 type="button"
                 aria-label={t('ariaCloseAllTabs', { title })}
-                className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full border border-rose-200/70 bg-[var(--surface-elevated)] text-rose-500 transition-colors hover:bg-rose-500 hover:text-white"
+                className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full border border-rose-200/70 bg-[var(--surface-elevated)] text-rose-500 transition-all duration-200 hover:bg-rose-500 hover:text-white hover:scale-105 active:scale-95"
                 onClick={(event) => {
                   event.stopPropagation()
                   onCloseTabs()
@@ -132,7 +132,7 @@ export const BentoGroupCard: React.FC<BentoGroupCardProps> = ({
           className={cn(
             'flex flex-col gap-1 min-h-[40px] transition-all rounded-xl p-1',
             isOver &&
-              'bg-[var(--surface-muted)] outline-2 outline-dashed outline-[color:var(--sp-card-border)]',
+              'bg-[color-mix(in_srgb,var(--sp-tab-pill-active)_5%,var(--surface-muted))] outline-2 outline-dashed outline-[var(--sp-tab-pill-active)]',
           )}
         >
           {tabs.map((tab) => (

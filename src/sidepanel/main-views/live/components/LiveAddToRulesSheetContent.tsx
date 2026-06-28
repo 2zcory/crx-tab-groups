@@ -56,7 +56,7 @@ export const LiveAddToRulesSheetContent = ({
               key={suggestion.value}
               type="button"
               className={cn(
-                'rounded-full px-2 py-1 text-[10px] font-bold ring-1 transition-colors',
+                'rounded-full px-2.5 py-1 text-[10px] font-bold ring-1 transition-all duration-200 hover:scale-[1.03] active:scale-[0.97] cursor-pointer shadow-sm',
                 draft.patternDraft === suggestion.value
                   ? 'bg-[var(--sp-tab-pill-active)] text-[var(--primary-foreground)] ring-[var(--sp-tab-pill-active)]'
                   : 'sp-chip hover:bg-[var(--surface-muted)]',
@@ -96,16 +96,16 @@ export const LiveAddToRulesSheetContent = ({
             onChange={(event) => onUpdateDraft({ newRuleTitle: event.target.value })}
             placeholder={t('placeholderNewRuleTitle')}
           />
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {COLORS.map((color) => (
               <button
                 key={color}
                 type="button"
                 className={cn(
-                  'size-4 rounded-full transition-transform hover:scale-110',
+                  'size-4.5 rounded-full transition-all duration-200 hover:scale-125 active:scale-95 cursor-pointer',
                   COLOR_MAP[color],
                   draft.newRuleColor === color &&
-                    'scale-110 ring-2 ring-[var(--sp-tab-pill-active)] ring-offset-1',
+                    'scale-110 ring-2 ring-[var(--sp-tab-pill-active)] ring-offset-2',
                 )}
                 onClick={() => onUpdateDraft({ newRuleColor: color })}
               />
@@ -135,14 +135,14 @@ export const LiveAddToRulesSheetContent = ({
         <Button
           type="button"
           variant="outline"
-          className="sp-secondary-action h-8 flex-1 rounded-xl text-[11px] font-bold shadow-none"
+          className="sp-secondary-action h-8 flex-1 rounded-xl text-[11px] font-bold shadow-none hover:scale-[1.02] active:scale-[0.97] transition-transform duration-150 cursor-pointer"
           onClick={onCancel}
         >
           {t('cancel')}
         </Button>
         <Button
           type="button"
-          className="sp-primary-action h-8 flex-1 rounded-xl text-[11px] font-bold"
+          className="sp-primary-action h-8 flex-1 rounded-xl text-[11px] font-bold hover:scale-[1.02] active:scale-[0.97] transition-transform duration-150 cursor-pointer"
           onClick={onSubmit}
         >
           {t('actionAddPattern')}

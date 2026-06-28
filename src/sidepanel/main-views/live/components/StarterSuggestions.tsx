@@ -242,7 +242,7 @@ export const StarterSuggestions: React.FC<StarterSuggestionsProps> = ({
                   <button
                     key={idx}
                     onClick={() => handleRestoreSession(session)}
-                    className="group sp-card flex items-center justify-between p-3 rounded-2xl border border-[var(--sp-card-border)] bg-[var(--surface-elevated)] hover:bg-[var(--sp-card-hover)] transition-all cursor-pointer text-left"
+                    className="group sp-card flex items-center justify-between p-3 rounded-2xl border border-[var(--sp-card-border)] bg-[var(--surface-elevated)] hover:bg-[var(--sp-card-hover)] hover:scale-[1.01] hover:-translate-y-[0.5px] hover:shadow-md transition-all duration-300 cursor-pointer text-left"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="size-8 rounded-xl bg-[var(--surface-muted)] flex items-center justify-center shrink-0 border border-[var(--sp-card-border)]">
@@ -288,7 +288,7 @@ export const StarterSuggestions: React.FC<StarterSuggestionsProps> = ({
                 <button
                   key={group.id}
                   onClick={() => onRestoreSnapshot(group)}
-                  className="group sp-card flex items-center justify-between p-3 rounded-2xl border border-[var(--sp-card-border)] bg-[var(--surface-elevated)] hover:bg-[var(--sp-card-hover)] transition-all cursor-pointer text-left"
+                  className="group sp-card flex items-center justify-between p-3 rounded-2xl border border-[var(--sp-card-border)] bg-[var(--surface-elevated)] hover:bg-[var(--sp-card-hover)] hover:scale-[1.01] hover:-translate-y-[0.5px] hover:shadow-md transition-all duration-300 cursor-pointer text-left"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div
@@ -334,12 +334,12 @@ export const StarterSuggestions: React.FC<StarterSuggestionsProps> = ({
                   <Tooltip.Trigger asChild>
                     <button
                       onClick={() => chrome.tabs.create({ url: site.url })}
-                      className="group size-10 rounded-2xl bg-[var(--surface-elevated)] border border-[var(--sp-card-border)] flex items-center justify-center hover:bg-[var(--sp-card-hover)] hover:scale-110 transition-all cursor-pointer shadow-sm"
+                      className="group size-10 rounded-2xl bg-[var(--surface-elevated)] border border-[var(--sp-card-border)] flex items-center justify-center hover:bg-[var(--sp-card-hover)] hover:scale-110 hover:border-indigo-400 active:scale-95 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md"
                     >
                       <AvatarIcon
                         src={getFavIconUrl(site.url)}
                         fallbackString={site.title[0]}
-                        className="size-6 grayscale-[0.2] group-hover:grayscale-0"
+                        className="size-6 grayscale-[0.15] group-hover:grayscale-0 transition-all"
                       />
                     </button>
                   </Tooltip.Trigger>

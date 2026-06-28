@@ -36,8 +36,8 @@ const TabsTrigger = React.forwardRef<
     ref={ref}
     data-slot="tabs-trigger"
     className={cn(
-      'relative cursor-pointer py-2 text-xs font-bold uppercase tracking-widest outline-none transition-all',
-      'text-[var(--sp-tab-pill-text)] data-[state=active]:text-[var(--sp-tab-pill-active)]',
+      'relative cursor-pointer py-2 text-xs font-bold uppercase tracking-widest outline-none transition-all duration-200 active:scale-95 hover:text-[var(--sp-tab-pill-active)]',
+      'text-[var(--sp-tab-pill-text)] data-[state=active]:text-[var(--sp-tab-pill-active)] data-[state=active]:scale-105',
       className,
     )}
     {...props}
@@ -136,7 +136,7 @@ function Tabs(props: IProps) {
         {props.rightElement && <div className="flex items-center px-2">{props.rightElement}</div>}
 
         <div
-          className="absolute bottom-0 z-10 h-[2px] bg-[var(--sp-tab-pill-active)] transition-all duration-300 ease-in-out"
+          className="absolute bottom-0 z-10 h-[2.5px] rounded-full bg-gradient-to-r from-[var(--sp-tab-pill-active)] to-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)] transition-all duration-300 ease-out"
           style={{
             left: `${indicatorStyle.left}px`,
             width: `${indicatorStyle.width}px`,

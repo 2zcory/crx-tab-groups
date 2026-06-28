@@ -398,8 +398,9 @@ main {
 
 .sp-rule-card-surface:hover {
   border-color: color-mix(in srgb, var(--sp-rule-card-accent) 25%, var(--border-strong));
-  box-shadow: 0 8px 20px -6px rgb(0 0 0 / 0.5);
+  box-shadow: 0 10px 30px -10px color-mix(in srgb, var(--sp-rule-card-accent) 20%, rgba(15, 23, 42, 0.15));
   background: var(--sp-card-hover);
+  transform: translateY(-1.5px) scale(1.008);
 }
 
 .sp-rule-card-surface:hover::after {
@@ -841,4 +842,49 @@ main {
 
 .animate-in.fade-in {
   animation: sp-settings-fade-in 200ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+/* Premium Theme Chip Upgrade */
+.sp-theme-chip {
+  transition: all 250ms cubic-bezier(0.23, 1, 0.32, 1);
+  box-shadow: var(--shadow-sm);
+}
+
+.sp-theme-chip:hover {
+  transform: translateY(-1.5px) scale(1.02);
+  background-color: var(--sp-card-hover);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.sp-theme-chip:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.sp-theme-chip[data-active='true'] {
+  background: var(--sp-tab-pill-active) !important;
+  color: var(--primary-foreground) !important;
+  border-color: var(--sp-tab-pill-active) !important;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--sp-tab-pill-active) 25%, transparent) !important;
+}
+
+/* Glass Style Preview Cards Upgrade */
+.sp-glass-style-card {
+  transition: all 250ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.sp-glass-style-card:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
+}
+
+.sp-glass-style-card:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.sp-glass-style-card[data-active='true'] {
+  transform: scale(1.01);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  border-color: var(--sp-tab-pill-active) !important;
 }
