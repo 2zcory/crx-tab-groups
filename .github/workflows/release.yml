@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -49,6 +51,35 @@ jobs:
             echo "notes_path=.github/workflows/release-notes-stable.md" >> $GITHUB_OUTPUT
           fi
 
+      - name: Generate Filtered Changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            echo "Generating changelog since tag: $PREV_TAG"
+            COMMIT_LOG=$(git log ${PREV_TAG}..HEAD --oneline --pretty=format:"* %s")
+          else
+            echo "No previous tag found, generating from all commits"
+            COMMIT_LOG=$(git log --oneline --pretty=format:"* %s")
+          fi
+
+          CHANGELOG=$(echo "$COMMIT_LOG" | grep -Ei "^\* (feat|fix)\b" || echo "")
+
+          TEMPLATE_PATH="${{ steps.release_info.outputs.notes_path }}"
+          FINAL_PATH="package/release-notes-final.md"
+          mkdir -p package
+          cp "$TEMPLATE_PATH" "$FINAL_PATH"
+
+          echo -e "\n\n### 📝 Nhật ký thay đổi / Changelog" >> "$FINAL_PATH"
+          if [ -n "$CHANGELOG" ]; then
+            echo "$CHANGELOG" >> "$FINAL_PATH"
+          else
+            echo "* No user-facing feature updates or bug fixes in this release." >> "$FINAL_PATH"
+          fi
+
+          echo "--- FINAL RELEASE NOTES ---"
+          cat "$FINAL_PATH"
+
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v2
@@ -57,7 +88,7 @@ jobs:
           name: Release ${{ steps.release_info.outputs.tag_name }}
           draft: false
           prerelease: ${{ steps.release_info.outputs.is_prerelease == 'true' }}
-          body_path: ${{ steps.release_info.outputs.notes_path }}
+          body_path: package/release-notes-final.md
           files: package/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
