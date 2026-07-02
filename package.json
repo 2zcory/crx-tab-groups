@@ -1,7 +1,7 @@
 {
   "name": "crx-tab-groups",
   "displayName": "Groupify: Auto Tab Organizer",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "author": "2zcory",
   "description": "Auto-organize tab groups with rules, inspect live tabs, and save/restore snapshots in a side panel.",
   "type": "module",
