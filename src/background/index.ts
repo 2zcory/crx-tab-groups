@@ -245,8 +245,8 @@ const handleAutoGrouping = async (
             console.log(`[Automation] Grouped tab ${tabId} into existing group: ${rule.title}`)
             return { kind: 'grouped' }
           } catch (groupError: any) {
-            const groupErrorMsg = groupError?.message || String(groupError)
-            if (groupErrorMsg.includes('No group with id')) {
+            const groupErrorMsg = (groupError?.message || String(groupError)).toLowerCase()
+            if (groupErrorMsg.includes('no group with id') || groupErrorMsg.includes('group not found')) {
               console.warn(`[Background] Target group ${targetGroup.id} was dissolved before grouping. Re-creating group.`)
               const gid = await chrome.tabs.group({ tabIds: [tabId] })
               await chrome.tabGroups.update(gid, { title: rule.title, color: rule.color })
@@ -265,9 +265,13 @@ const handleAutoGrouping = async (
       }
     }
   } catch (e: any) {
-    const errorMsg = e?.message || String(e)
-    if (errorMsg.includes('No tab with id') || errorMsg.includes('not found')) {
-      console.warn(`[Background] Auto-grouping skipped for tab ${tabId} because it was closed.`)
+    const errorMsg = (e?.message || String(e)).toLowerCase()
+    if (
+      errorMsg.includes('no tab with id') ||
+      errorMsg.includes('not found') ||
+      errorMsg.includes('no group with id')
+    ) {
+      console.warn(`[Background] Auto-grouping skipped for tab ${tabId} because tab/group was dissolved.`)
     } else {
       console.error('[Background] Auto-grouping error for tab', tabId, e)
     }
@@ -321,9 +325,14 @@ const trackCurrentSession = async () => {
 }
 
 // --- EVENT LISTENERS ---
+// Keep track of tabs currently being auto-grouped to prevent concurrent races and loops
+const pendingAutoGroups = new Set<number>()
+
 const handleTabUpdate = async (tabId: number, windowId: number, url?: string) => {
   if (!url || shouldIgnoreAutoGroupUrl(url)) return
+  if (pendingAutoGroups.has(tabId)) return
 
+  pendingAutoGroups.add(tabId)
   try {
     const settingsData = await chrome.storage.local.get('extensionSettings')
     const settings = settingsData.extensionSettings as NStorage.Local.ExtensionSettings | undefined
@@ -355,13 +364,22 @@ const handleTabUpdate = async (tabId: number, windowId: number, url?: string) =>
     }
   } catch (e) {
     console.error('[Background] Automation error:', e)
+  } finally {
+    pendingAutoGroups.delete(tabId)
   }
 }
 
 chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
-  const targetUrl = change.url || tab.url
   const windowId = tab.windowId
-  if ((targetUrl || change.status === 'complete') && windowId !== undefined) {
+  if (windowId === undefined) return
+
+  const hasUrlChanged = !!change.url
+  const isStatusComplete = change.status === 'complete'
+
+  if (hasUrlChanged || isStatusComplete) {
+    const targetUrl = tab.url
+    if (!targetUrl) return
+
     chrome.storage.local.get('extensionSettings').then((data) => {
       const settings = data.extensionSettings as NStorage.Local.ExtensionSettings | undefined
       const groupOnTabUpdated = settings?.groupOnTabUpdated ?? true
@@ -369,6 +387,9 @@ chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
         void handleTabUpdate(tabId, windowId, targetUrl)
       }
     })
+  }
+
+  if (change.url || change.status || change.groupId !== undefined) {
     void trackCurrentSession()
   }
 })
